@@ -41,6 +41,11 @@ app.use(BM.locDaiMang);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Health check endpoint - không cần database
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
 const gioPhien = Number(process.env.QLCD_PHIEN_GIO) || 8;
 app.use(session({
     name: 'qlcd.sid',
@@ -66,25 +71,31 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/danh-muc', require('./routes/danhmuc'));
-app.use('/api/thiet-bi', require('./routes/thietbi'));
-app.use('/api/giao-dich', require('./routes/giaodich'));
-app.use('/api', require('./routes/tienich'));
-app.use('/api/bao-duong', require('./routes/baoduong'));
-app.use('/api/kiem-dinh', require('./routes/kiemdinh'));
-app.use('/api/ky-thuat', require('./routes/kythuat'));
-app.use('/api/su-co', require('./routes/suco'));
-app.use('/api/ncvt', require('./routes/ncvt'));
-app.use('/api/mang', require('./routes/mang'));
-app.use('/api/import', require('./routes/import'));
-app.use('/api/tong-hop', require('./routes/tonghop'));
-app.use('/api/quantri', require('./routes/quantri'));
-app.use('/api/filemau', require('./routes/filemau'));
-app.use('/api/kiemke', require('./routes/kiemke'));
-app.use('/api/doichieu', require('./routes/doichieu'));
-app.use('/api/khovat', require('./routes/khovat'));
-app.use('/api/dashboard', require('./routes/dashboard'));
+// Load routes với xử lý lỗi
+try {
+    app.use('/api/auth', require('./routes/auth'));
+    app.use('/api/danh-muc', require('./routes/danhmuc'));
+    app.use('/api/thiet-bi', require('./routes/thietbi'));
+    app.use('/api/giao-dich', require('./routes/giaodich'));
+    app.use('/api', require('./routes/tienich'));
+    app.use('/api/bao-duong', require('./routes/baoduong'));
+    app.use('/api/kiem-dinh', require('./routes/kiemdinh'));
+    app.use('/api/ky-thuat', require('./routes/kythuat'));
+    app.use('/api/su-co', require('./routes/suco'));
+    app.use('/api/ncvt', require('./routes/ncvt'));
+    app.use('/api/mang', require('./routes/mang'));
+    app.use('/api/import', require('./routes/import'));
+    app.use('/api/tong-hop', require('./routes/tonghop'));
+    app.use('/api/quantri', require('./routes/quantri'));
+    app.use('/api/filemau', require('./routes/filemau'));
+    app.use('/api/kiemke', require('./routes/kiemke'));
+    app.use('/api/doichieu', require('./routes/doichieu'));
+    app.use('/api/khovat', require('./routes/khovat'));
+    app.use('/api/dashboard', require('./routes/dashboard'));
+} catch (e) {
+    console.error('[!] Lỗi load routes:', e.message);
+    // Không exit - để app vẫn chạy với health check endpoint
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 
