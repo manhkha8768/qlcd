@@ -14,23 +14,18 @@ const CONG = process.env.PORT || 3000;
 // Mặc định lắng nghe mọi card mạng để máy ở dải mạng khác cũng vào được
 const DIA_CHI = process.env.QLCD_HOST || '0.0.0.0';
 
-// Kiểm tra/khởi tạo database
+// Kiểm tra/khởi tạo database - dùng cùng path như db/index.js
 const duongDanDB = process.env.QLCD_DB || path.join(__dirname, 'db', 'qlcd.db');
-const duongDanDbFolder = path.dirname(duongDanDB);
-
-// Tạo folder nếu chưa tồn tại
-if (!fs.existsSync(duongDanDbFolder)) {
-    fs.mkdirSync(duongDanDbFolder, { recursive: true });
-}
 
 // Nếu database chưa tồn tại, cố gắng khởi tạo
 if (!fs.existsSync(duongDanDB)) {
     try {
         console.log('[i] Khởi tạo database...');
         require('./db/init.js');
+        console.log('[OK] Database đã khởi tạo thành công');
     } catch (e) {
-        console.warn('[!] Không thể khởi tạo database tự động:', e.message);
-        // Không exit - để app cố gắng chạy
+        console.warn('[!] Cảnh báo khởi tạo database:', e.message);
+        // Không exit - để app cố gắng chạy với database rỗng
     }
 }
 
