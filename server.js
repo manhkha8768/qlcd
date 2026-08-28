@@ -5,7 +5,12 @@
 const express = require('express');
 const session = require('express-session');
 const path = require('path');
-const fs = require('fs');
+
+// Luôn áp dụng migration trước khi nạp middleware/routes (các module này truy cập DB ngay khi require).
+// Hàm init không đóng DB hay kết thúc tiến trình khi được gọi từ web server.
+const { khoiTaoDatabase } = require('./db/init');
+khoiTaoDatabase();
+
 const BM = require('./middleware/bao-mat');
 const { KhoPhienSQLite } = require('./lib/phien-sqlite');
 
@@ -14,20 +19,8 @@ const CONG = process.env.PORT || 3000;
 // Mặc định lắng nghe mọi card mạng để máy ở dải mạng khác cũng vào được
 const DIA_CHI = process.env.QLCD_HOST || '0.0.0.0';
 
-// Kiểm tra/khởi tạo database - dùng cùng path như db/index.js
+// Dùng cùng path như db/index.js để hiển thị trong log khởi động.
 const duongDanDB = process.env.QLCD_DB || path.join(__dirname, 'db', 'qlcd.db');
-
-// Nếu database chưa tồn tại, cố gắng khởi tạo
-if (!fs.existsSync(duongDanDB)) {
-    try {
-        console.log('[i] Khởi tạo database...');
-        require('./db/init.js');
-        console.log('[OK] Database đã khởi tạo thành công');
-    } catch (e) {
-        console.warn('[!] Cảnh báo khởi tạo database:', e.message);
-        // Không exit - để app cố gắng chạy với database rỗng
-    }
-}
 
 // Sau proxy (Nginx, Render, Railway) mới đọc đúng địa chỉ IP thật của người dùng
 if (BM.LA_INTERNET) app.set('trust proxy', 1);
@@ -126,3 +119,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
