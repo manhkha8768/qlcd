@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Kho Vật Tư</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; color: #333; }
+        .container { max-width: 1200px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: #2c3e50; color: white; padding: 20px; }
+        .header h1 { margin: 0; font-size: 28px; }
+        .header p { margin: 5px 0 0 0; opacity: 0.9; font-size: 14px; }
+        .tabs { display: flex; border-bottom: 1px solid #e0e0e0; }
+        .tab { flex: 1; padding: 15px; background: #f9f9f9; border: none; cursor: pointer; font-size: 16px; text-align: center; transition: all 0.3s; }
+        .tab:hover { background: #f0f0f0; }
+        .tab.active { background: white; border-bottom: 3px solid #3498db; color: #3498db; font-weight: bold; }
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; color: #2c3e50; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-success { background: #27ae60; color: white; }
+        .btn-success:hover { background: #229954; }
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-warning:hover { background: #d68910; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .table th { background: #ecf0f1; padding: 12px; text-align: left; font-weight: bold; border-bottom: 2px solid #bdc3c7; }
+        .table td { padding: 10px; border-bottom: 1px solid #ecf0f1; }
+        .table tr:hover { background: #f8f9fa; }
+        .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status.nhap { background: #e8f4f8; color: #0288d1; }
+        .status.cho_duyet { background: #fff3cd; color: #856404; }
+        .status.da_duyet { background: #d4edda; color: #155724; }
+        .status.tu_choi { background: #f8d7da; color: #721c24; }
+        .tinh_trang.binh_thuong { background: #d4edda; color: #155724; }
+        .tinh_trang.canh_bao_thap { background: #fff3cd; color: #856404; }
+        .tinh_trang.canh_bao_cao { background: #f8d7da; color: #721c24; }
+        .alert { padding: 15px; border-radius: 4px; margin-bottom: 15px; }
+        .alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: #f8f9fa; padding: 15px; border-radius: 4px; border-left: 4px solid #3498db; }
+        .stat-card h3 { margin: 0 0 5px 0; font-size: 14px; color: #7f8c8d; }
+        .stat-card .value { font-size: 28px; font-weight: bold; color: #2c3e50; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 600px; width: 90%; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .modal-header { margin-bottom: 20px; }
+        .modal-header h2 { margin: 0; color: #2c3e50; }
+        .modal-body { margin-bottom: 20px; }
+        .modal-footer { text-align: right; }
+        .modal-footer .btn { margin-left: 10px; }
+        .text-center { text-align: center; }
+        .text-muted { color: #7f8c8d; font-size: 14px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Quản lý Kho Vật Tư</h1>
+            <p>Quản lý danh mục vật tư, tồn kho, nhập/xuất kho</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('tab-danh-sach')">Danh sách vật tư</button>
+            <button class="tab" onclick="switchTab('tab-tao-moi')">Thêm vật tư</button>
+            <button class="tab" onclick="switchTab('tab-giao-dich')">Giao dịch kho</button>
+            <button class="tab" onclick="switchTab('tab-lich-su')">Lịch sử audit</button>
+        </div>
+
+        <!-- TAB 1: Danh sách vật tư -->
+        <div class="tab-content active" id="tab-danh-sach">
+            <div class="stats" id="stats-danh-sach">
+                <div class="stat-card">
+                    <h3>Tổng vật tư</h3>
+                    <div class="value">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Cảnh báo thấp</h3>
+                    <div class="value">-</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Cảnh báo cao</h3>
+                    <div class="value">-</div>
+                </div>
+            </div>
+            <table class="table" id="table-danh-sach">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Tên vật tư</th>
+                        <th>Chi tiêu</th>
+                        <th>ĐVT</th>
+                        <th>Tồn hiện tại</th>
+                        <th>Mức tối thiểu</th>
+                        <th>Mức tối đa</th>
+                        <th>Tình trạng</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- TAB 2: Thêm vật tư -->
+        <div class="tab-content" id="tab-tao-moi">
+            <div class="alert alert-info">
+                ℹ️ Thêm vật tư mới vào danh mục kho
+            </div>
+            <form id="form-tao-vat-tu">
+                <div class="form-group">
+                    <label>Mã vật tư:</label>
+                    <input type="text" name="ma" placeholder="VT-001" required>
+                </div>
+                <div class="form-group">
+                    <label>Tên vật tư:</label>
+                    <input type="text" name="ten" placeholder="Axle 10mm" required>
+                </div>
+                <div class="form-group">
+                    <label>Chi tiêu:</label>
+                    <input type="text" name="chi_tieu" placeholder="10mm">
+                </div>
+                <div class="form-group">
+                    <label>Đơn vị tính:</label>
+                    <input type="text" name="dvt" placeholder="cái" required>
+                </div>
+                <div class="form-group">
+                    <label>Tồn đầu:</label>
+                    <input type="number" name="ton_dau" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Mức tối thiểu:</label>
+                    <input type="number" name="muc_toi_thieu" placeholder="20">
+                </div>
+                <div class="form-group">
+                    <label>Mức tối đa:</label>
+                    <input type="number" name="muc_toi_da" placeholder="100">
+                </div>
+                <div class="form-group">
+                    <label>Vị trí kho:</label>
+                    <input type="text" name="vi_tri_kho" placeholder="Kho A - Giá 1">
+                </div>
+                <div class="form-group">
+                    <label>Ghi chú:</label>
+                    <textarea name="ghi_chu" placeholder="Ghi chú thêm..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">✓ Tạo vật tư</button>
+                <span id="msg-tao-vat-tu" class="text-muted" style="margin-left: 15px;"></span>
+            </form>
+        </div>
+
+        <!-- TAB 3: Giao dịch kho -->
+        <div class="tab-content" id="tab-giao-dich">
+            <div class="alert alert-info">
+                ℹ️ Danh sách các giao dịch nhập, xuất, điều chuyển kho
+            </div>
+            <div style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="showNhapXuatModal()">+ Nhập kho</button>
+                <button class="btn btn-warning" onclick="showNhapXuatModal('xuat')">- Xuất kho</button>
+            </div>
+            <table class="table" id="table-giao-dich">
+                <thead>
+                    <tr>
+                        <th>Mã GD</th>
+                        <th>Loại</th>
+                        <th>Trạng thái</th>
+                        <th>Người lập</th>
+                        <th>Ngày tạo</th>
+                        <th>Chi tiết</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- TAB 4: Lịch sử audit -->
+        <div class="tab-content" id="tab-lich-su">
+            <div class="alert alert-info">
+                ℹ️ Nhật ký tất cả các thay đổi trong kho vật tư
+            </div>
+            <table class="table" id="table-lich-su">
+                <thead>
+                    <tr>
+                        <th>Hành động</th>
+                        <th>Người thực hiện</th>
+                        <th>Địa chỉ IP</th>
+                        <th>Ngày giờ</th>
+                        <th>Chi tiết</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Nhập/Xuất Kho -->
+    <div class="modal" id="modal-giao-dich">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Nhập kho</h2>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Chọn vật tư:</label>
+                    <select id="select-vat-tu" required>
+                        <option value="">-- Chọn vật tư --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Số lượng:</label>
+                    <input type="number" id="input-so-luong" min="1" placeholder="0" required>
+                </div>
+                <div class="form-group">
+                    <label>Lý do:</label>
+                    <input type="text" id="input-ly-do" placeholder="Lý do thao tác">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">Hủy</button>
+                <button class="btn btn-primary" id="btn-submit-gd" onclick="submitGiaoDich()">Tạo phiếu</button>
+            </div>
+            <span id="msg-giao-dich" class="text-muted"></span>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api/khovat';
+        let giaoDichType = 'nhap_kho';
+
+        async function loadDanhSachVatTu() {
+            try {
+                const res = await fetch(API);
+                const data = await res.json();
+                const tbody = document.querySelector('#table-danh-sach tbody');
+                tbody.innerHTML = '';
+
+                let canh_bao_thap = 0, canh_bao_cao = 0;
+
+                data.data.forEach(vt => {
+                    if (vt.tinh_trang_ton === 'canh_bao_thap') canh_bao_thap++;
+                    if (vt.tinh_trang_ton === 'canh_bao_cao') canh_bao_cao++;
+
+                    const row = `<tr>
+                        <td>${vt.ma}</td>
+                        <td>${vt.ten}</td>
+                        <td>${vt.chi_tieu || '-'}</td>
+                        <td>${vt.dvt}</td>
+                        <td><strong>${vt.ton_hien_tai}</strong></td>
+                        <td>${vt.muc_toi_thieu || '-'}</td>
+                        <td>${vt.muc_toi_da || '-'}</td>
+                        <td><span class="status tinh_trang ${vt.tinh_trang_ton}">${vt.tinh_trang_ton === 'canh_bao_thap' ? 'Cảnh báo thấp' : vt.tinh_trang_ton === 'canh_bao_cao' ? 'Cảnh báo cao' : 'Bình thường'}</span></td>
+                        <td>
+                            <button class="btn btn-primary" onclick="quickNhap(${vt.id})">Nhập</button>
+                            <button class="btn btn-warning" onclick="quickXuat(${vt.id})">Xuất</button>
+                        </td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+
+                document.querySelector('#stats-danh-sach').innerHTML = `
+                    <div class="stat-card">
+                        <h3>Tổng vật tư</h3>
+                        <div class="value">${data.data.length}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Cảnh báo thấp</h3>
+                        <div class="value">${canh_bao_thap}</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Cảnh báo cao</h3>
+                        <div class="value">${canh_bao_cao}</div>
+                    </div>
+                `;
+
+                // Load select vật tư cho modal
+                const select = document.querySelector('#select-vat-tu');
+                select.innerHTML = '<option value="">-- Chọn vật tư --</option>';
+                data.data.forEach(vt => {
+                    select.innerHTML += `<option value="${vt.id}">${vt.ma} - ${vt.ten}</option>`;
+                });
+            } catch (e) {
+                console.error('Lỗi tải danh sách:', e);
+            }
+        }
+
+        async function loadGiaoDich() {
+            try {
+                const res = await fetch(`${API}/giao-dich`);
+                const data = await res.json();
+                const tbody = document.querySelector('#table-giao-dich tbody');
+                tbody.innerHTML = '';
+
+                data.data.forEach(gd => {
+                    const loai_text = gd.loai === 'nhap_kho' ? 'Nhập' : gd.loai === 'xuat_kho' ? 'Xuất' : 'Điều chuyển';
+                    const status_text = gd.trang_thai === 'nhap' ? 'Nhập' : gd.trang_thai === 'cho_duyet' ? 'Chờ duyệt' : gd.trang_thai === 'da_duyet' ? 'Đã duyệt' : 'Từ chối';
+                    const row = `<tr>
+                        <td>${gd.ma}</td>
+                        <td>${loai_text}</td>
+                        <td><span class="status ${gd.trang_thai}">${status_text}</span></td>
+                        <td>${gd.nguoi_lap || '-'}</td>
+                        <td>${gd.ngay_tao ? new Date(gd.ngay_tao).toLocaleDateString('vi-VN') : '-'}</td>
+                        <td>${gd.so_chi_tiet} dòng</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="xemChiTiet(${gd.id})">Xem</button>
+                            ${gd.trang_thai === 'nhap' ? `<button class="btn btn-success" onclick="duyetGiaoDich(${gd.id}, true)">Duyệt</button>` : ''}
+                        </td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            } catch (e) {
+                console.error('Lỗi tải giao dịch:', e);
+            }
+        }
+
+        async function loadLichSu() {
+            try {
+                const res = await fetch(`${API}/lich-su`);
+                const data = await res.json();
+                const tbody = document.querySelector('#table-lich-su tbody');
+                tbody.innerHTML = '';
+
+                data.data.forEach(ls => {
+                    const row = `<tr>
+                        <td>${ls.hanh_dong}</td>
+                        <td>${ls.ho_ten || '-'}</td>
+                        <td>${ls.dia_chi_ip}</td>
+                        <td>${ls.ngay_gio ? new Date(ls.ngay_gio).toLocaleString('vi-VN') : '-'}</td>
+                        <td>${ls.chi_tiet_moi || '-'}</td>
+                    </tr>`;
+                    tbody.innerHTML += row;
+                });
+            } catch (e) {
+                console.error('Lỗi tải lịch sử:', e);
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.querySelector(`#${tabId}`).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabId === 'tab-danh-sach') loadDanhSachVatTu();
+            else if (tabId === 'tab-giao-dich') loadGiaoDich();
+            else if (tabId === 'tab-lich-su') loadLichSu();
+        }
+
+        function showNhapXuatModal(type = 'nhap') {
+            giaoDichType = type === 'xuat' ? 'xuat_kho' : 'nhap_kho';
+            document.querySelector('#modal-title').textContent = type === 'xuat' ? 'Xuất kho' : 'Nhập kho';
+            document.querySelector('#modal-giao-dich').classList.add('active');
+        }
+
+        function closeModal() {
+            document.querySelector('#modal-giao-dich').classList.remove('active');
+        }
+
+        async function submitGiaoDich() {
+            const vat_tu_id = document.querySelector('#select-vat-tu').value;
+            const so_luong = parseFloat(document.querySelector('#input-so-luong').value);
+            const ly_do = document.querySelector('#input-ly-do').value;
+
+            if (!vat_tu_id || !so_luong) {
+                alert('Vui lòng nhập đầy đủ thông tin');
+                return;
+            }
+
+            try {
+                const endpoint = giaoDichType === 'xuat_kho' ? `/khovat/${vat_tu_id}/xuat` : `/khovat/${vat_tu_id}/nhap`;
+                const res = await fetch(API + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vat_tu_id, so_luong, ly_do })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('Tạo phiếu thành công');
+                    closeModal();
+                    loadGiaoDich();
+                } else {
+                    alert('Lỗi: ' + data.loi);
+                }
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            }
+        }
+
+        async function quickNhap(vt_id) {
+            showNhapXuatModal('nhap');
+            document.querySelector('#select-vat-tu').value = vt_id;
+        }
+
+        async function quickXuat(vt_id) {
+            showNhapXuatModal('xuat');
+            document.querySelector('#select-vat-tu').value = vt_id;
+        }
+
+        async function xemChiTiet(gd_id) {
+            try {
+                const res = await fetch(`${API}/giao-dich/${gd_id}`);
+                const data = await res.json();
+                const gd = data.data;
+                const chi_tiet = gd.chi_tiet || [];
+
+                let html = `<h3>${gd.ma}</h3><p>Loại: ${gd.loai}, Trạng thái: ${gd.trang_thai}</p><table class="table"><thead><tr><th>Vật tư</th><th>Số lượng</th></tr></thead><tbody>`;
+                chi_tiet.forEach(ct => {
+                    html += `<tr><td>${ct.ma} - ${ct.ten}</td><td>${ct.so_luong} ${ct.dvt}</td></tr>`;
+                });
+                html += '</tbody></table>';
+
+                alert(html); // Đơn giản hiển thị trong alert, thực tế nên dùng modal
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            }
+        }
+
+        async function duyetGiaoDich(gd_id, phe_duyet) {
+            try {
+                const res = await fetch(`${API}/giao-dich/${gd_id}/duyet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phe_duyet })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('Duyệt thành công');
+                    loadGiaoDich();
+                } else {
+                    alert('Lỗi: ' + data.loi);
+                }
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            }
+        }
+
+        // Form tạo vật tư
+        document.querySelector('#form-tao-vat-tu').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+
+            try {
+                const res = await fetch(API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (res.ok) {
+                    document.querySelector('#msg-tao-vat-tu').textContent = '✓ Tạo vật tư thành công';
+                    e.target.reset();
+                    setTimeout(() => switchTab('tab-danh-sach'), 1000);
+                } else {
+                    const err = await res.json();
+                    document.querySelector('#msg-tao-vat-tu').textContent = '✗ ' + err.loi;
+                }
+            } catch (e) {
+                document.querySelector('#msg-tao-vat-tu').textContent = '✗ Lỗi: ' + e.message;
+            }
+        });
+
+        // Tải dữ liệu ban đầu
+        loadDanhSachVatTu();
+    </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+========================================================================
+  DUA HE THONG RA INTERNET BANG CLOUDFLARE TUNNEL
+  Cach de nhat: khong can thue may chu, khong mo cong router
+========================================================================
+
+
+CACH NAY HOAT DONG THE NAO
+------------------------------------------------------------------------
+He thong van chay tren may tinh o cong ty nhu binh thuong.
+Cloudflare Tunnel tao mot duong ham tu may do ra internet, va cap cho
+anh mot dia chi web co san HTTPS.
+
+Uu diem so voi thue may chu:
+  - Khong ton tien
+  - Khong phai mo cong tren router hay xin phong IT mo tuong lua
+  - Tu co HTTPS, khong phai cai chung chi
+  - Dia chi may chu that KHONG bi lo ra internet
+
+Nhuoc diem:
+  - May tinh o cong ty phai bat lien tuc. Tat may la khong ai vao duoc.
+  - Duong truyen phu thuoc mang cua cong ty
+
+
+BUOC 0. HOAN TAT PHAN NOI BO TRUOC
+------------------------------------------------------------------------
+Chua dang nhap duoc o chinh may minh thi CHUA lam buoc nay.
+Phai vao duoc http://localhost:3000 va doi mat khau admin xong da.
+
+
+BUOC 1. DOI MAT KHAU ADMIN
+------------------------------------------------------------------------
+Dang nhap admin/admin123, he thong se bat doi ngay.
+Dat mat khau tu 8 ky tu tro len, khong bat dau bang admin hay 123456.
+
+He thong SE TU CHOI chay o che do internet neu admin con dung
+mat khau admin123. Day la chu y.
+
+
+BUOC 2. CHAY HE THONG O CHE DO INTERNET
+------------------------------------------------------------------------
+Tat he thong dang chay: dong cua so den, hoac go
+
+    taskkill /F /IM node.exe
+
+Roi bam dup file:
+
+    CHAY-INTERNET.bat
+
+File nay tu sinh khoa bi mat luu vao khoa-bi-mat.txt, bat cac lop
+bao ve danh cho internet, roi khoi dong he thong.
+
+Man hinh phai hien:  Che do: INTERNET
+
+LUU Y: file khoa-bi-mat.txt khong duoc gui cho ai. Ai co file nay
+co the gia mao phien dang nhap cua quan tri.
+
+
+BUOC 3. CAI CLOUDFLARE TUNNEL
+------------------------------------------------------------------------
+1. Vao trang:  https://one.dash.cloudflare.com
+2. Dang ky tai khoan mien phi (dung email cong ty)
+3. Ben trai chon:  Networks  ->  Tunnels
+4. Bam:  Create a tunnel
+5. Chon:  Cloudflared
+6. Dat ten, vi du:  qlcd-xaylapmo
+7. Bam Save
+
+Man hinh hien ra mot dong lenh dai bat dau bang:
+
+    cloudflared.exe service install eyJhIjoi...
+
+BAM NUT COPY o goc dong do.
+
+
+BUOC 4. CHAY LENH VUA COPY
+------------------------------------------------------------------------
+1. Tai cloudflared cho Windows tai:
+   https://github.com/cloudflare/cloudflared/releases/latest
+   Chon file:  cloudflared-windows-amd64.exe
+
+2. Doi ten file vua tai thanh:  cloudflared.exe
+
+3. Chep no vao thu muc  D:\qlcd
+
+4. Mo Command Prompt BANG QUYEN QUAN TRI
+   (bam phim Windows, go cmd, chuot phai chon Run as administrator)
+
+5. Go:
+       cd /d D:\qlcd
+
+6. Dan dong lenh da copy o Buoc 3, bam Enter
+
+Quay lai trang Cloudflare, trang thai tunnel se doi thanh
+CONNECTED mau xanh.
+
+
+BUOC 5. TRO DIA CHI WEB VE HE THONG
+------------------------------------------------------------------------
+Van o trang Cloudflare, bam Next.
+
+Muc Public Hostname dien:
+
+    Subdomain:  qlcd
+    Domain:     chon ten mien cua anh
+    Type:       HTTP
+    URL:        localhost:3000
+
+Neu chua co ten mien rieng, Cloudflare cho dung ten mien mien phi
+dang  ....trycloudflare.com  de thu truoc.
+
+Bam Save.
+
+
+BUOC 6. KIEM TRA
+------------------------------------------------------------------------
+Mo dien thoai, TAT WIFI, dung 4G, vao dia chi vua tao.
+Vi du:  https://qlcd.tenmiencuaanh.com
+
+Phai thay trang dang nhap va o khoa HTTPS tren thanh dia chi.
+
+Kiem tra them:
+  [ ] Dang nhap duoc bang 4G
+  [ ] Thu sai mat khau 5 lan -> bi khoa tam 15 phut
+  [ ] Tat may tinh cong ty -> khong ai vao duoc (dung nhu thiet ke)
+  [ ] Bat lai may -> vao duoc tro lai
+
+
+BUOC 7. THU HEP LAI CHO AN TOAN
+------------------------------------------------------------------------
+Da ra internet thi ai cung go duoc dia chi. Nen gioi han lai:
+
+Dang nhap admin -> vao muc BAO MAT TRUY CAP
+
+  1. Bam "Them dai dang dung" de them mang cong ty
+  2. Them dai VPN hoac dai 4G cua can bo neu can
+  3. Bam "Bat loc"
+
+He thong se khong cho bat neu dia chi cua chinh anh chua nam trong
+dai nao, de tranh tu khoa minh ra ngoai.
+
+LUU Y: mang 4G va cap quang gia dinh thuong doi dia chi IP.
+Neu can bo di cong truong hay bi chan, thi dung bat loc, ma dua
+vao mat khau manh cong voi co che khoa khi do mat khau.
+
+
+BUOC 8. DE MAY TU CHAY KHI BAT
+------------------------------------------------------------------------
+Cloudflared da tu chay nen khi cai bang lenh service install.
+Con he thong QLCD thi cai them:
+
+Mo Command Prompt bang quyen quan tri:
+
+    cd /d D:\qlcd
+    npm install -g pm2 pm2-windows-startup
+    pm2-startup install
+    pm2 start server.js --name qlcd
+    pm2 save
+
+Nhung pm2 khong doc duoc bien moi truong tu CHAY-INTERNET.bat.
+Phai dat bien vinh vien:
+
+    setx QLCD_INTERNET 1 /M
+    setx QLCD_SECRET "dan-noi-dung-file-khoa-bi-mat.txt-vao-day" /M
+
+Roi khoi dong lai may.
+
+
+========================================================================
+  VIEC CAN CAN NHAC TRUOC KHI LAM
+========================================================================
+
+He thong nay chua nguyen gia tai san, ho so thiet bi va nhan su
+phan xuong cua mot don vi thuoc TKV.
+
+Truoc khi mo ra internet, nen hoi bo phan CNTT cua Cong ty. Nhieu
+don vi nha nuoc co quy dinh rieng ve du lieu noi bo dua ra ngoai.
+
+Neu chi can vai nguoi truy cap tu xa, dung VPN cua Cong ty se an
+toan hon nhieu ma van lam duoc viec: nguoi dung noi VPN vao mang
+cong ty roi vao he thong nhu dang ngoi o co quan.
+
+Cloudflare Tunnel phu hop khi:
+  - Da hoi y kien va duoc dong y
+  - Can nhieu nguoi truy cap tu nhieu noi
+  - Khong co VPN san
+========================================================================

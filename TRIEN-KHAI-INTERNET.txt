@@ -1,0 +1,372 @@
+========================================================================
+  HỆ THỐNG QUẢN LÝ THIẾT BỊ CƠ ĐIỆN - VẬN TẢI
+  Công ty Xây lắp Mỏ - TKV
+  HƯỚNG DẪN ĐƯA HỆ THỐNG RA INTERNET
+========================================================================
+
+
+ĐỌC PHẦN NÀY TRƯỚC KHI LÀM
+------------------------------------------------------------------------
+Hệ thống này chứa dữ liệu nội bộ của Công ty: danh mục tài sản, nguyên
+giá, hồ sơ thiết bị, nhân sự phân xưởng, nhu cầu vật tư. Khi đưa lên
+internet thì bất kỳ ai trên thế giới cũng gõ được địa chỉ và thử mật khẩu.
+
+Ba việc bắt buộc làm trước:
+
+  1. Hỏi ý kiến bộ phận CNTT của Công ty. Nhiều đơn vị thuộc TKV có quy
+     định dữ liệu nội bộ không được đặt trên máy chủ nước ngoài. Đây là
+     việc của con người quyết định, hệ thống không tự lo được.
+
+  2. Nếu chỉ cần truy cập từ xa cho vài người, cân nhắc dùng VPN thay vì
+     mở ra internet. VPN an toàn hơn nhiều mà vẫn làm được việc: người
+     dùng kết nối VPN vào mạng công ty rồi vào hệ thống như đang ngồi ở
+     cơ quan. Cách này giữ nguyên mô hình mạng nội bộ.
+
+  3. Nếu vẫn quyết định mở ra internet, làm đúng phần dưới đây. Bỏ qua
+     bất kỳ bước nào cũng là để hở.
+
+
+PHẦN A. NHỮNG GÌ HỆ THỐNG ĐÃ TỰ LO
+------------------------------------------------------------------------
+Khi bật chế độ internet, hệ thống tự động:
+
+  - Ép toàn bộ truy cập sang HTTPS
+  - Cookie phiên chỉ gửi qua HTTPS, JavaScript không đọc được
+  - Chặn nhúng trang vào iframe của trang khác
+  - Khóa tạm 15 phút sau 5 lần đăng nhập sai cùng một tài khoản
+  - Khóa theo địa chỉ IP khi có dấu hiệu dò hàng loạt
+  - Ghi nhật ký từng lần đăng nhập sai kèm địa chỉ IP, giữ 30 ngày
+  - Mật khẩu tối thiểu 8 ký tự, chặn chuỗi dễ đoán
+  - Phiên đăng nhập lưu trong database: quản trị xem được ai đang đăng
+    nhập và cắt phiên từ xa khi nhân viên mất máy hoặc nghỉ việc
+  - Khóa tài khoản là cắt luôn phiên đang mở, không đợi hết hạn
+  - TỪ CHỐI KHỞI ĐỘNG nếu chưa đặt khóa bí mật hoặc admin còn dùng mật
+    khẩu admin123
+
+Những việc này đã được kiểm thử: 37 test bảo mật, xem test/test-bao-mat.js
+
+
+PHẦN B. CHUẨN BỊ
+------------------------------------------------------------------------
+
+B1. Tạo khóa bí mật ký phiên đăng nhập
+
+    Chạy lệnh sau để sinh chuỗi ngẫu nhiên:
+
+        node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+
+    Lưu chuỗi này lại. KHÔNG đặt vào mã nguồn, không gửi qua chat, không
+    dùng lại chuỗi của hệ thống khác.
+
+B2. Đổi mật khẩu admin
+
+    Đăng nhập lần đầu bằng admin/admin123 ở mạng nội bộ, đổi ngay sang
+    mật khẩu mạnh. Hệ thống sẽ không cho khởi động ở chế độ internet nếu
+    admin còn dùng mật khẩu khởi tạo.
+
+B3. Chuẩn bị tên miền
+
+    Ví dụ: qlcd.xaylapmo.vn
+    Trỏ tên miền về máy chủ sẽ dùng.
+
+
+PHẦN C. CÁCH TRIỂN KHAI
+------------------------------------------------------------------------
+
+Hệ thống dùng SQLite, dữ liệu nằm trong một tệp trên đĩa. Vì vậy KHÔNG
+dùng được các nền tảng chỉ chạy tệp tĩnh (Netlify, Vercel, GitHub Pages)
+hay nền tảng không có ổ đĩa bền — mỗi lần khởi động lại sẽ mất sạch dữ liệu.
+
+Ba cách phù hợp, xếp theo mức độ tự chủ:
+
+
+CÁCH 1 — VPS TRONG NƯỚC (khuyến nghị cho dữ liệu Công ty)
+------------------------------------------------------------------------
+Thuê máy chủ ảo tại Viettel IDC, VNPT, FPT Cloud, hoặc tương đương.
+Cấu hình tối thiểu: 2 nhân, 2 GB RAM, 40 GB đĩa. Ubuntu 22.04 trở lên.
+
+Lợi thế: dữ liệu nằm trong nước, tốc độ tốt, chủ động sao lưu.
+
+Các bước:
+
+  1. Cài Node.js và Nginx:
+
+        sudo apt update
+        sudo apt install -y nodejs npm nginx certbot python3-certbot-nginx
+
+  2. Chép mã nguồn lên /opt/qlcd rồi cài:
+
+        cd /opt/qlcd
+        npm install --omit=dev
+        node db/init.js
+
+  3. Tạo tệp biến môi trường /opt/qlcd/.env:
+
+        QLCD_SECRET=<chuỗi sinh ở bước B1>
+        QLCD_INTERNET=1
+        NODE_ENV=production
+        PORT=3000
+        QLCD_PHIEN_GIO=8
+
+     Chặn người khác đọc:
+
+        chmod 600 /opt/qlcd/.env
+
+  4. Chạy nền bằng pm2:
+
+        sudo npm install -g pm2
+        cd /opt/qlcd
+        pm2 start server.js --name qlcd
+        pm2 startup
+        pm2 save
+
+  5. Cấu hình Nginx làm cổng vào, tệp /etc/nginx/sites-available/qlcd:
+
+        server {
+            server_name qlcd.xaylapmo.vn;
+            client_max_body_size 40M;
+
+            location / {
+                proxy_pass http://127.0.0.1:3000;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+            }
+        }
+
+     Bật lên:
+
+        sudo ln -s /etc/nginx/sites-available/qlcd /etc/nginx/sites-enabled/
+        sudo nginx -t && sudo systemctl reload nginx
+
+  6. Cài chứng chỉ HTTPS miễn phí:
+
+        sudo certbot --nginx -d qlcd.xaylapmo.vn
+
+     Certbot tự gia hạn, không phải làm gì thêm.
+
+  7. Chặn truy cập thẳng vào cổng 3000, chỉ cho qua Nginx:
+
+        sudo ufw allow 22
+        sudo ufw allow 80
+        sudo ufw allow 443
+        sudo ufw enable
+
+
+CÁCH 2 — DOCKER (nếu quen dùng)
+------------------------------------------------------------------------
+Đã có sẵn Dockerfile trong thư mục gốc.
+
+    docker build -t qlcd .
+
+    docker run -d --name qlcd \
+      -p 127.0.0.1:3000:3000 \
+      -v /srv/qlcd-data:/data \
+      -e QLCD_SECRET=<chuỗi bí mật> \
+      --restart unless-stopped \
+      qlcd
+
+Vẫn cần Nginx và chứng chỉ HTTPS như Cách 1.
+Ổ đĩa /srv/qlcd-data giữ database và tệp đính kèm, không được xóa.
+
+
+CÁCH 3 — NỀN TẢNG CÓ SẴN (nhanh nhất, nhưng máy chủ ở nước ngoài)
+------------------------------------------------------------------------
+Render.com hoặc Railway.app. Cả hai đều tự lo HTTPS.
+
+Điều kiện bắt buộc: phải gắn Persistent Disk / Volume, nếu không dữ liệu
+sẽ mất mỗi lần khởi động lại.
+
+  Render:
+    - Tạo Web Service, trỏ vào kho mã nguồn
+    - Build Command:  npm install
+    - Start Command:  node db/init.js && node server.js
+    - Thêm Disk: Mount Path /data, dung lượng 5 GB trở lên
+    - Environment:
+        QLCD_SECRET  = <chuỗi bí mật>
+        QLCD_INTERNET = 1
+        QLCD_DB      = /data/qlcd.db
+        QLCD_UPLOAD  = /data/uploads
+        NODE_ENV     = production
+
+Lưu ý: máy chủ của các nền tảng này đặt ở nước ngoài. Xem lại mục 1 ở
+đầu tài liệu trước khi chọn cách này.
+
+
+PHẦN D. SAO LƯU
+------------------------------------------------------------------------
+Đưa ra internet thì sao lưu quan trọng hơn hẳn, vì rủi ro tăng lên.
+
+Chạy tay:
+
+    npm run sao-luu
+
+Tự động hằng ngày lúc 2 giờ sáng, thêm vào crontab:
+
+    sudo crontab -e
+
+    0 2 * * * cd /opt/qlcd && /usr/bin/node scripts/sao-luu.js /srv/sao-luu
+
+Script tự giữ 30 bản gần nhất và xóa bản cũ hơn. Dùng lệnh backup của
+SQLite nên sao lưu được ngay cả khi hệ thống đang chạy, không phải dừng.
+
+QUAN TRỌNG: mỗi tuần chép một bản sao lưu ra ổ cứng ngoài hoặc máy khác.
+Sao lưu nằm cùng máy chủ thì máy chủ hỏng là mất cả hai.
+
+Phục hồi: dừng hệ thống, chép tệp qlcd.db và thư mục uploads về chỗ cũ,
+chạy lại.
+
+
+PHẦN E. VIỆC PHẢI LÀM ĐỀU ĐẶN
+------------------------------------------------------------------------
+
+Hằng tuần:
+  - Vào Quản trị xem nhật ký đăng nhập sai. Nhiều lần sai từ địa chỉ lạ
+    là dấu hiệu có người đang dò mật khẩu.
+  - Kiểm tra danh sách phiên đang mở, cắt phiên của tài khoản không còn
+    dùng.
+
+Hằng tháng:
+  - Rà lại danh sách tài khoản, khóa tài khoản của người đã chuyển công
+    tác hoặc nghỉ việc.
+  - Thử phục hồi một bản sao lưu ra máy khác. Bản sao lưu chưa từng thử
+    phục hồi thì chưa chắc dùng được.
+
+Khi có người nghỉ việc:
+  - Khóa tài khoản ngay. Hệ thống tự cắt phiên đang mở.
+
+Ba tháng một lần:
+  - Cập nhật máy chủ:  sudo apt update && sudo apt upgrade
+  - Cập nhật thư viện: npm audit
+
+
+PHẦN F. KIỂM TRA SAU KHI TRIỂN KHAI
+------------------------------------------------------------------------
+Làm đủ các bước sau rồi mới thông báo cho phân xưởng dùng:
+
+  [ ] Gõ http://qlcd... (không có s) → phải tự chuyển sang https
+  [ ] Ổ khóa trên thanh địa chỉ hiện màu bình thường
+  [ ] Thử đăng nhập sai 5 lần → phải bị khóa tạm và báo rõ thời gian chờ
+  [ ] Đăng nhập bằng admin, đổi mật khẩu, đăng xuất, đăng nhập lại
+  [ ] Khởi động lại máy chủ → người đang đăng nhập KHÔNG bị đăng xuất
+  [ ] Tải một tệp lên, khởi động lại máy chủ, tệp vẫn còn
+  [ ] Chạy npm run sao-luu, kiểm tra tệp sao lưu có nội dung
+  [ ] Từ điện thoại 4G (không dùng wifi công ty) vào được hệ thống
+  [ ] Tạo tài khoản phân xưởng, kiểm tra chỉ thấy dữ liệu đơn vị mình
+
+
+PHẦN G. KHI CÓ SỰ CỐ
+------------------------------------------------------------------------
+
+Hệ thống không khởi động, báo cấu hình chưa an toàn
+    → Chưa đặt QLCD_SECRET hoặc admin còn dùng mật khẩu admin123.
+      Đọc kỹ dòng báo lỗi, làm theo.
+
+Đăng nhập xong lại bị đẩy ra ngay
+    → Nginx chưa gửi header X-Forwarded-Proto. Kiểm tra lại cấu hình
+      Nginx ở bước C5.
+
+Mất mật khẩu admin
+    → Trên máy chủ chạy:
+      cd /opt/qlcd && node -e "const b=require('bcryptjs'),d=require('./db');d.prepare('UPDATE nguoi_dung SET mat_khau_hash=?, phai_doi_mat_khau=1 WHERE ten_dang_nhap=?').run(b.hashSync('DatLaiTamThoi2026',10),'admin');console.log('Xong')"
+      Rồi đăng nhập và đổi ngay.
+
+Nghi ngờ bị xâm nhập
+    → Vào Quản trị, cắt toàn bộ phiên đang mở
+    → Đổi mật khẩu tất cả tài khoản
+    → Đổi QLCD_SECRET rồi khởi động lại (mọi người phải đăng nhập lại)
+    → Xem nhật ký đăng nhập sai và nhật ký hệ thống để tìm dấu vết
+
+
+========================================================================
+  PHẦN H. TRUY CẬP TỪ NHIỀU DẢI MẠNG KHÁC NHAU
+========================================================================
+
+Công ty có nhiều mạng: văn phòng, từng phân xưởng, VPN, cán bộ dùng 4G
+ngoài công trường. Hệ thống hỗ trợ tất cả, và kiểm soát được mạng nào
+được vào.
+
+H1. MÁY CHỦ LẮNG NGHE Ở ĐÂU
+------------------------------------------------------------------------
+Mặc định hệ thống lắng nghe trên MỌI card mạng (0.0.0.0), nên máy ở dải
+mạng khác vào được, miễn là định tuyến và tường lửa cho phép.
+
+Muốn giới hạn chỉ một card mạng:
+
+    QLCD_HOST=192.168.1.10
+
+Kiểm tra máy chủ đang lắng nghe ở đâu: đăng nhập bằng admin, vào
+
+    /api/mang/may-chu
+
+Trang này liệt kê mọi card mạng của máy chủ kèm dải gợi ý.
+
+
+H2. KHAI BÁO DẢI MẠNG ĐƯỢC PHÉP
+------------------------------------------------------------------------
+Đây là cách thu hẹp phạm vi khi hệ thống đã ra internet: chỉ mạng của
+Công ty vào được, cả thế giới còn lại bị chặn ngay từ cổng.
+
+Cách khai:
+
+    192.168.1.0/24              cả mạng văn phòng
+    192.168.5.0/24              cả mạng PX Đào lò 1
+    10.8.0.0/24                 dải cấp cho người nối VPN
+    113.161.45.7                đúng một địa chỉ cố định
+    192.168.1.10-192.168.1.50   một khoảng địa chỉ
+
+Cách làm nhanh: từ máy cần cấp quyền, mở
+
+    /api/mang/toi
+
+Trang này hiện địa chỉ đang dùng và gợi ý sẵn dải cần khai.
+
+Muốn chặn riêng một máy dù nó nằm trong dải cho phép (ví dụ máy nghi bị
+nhiễm mã độc): khai địa chỉ đó với tùy chọn "chặn". Lệnh chặn luôn
+thắng lệnh cho phép.
+
+
+H3. BẬT LỌC
+------------------------------------------------------------------------
+Sau khi khai đủ dải, vào Quản trị bật lọc dải mạng.
+
+Hệ thống có ba lớp chống tự khóa mình ra ngoài:
+
+  - Không cho bật lọc nếu chưa khai dải nào
+  - Không cho bật lọc nếu địa chỉ của chính người đang thao tác không
+    nằm trong dải nào đã khai
+  - Không cho xóa dải cuối cùng đang phủ địa chỉ của người thao tác
+
+Nếu vẫn lỡ tự khóa: chạy trên máy chủ với biến môi trường
+
+    QLCD_BO_QUA_DAI_MANG=1 npm start
+
+Lọc sẽ tạm ngưng để vào sửa lại danh sách.
+
+
+H4. LƯU Ý VỀ ĐỊA CHỈ IP ĐỘNG
+------------------------------------------------------------------------
+Mạng cáp quang gia đình và 4G thường đổi địa chỉ IP theo thời gian.
+Khai một địa chỉ cụ thể hôm nay thì mai có thể không vào được nữa.
+
+Ba cách xử lý:
+
+  - Khai cả dải /24 của nhà mạng thay vì một địa chỉ. Rộng hơn nhưng ổn định.
+  - Dùng VPN: người dùng luôn nhận địa chỉ trong dải VPN cố định. Cách này
+    tốt nhất, vừa ổn định vừa an toàn.
+  - Với cán bộ hay đi công trường, cân nhắc không bật lọc mà dựa vào mật
+    khẩu mạnh và cơ chế khóa khi dò mật khẩu.
+
+
+H5. KHI CÓ NGƯỜI BÁO KHÔNG VÀO ĐƯỢC
+------------------------------------------------------------------------
+Bảo họ mở địa chỉ hệ thống rồi thêm /api/mang/toi vào cuối. Trang này
+cho biết địa chỉ họ đang dùng và loại mạng. Gửi thông tin đó cho quản
+trị là đủ để khai thêm dải.
+
+Quản trị xem danh sách địa chỉ đang bị chặn tại
+
+    /api/mang/bi-chan
+
+Nhiều lượt bị chặn từ một địa chỉ lạ là dấu hiệu có người đang dò cửa.

@@ -1,0 +1,107 @@
+========================================================================
+  HE THONG QUAN LY THIET BI CO DIEN - VAN TAI
+  Cong ty Xay lap Mo - TKV
+
+  CAI DAT: BAM DUP FILE  CAI-DAT.bat
+========================================================================
+
+
+CAI DAT
+------------------------------------------------------------------------
+Bam dup vao file:
+
+        CAI-DAT.bat
+
+Windows se hoi "Ban co muon cho ung dung nay thay doi thiet bi?"
+-> Bam CO. Can quyen nay de mo cong tuong lua cho may khac vao duoc.
+
+File tu lam het: kiem tra Node.js, cai thu vien, tao co so du lieu,
+mo tuong lua, cai che do tu chay, tim dia chi may.
+
+Mat khoang 3-5 phut. Lan dau can INTERNET de tai thu vien.
+
+
+NEU BAO CHUA CO NODE.JS
+------------------------------------------------------------------------
+File cai dat se tu mo trang https://nodejs.org
+
+  1. Tai ban LTS (nut ben trai, khong lay ban Current)
+  2. Cai dat, bam Next het
+  3. Dong cua so den roi bam dup CAI-DAT.bat lai lan nua
+
+
+LUU Y VE THU MUC
+------------------------------------------------------------------------
+Duong dan KHONG duoc co dau tieng Viet hoac dau cach.
+
+  Dung:  D:\qlcd
+  Sai:   D:\Tai lieu\Quan ly thiet bi
+
+File cai dat se bao loi neu dat sai cho.
+
+
+SAU KHI CAI XONG
+------------------------------------------------------------------------
+Trinh duyet tu mo. Dang nhap:
+
+        Tai khoan:  admin
+        Mat khau:   admin123
+
+He thong SE BAT BUOC doi mat khau ngay. Day la chu y, khong phai loi.
+Dat mat khau that roi moi dung tiep duoc.
+
+May khac trong cong ty vao bang dia chi hien tren man hinh sau khi cai,
+dang  http://192.168.1.50:3000
+
+
+CAC FILE KHAC
+------------------------------------------------------------------------
+CHAY.bat        Khoi dong thu cong (chi can khi khong cai duoc tu chay)
+SAO-LUU.bat     Sao luu du lieu ra thu muc sao-luu
+KIEM-TRA.bat    Chay 447 phep thu kiem tra he thong con chay dung khong
+GO-CAI-DAT.bat  Go che do tu chay. KHONG XOA du lieu.
+DAT-LAI-MAT-KHAU.bat  Dat lai mat khau admin khi quen hoac bi khoa
+
+
+VIEC PHAI LAM SAU KHI CAI
+------------------------------------------------------------------------
+1. Doi mat khau admin (he thong tu bat lam)
+
+2. Vao QUAN TRI -> Them phan xuong
+   Ma dat ngan, viet hoa, khong dau: DL1, DL2, KT1
+
+3. Van o QUAN TRI -> Them tai khoan cho tung phan xuong
+   Vai tro "Co dien phan xuong", mat khau 4-6 ky tu
+
+4. Moi phan xuong dang nhap, vao TAI DU LIEU, dua file Excel
+   TSCD/CCDC len. Khong can sua file theo mau.
+
+5. Dat lich sao luu tu dong:
+   Bam phim Windows, go "Task Scheduler", tao Basic Task
+   chay hang ngay 2 gio sang, Action "Start a program":
+       Program:    node
+       Arguments:  D:\qlcd\scripts\sao-luu.js D:\sao-luu-qlcd
+       Start in:   D:\qlcd
+
+   MOI TUAN chep mot ban sao luu ra USB hoac may khac.
+
+
+KHI CO SU CO
+------------------------------------------------------------------------
+May khac khong vao duoc
+    - Kiem tra may chu con chay khong: mo cmd, go  pm2 status
+    - Kiem tra hai may cung dai mang: go  ipconfig  tren ca hai,
+      ba nhom so dau phai giong nhau
+
+Bao loi cong 3000 dang bi chiem
+    - Mo cmd tai thu muc, go:  set PORT=3001 && npm start
+    - Roi mo tuong lua cho cong 3001
+
+Quen mat khau admin hoac bi khoa
+    - Bam dup DAT-LAI-MAT-KHAU.bat
+    - Nhap mat khau moi, hoac de trong de quay ve admin123
+    - File nay cung xoa lich su dang nhap sai, nen het bi khoa tam
+
+Chi tiet day du: doc file CAI-DAT-WINDOWS.txt
+Muon truy cap tu xa qua internet: doc file TRIEN-KHAI-INTERNET.txt
+========================================================================
