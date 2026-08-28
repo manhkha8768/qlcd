@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Kiểm kê - QLCD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Segoe UI", "DejaVu Sans", sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .header h1 { font-size: 28px; margin-bottom: 5px; }
+        .header p { opacity: 0.9; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #666;
+            position: relative;
+            transition: color 0.3s;
+        }
+        .tab-btn:hover { color: #333; }
+        .tab-btn.active {
+            color: #667eea;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+            font-size: 14px;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover { background: #5568d3; }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover { background: #c82333; }
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #ddd;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        tr:hover { background: #f8f9fa; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .status-dang_thuc_hien {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-da_hoan_thanh {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-chua_bat_dau {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-dang_thuc_hien_task {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .status-da_hoan_thanh_task {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-card .number { font-size: 32px; font-weight: bold; margin: 10px 0; }
+        .stat-card .label { font-size: 13px; opacity: 0.9; }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #0c5460;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #155724;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #721c24;
+        }
+
+        .actions {
+            display: flex;
+            gap: 5px;
+            white-space: nowrap;
+        }
+        .action-link {
+            padding: 4px 8px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            transition: background 0.3s;
+        }
+        .action-link:hover { background: #5568d3; }
+        .action-link.danger {
+            background: #dc3545;
+        }
+        .action-link.danger:hover { background: #c82333; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+        .close-modal { margin-top: 20px; }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 5px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Quản lý Kiểm kê Thiết bị</h1>
+            <p>Tạo đợt kiểm kê định kỳ, giao nhiệm vụ, ghi nhận chi tiết và báo cáo</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="danh-sach">Danh sách kiểm kê</button>
+            <button class="tab-btn" data-tab="tao-moi">Tạo đợt kiểm kê</button>
+            <button class="tab-btn" data-tab="bao-cao">Báo cáo thiếu/mất</button>
+            <button class="tab-btn" data-tab="lich-su">Lịch sử</button>
+        </div>
+
+        <!-- Tab 1: Danh sách -->
+        <div id="danh-sach" class="tab-content active">
+            <div class="panel">
+                <div class="button-group">
+                    <input type="text" id="searchKeyword" placeholder="Tìm theo mã hoặc tên đợt..." style="flex:1; max-width:300px;">
+                    <select id="filterStatus" style="max-width:200px;">
+                        <option value="">-- Tất cả trạng thái --</option>
+                        <option value="dang_thuc_hien">Đang thực hiện</option>
+                        <option value="da_hoan_thanh">Đã hoàn thành</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadInventoryList()">🔄 Làm mới</button>
+                </div>
+
+                <div id="inventoryStats" class="stats"></div>
+
+                <div class="table-wrapper">
+                    <table id="inventoryTable">
+                        <thead>
+                            <tr>
+                                <th>Mã đợt</th>
+                                <th>Tên đợt kiểm kê</th>
+                                <th>Năm/Kỳ</th>
+                                <th>Trạng thái</th>
+                                <th>Số nhiệm vụ</th>
+                                <th>Tổng kiểm kê</th>
+                                <th>Ngày tạo</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Tạo mới -->
+        <div id="tao-moi" class="tab-content">
+            <div class="panel">
+                <h2 style="margin-bottom: 20px;">Tạo Đợt Kiểm kê Mới</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Mã đợt kiểm kê *</label>
+                        <input type="text" id="newMa" placeholder="VD: KK_2024_1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên đợt kiểm kê *</label>
+                        <input type="text" id="newTen" placeholder="VD: Kiểm kê năm 2024 kỳ I" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Số hiệu kiểm kê</label>
+                        <input type="text" id="newSoHieu" placeholder="VD: KK-2024-001">
+                    </div>
+                    <div class="form-group">
+                        <label>Năm *</label>
+                        <input type="number" id="newNam" value="2024" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Kỳ</label>
+                        <select id="newKy">
+                            <option value="">-- Chọn kỳ --</option>
+                            <option value="1">I (Quý 1)</option>
+                            <option value="2">II (Quý 2)</option>
+                            <option value="3">III (Quý 3)</option>
+                            <option value="4">IV (Quý 4)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Ngày bắt đầu *</label>
+                        <input type="date" id="newNgayBatDau" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Mô tả</label>
+                    <textarea id="newMoTa" placeholder="Ghi chú thêm về đợt kiểm kê..."></textarea>
+                </div>
+                <button class="btn btn-primary" onclick="createInventory()">✅ Tạo đợt kiểm kê</button>
+            </div>
+        </div>
+
+        <!-- Tab 3: Báo cáo -->
+        <div id="bao-cao" class="tab-content">
+            <div class="panel">
+                <h2 style="margin-bottom: 20px;">Báo cáo Thiếu/Mất Thiết bị</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Chọn đợt kiểm kê</label>
+                        <select id="selectDotForReport" onchange="loadMissingReport()">
+                            <option value="">-- Chọn đợt --</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="missingReportContainer"></div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Lịch sử -->
+        <div id="lich-su" class="tab-content">
+            <div class="panel">
+                <h2 style="margin-bottom: 20px;">Lịch sử Kiểm kê</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Chọn đợt kiểm kê</label>
+                        <select id="selectDotForHistory" onchange="loadAuditHistory()">
+                            <option value="">-- Chọn đợt --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table id="auditTable">
+                        <thead>
+                            <tr>
+                                <th>Thao tác</th>
+                                <th>Chi tiết</th>
+                                <th>Người thực hiện</th>
+                                <th>IP địa chỉ</th>
+                                <th>Thời gian</th>
+                            </tr>
+                        </thead>
+                        <tbody id="auditList"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>Chi tiết Đợt Kiểm kê</span>
+                <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
+            </div>
+            <div id="detailContent"></div>
+            <button class="btn btn-secondary close-modal" onclick="closeModal('detailModal')">Đóng</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/kiemke';
+
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Load inventory list
+        async function loadInventoryList() {
+            try {
+                const keyword = document.getElementById('searchKeyword')?.value || '';
+                const status = document.getElementById('filterStatus')?.value || '';
+
+                let url = API_BASE;
+                const params = [];
+                if (status) params.push(`trang_thai=${status}`);
+                if (params.length) url += '?' + params.join('&');
+
+                const res = await fetch(url);
+                const result = await res.json();
+
+                if (!result.ok) throw new Error(result.loi);
+
+                const list = result.data || [];
+                const filtered = keyword ? list.filter(d =>
+                    d.ma.toLowerCase().includes(keyword.toLowerCase()) ||
+                    d.ten.toLowerCase().includes(keyword.toLowerCase())
+                ) : list;
+
+                renderInventoryList(filtered);
+                updateSelectOptions(filtered);
+            } catch (e) {
+                alert('❌ ' + e.message);
+            }
+        }
+
+        function renderInventoryList(data) {
+            const tbody = document.getElementById('inventoryList');
+            tbody.innerHTML = data.length ? data.map(d => `
+                <tr>
+                    <td><strong>${d.ma}</strong></td>
+                    <td>${d.ten}</td>
+                    <td>${d.nam}${d.ky ? '/Q' + d.ky : ''}</td>
+                    <td><span class="status-badge status-${d.trang_thai}">
+                        ${d.trang_thai === 'dang_thuc_hien' ? '🔄 Đang thực hiện' : '✅ Đã hoàn thành'}
+                    </span></td>
+                    <td>${d.so_nhiem_vu || 0}</td>
+                    <td>${d.tong_kiem_ke || 0}</td>
+                    <td>${new Date(d.created_at).toLocaleDateString('vi-VN')}</td>
+                    <td class="actions">
+                        <button class="action-link" onclick="viewDetail(${d.id})">Chi tiết</button>
+                        <button class="action-link" onclick="editInventory(${d.id})">Sửa</button>
+                    </td>
+                </tr>
+            `).join('') : `<tr><td colspan="8" class="empty-state">Không có dữ liệu</td></tr>`;
+        }
+
+        function updateSelectOptions(data) {
+            ['selectDotForReport', 'selectDotForHistory'].forEach(id => {
+                const select = document.getElementById(id);
+                select.innerHTML = '<option value="">-- Chọn đợt --</option>' +
+                    data.map(d => `<option value="${d.id}">${d.ma} - ${d.ten}</option>`).join('');
+            });
+        }
+
+        async function createInventory() {
+            const ma = document.getElementById('newMa').value.trim();
+            const ten = document.getElementById('newTen').value.trim();
+            const ngay_bat_dau = document.getElementById('newNgayBatDau').value;
+            const so_hieu_kiemke = document.getElementById('newSoHieu').value.trim();
+            const nam = parseInt(document.getElementById('newNam').value) || new Date().getFullYear();
+            const ky = document.getElementById('newKy').value || null;
+            const mo_ta = document.getElementById('newMoTa').value.trim();
+
+            if (!ma || !ten || !ngay_bat_dau) {
+                alert('❌ Vui lòng điền đầy đủ thông tin bắt buộc');
+                return;
+            }
+
+            try {
+                const res = await fetch(API_BASE, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ma, ten, so_hieu_kiemke, nam, ky, ngay_bat_dau, mo_ta })
+                });
+                const result = await res.json();
+
+                if (!result.ok) throw new Error(result.loi);
+
+                alert('✅ Tạo đợt kiểm kê thành công');
+                document.querySelectorAll('#tao-moi input, #tao-moi textarea, #tao-moi select').forEach(el => {
+                    if (el.id !== 'newNam') el.value = '';
+                });
+                loadInventoryList();
+            } catch (e) {
+                alert('❌ ' + e.message);
+            }
+        }
+
+        async function viewDetail(id) {
+            try {
+                const res = await fetch(`${API_BASE}/${id}`);
+                const result = await res.json();
+                if (!result.ok) throw new Error(result.loi);
+
+                const d = result.data;
+                const html = `
+                    <p><strong>Mã:</strong> ${d.ma}</p>
+                    <p><strong>Tên:</strong> ${d.ten}</p>
+                    <p><strong>Số hiệu:</strong> ${d.so_hieu_kiemke || '(không có)'}</p>
+                    <p><strong>Năm/Kỳ:</strong> ${d.nam}${d.ky ? '/Q' + d.ky : ''}</p>
+                    <p><strong>Trạng thái:</strong> <span class="status-badge status-${d.trang_thai}">
+                        ${d.trang_thai === 'dang_thuc_hien' ? '🔄 Đang thực hiện' : '✅ Đã hoàn thành'}
+                    </span></p>
+                    <p><strong>Ngày bắt đầu:</strong> ${new Date(d.ngay_bat_dau).toLocaleDateString('vi-VN')}</p>
+                    ${d.ngay_ket_thuc ? `<p><strong>Ngày kết thúc:</strong> ${new Date(d.ngay_ket_thuc).toLocaleDateString('vi-VN')}</p>` : ''}
+                    <p><strong>Người tạo:</strong> ${d.nguoi_tao || '(không xác định)'}</p>
+                    <p><strong>Thống kê:</strong> ${d.thong_ke?.so_phong_ban || 0} phòng ban,
+                    ${d.thong_ke?.tong_du_kien || 0} thiết bị dự kiến,
+                    ${d.thong_ke?.tong_kiem_ke || 0} đã kiểm kê</p>
+                    ${d.nhiem_vu_list?.length ? `
+                        <h4 style="margin-top: 15px; margin-bottom: 10px;">Danh sách nhiệm vụ:</h4>
+                        <div style="font-size: 13px; max-height: 300px; overflow-y: auto;">
+                            ${d.nhiem_vu_list.map(n => `
+                                <div style="padding: 8px; border-bottom: 1px solid #eee;">
+                                    <strong>${n.phan_xuong_ten}</strong><br>
+                                    Trạng thái: <span class="status-badge status-${n.trang_thai}_task">
+                                        ${n.trang_thai === 'chua_bat_dau' ? '⏸️ Chưa bắt đầu' : n.trang_thai === 'dang_thuc_hien_task' ? '🔄 Đang thực hiện' : '✅ Đã hoàn thành'}
+                                    </span><br>
+                                    ${n.so_thiet_bi_du_kien}/${n.so_thiet_bi_kiem_ke} thiết bị
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                `;
+                document.getElementById('detailContent').innerHTML = html;
+                document.getElementById('detailModal').classList.add('active');
+            } catch (e) {
+                alert('❌ ' + e.message);
+            }
+        }
+
+        async function loadMissingReport() {
+            const dotId = document.getElementById('selectDotForReport').value;
+            if (!dotId) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/${dotId}/bao-cao-thieu-mat`);
+                const result = await res.json();
+                if (!result.ok) throw new Error(result.loi);
+
+                const data = result.data || [];
+                const html = data.length ? `
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Mã thiết bị</th>
+                                    <th>Tên thiết bị</th>
+                                    <th>Phân xưởng</th>
+                                    <th>Loại thiếu/mất</th>
+                                    <th>Giá trị sách</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(r => `
+                                    <tr>
+                                        <td>${r.so_hieu || '(không có)'}</td>
+                                        <td>${r.ten_thiet_bi || '(không có)'}</td>
+                                        <td>${r.phan_xuong_ten || '(không xác định)'}</td>
+                                        <td><strong>${r.loai_thieu_mat === 'khong_tim_thay' ? '🔍 Không tìm thấy' : r.loai_thieu_mat}</strong></td>
+                                        <td>${r.gia_tri_sach ? Number(r.gia_tri_sach).toLocaleString('vi-VN') + ' đ' : '(không có)'}</td>
+                                        <td>${r.da_xu_ly ? '✅ Đã xử lý' : '⏳ Chưa xử lý'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '<p class="alert alert-info">📋 Không có báo cáo thiếu/mất cho đợt này</p>';
+
+                document.getElementById('missingReportContainer').innerHTML = html;
+            } catch (e) {
+                alert('❌ ' + e.message);
+            }
+        }
+
+        async function loadAuditHistory() {
+            const dotId = document.getElementById('selectDotForHistory').value;
+            if (!dotId) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/${dotId}/lich-su`);
+                const result = await res.json();
+                if (!result.ok) throw new Error(result.loi);
+
+                const data = result.data || [];
+                const tbody = document.getElementById('auditList');
+                tbody.innerHTML = data.length ? data.map(r => `
+                    <tr>
+                        <td><strong>${getActionLabel(r.hanh_dong)}</strong></td>
+                        <td style="font-size: 12px; color: #666;">${r.chi_tiet_moi ? JSON.stringify(r.chi_tiet_moi).substring(0, 50) : '(không có)'}</td>
+                        <td>${r.nguoi_tao || '(hệ thống)'}</td>
+                        <td style="font-size: 12px;">${r.ip_dia_chi || '(không xác định)'}</td>
+                        <td>${new Date(r.created_at).toLocaleString('vi-VN')}</td>
+                    </tr>
+                `).join('') : '<tr><td colspan="5" class="empty-state">Không có dữ liệu</td></tr>';
+            } catch (e) {
+                alert('❌ ' + e.message);
+            }
+        }
+
+        function getActionLabel(action) {
+            const labels = {
+                'tao': '✨ Tạo đợt',
+                'sua': '✏️ Sửa đợt',
+                'tao_snapshot': '📸 Tạo snapshot',
+                'giao_nhiem_vu': '📤 Giao nhiệm vụ',
+                'hoan_thanh': '🏁 Hoàn thành',
+                'them_chi_tiet': '📝 Thêm chi tiết'
+            };
+            return labels[action] || action;
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        function editInventory(id) {
+            alert('✏️ Chức năng sửa đang phát triển');
+        }
+
+        // Initialize
+        document.getElementById('newNgayBatDau').valueAsDate = new Date();
+        loadInventoryList();
+    </script>
+</body>
+</html>

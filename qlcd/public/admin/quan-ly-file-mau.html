@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý File Mẫu - QLCD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 8px; margin-bottom: 30px; }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+
+        .menu { display: flex; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
+        .menu-btn {
+            padding: 12px 20px;
+            background: white;
+            border: 2px solid #667eea;
+            color: #667eea;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .menu-btn:hover, .menu-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .section { display: none; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .section.active { display: block; }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-group { display: flex; gap: 10px; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        thead {
+            background: #f9f9f9;
+            border-bottom: 2px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+        th {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .alert.show { display: block; }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+        .badge-primary { background: #e3f2fd; color: #1976d2; }
+        .badge-success { background: #e8f5e9; color: #388e3c; }
+        .badge-warning { background: #fff3e0; color: #f57c00; }
+        .badge-danger { background: #ffebee; color: #d32f2f; }
+
+        .loading { display: none; text-align: center; padding: 20px; }
+        .loading.show { display: block; }
+
+        .file-upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 4px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            background: #f9f9f9;
+            transition: all 0.3s;
+        }
+        .file-upload-area:hover {
+            background: #f0f0f0;
+            border-color: #764ba2;
+        }
+        .file-upload-area.dragover {
+            background: #e3f2fd;
+            border-color: #1976d2;
+        }
+        .file-upload-area input[type="file"] {
+            display: none;
+        }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+        .tab { padding: 10px 15px; cursor: pointer; border-bottom: 3px solid transparent; color: #666; font-weight: 500; }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .list-item-info { flex: 1; }
+        .list-item-info h4 { margin-bottom: 5px; color: #333; }
+        .list-item-info p { color: #999; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Quản lý File Mẫu</h1>
+            <p>Quản lý template cho sinh tài liệu tự động</p>
+        </div>
+
+        <div class="alert alert-success"></div>
+        <div class="alert alert-error"></div>
+
+        <div class="menu">
+            <button class="menu-btn active" data-section="danh-sach">📋 Danh sách</button>
+            <button class="menu-btn" data-section="tao-mau">➕ Tạo mẫu</button>
+            <button class="menu-btn" data-section="loai-mau">🏷️ Loại mẫu</button>
+            <button class="menu-btn" data-section="lich-su">📜 Lịch sử</button>
+        </div>
+
+        <!-- Danh sách File Mẫu -->
+        <div class="section active" id="danh-sach">
+            <h2>Danh sách File Mẫu</h2>
+            <div style="margin: 20px 0; display: flex; gap: 10px;">
+                <select id="filter-loai" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">-- Tất cả loại --</option>
+                </select>
+                <select id="filter-tro-cap" style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">-- Tất cả cấp --</option>
+                </select>
+                <input type="text" id="filter-tim-kiem" placeholder="Tìm kiếm..." style="flex: 2; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <button class="btn btn-primary" onclick="timKiemFileMau()">Tìm</button>
+            </div>
+            <div id="danh-sach-files" style="margin-top: 20px;"></div>
+        </div>
+
+        <!-- Tạo File Mẫu -->
+        <div class="section" id="tao-mau">
+            <h2>Tạo File Mẫu Mới</h2>
+            <div class="grid-2">
+                <div>
+                    <div class="form-group">
+                        <label>Mã mẫu (ID)*</label>
+                        <input type="text" id="form-ma-mau" placeholder="phieu_ktt_1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tên mẫu*</label>
+                        <input type="text" id="form-ten-mau" placeholder="Phiếu kiểm tra định kỳ" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Loại file*</label>
+                        <select id="form-loai-mau" required>
+                            <option value="">-- Chọn loại --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Cấp truy cập</label>
+                        <select id="form-tro-cap">
+                            <option value="noi_bo">Nội bộ</option>
+                            <option value="cong_khai">Công khai</option>
+                            <option value="chi_tieu">Chỉ tiêu</option>
+                            <option value="dac_biet">Đặc biệt</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label>Mô tả</label>
+                        <textarea id="form-mo-ta" placeholder="Mô tả chi tiết..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>File mẫu*</label>
+                        <div class="file-upload-area" id="upload-area">
+                            <p>Kéo thả file hoặc click để chọn</p>
+                            <input type="file" id="form-file-upload" accept=".docx,.xlsx,.pdf" required>
+                            <p style="margin-top: 10px; font-size: 12px; color: #999;">Hỗ trợ: DOCX, XLSX, PDF (tối đa 50MB)</p>
+                        </div>
+                        <div id="file-selected" style="margin-top: 10px; color: #388e3c; display: none;"></div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="taoFileMau()">Tạo mẫu</button>
+                <button class="btn btn-secondary" onclick="resetFormMau()">Đặt lại</button>
+            </div>
+        </div>
+
+        <!-- Loại File Mẫu -->
+        <div class="section" id="loai-mau">
+            <h2>Loại File Mẫu</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Tên</th>
+                        <th>Mô tả</th>
+                        <th>Định dạng</th>
+                    </tr>
+                </thead>
+                <tbody id="loai-mau-list"></tbody>
+            </table>
+        </div>
+
+        <!-- Lịch sử Audit -->
+        <div class="section" id="lich-su">
+            <h2>Lịch sử File Mẫu</h2>
+            <div id="lich-su-list" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const apiBase = '/api/filemau';
+        let currentFile = null;
+
+        // Menu navigation
+        document.querySelectorAll('.menu-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.section).classList.add('active');
+
+                if (btn.dataset.section === 'danh-sach') {
+                    loadFileMauList();
+                } else if (btn.dataset.section === 'loai-mau') {
+                    loadLoaiMau();
+                } else if (btn.dataset.section === 'lich-su') {
+                    loadLichSuAudit();
+                }
+            });
+        });
+
+        // File upload handling
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('form-file-upload');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                updateFileSelected();
+            }
+        });
+
+        fileInput.addEventListener('change', updateFileSelected);
+
+        function updateFileSelected() {
+            const fileSelected = document.getElementById('file-selected');
+            if (fileInput.files.length) {
+                const file = fileInput.files[0];
+                fileSelected.textContent = `✓ Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)}KB)`;
+                fileSelected.style.display = 'block';
+            } else {
+                fileSelected.style.display = 'none';
+            }
+        }
+
+        async function showAlert(message, type = 'success') {
+            const alertEl = document.querySelector(`.alert-${type}`);
+            alertEl.textContent = message;
+            alertEl.classList.add('show');
+            setTimeout(() => alertEl.classList.remove('show'), 4000);
+        }
+
+        async function loadFileMauList() {
+            try {
+                const loai = document.getElementById('filter-loai').value;
+                const tro_cap = document.getElementById('filter-tro-cap').value;
+                const q = document.getElementById('filter-tim-kiem').value;
+
+                let url = apiBase;
+                const params = new URLSearchParams();
+                if (loai) params.append('loai_id', loai);
+                if (tro_cap) params.append('tro_cap', tro_cap);
+                if (q) params.append('q', q);
+                if (params.toString()) url += '?' + params.toString();
+
+                const res = await fetch(url);
+                const data = await res.json();
+
+                const container = document.getElementById('danh-sach-files');
+                if (!data.data || data.data.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999;">Không có file mẫu</p>';
+                    return;
+                }
+
+                container.innerHTML = data.data.map(file => `
+                    <div class="list-item">
+                        <div class="list-item-info" onclick="loadFileDetail(${file.id})">
+                            <h4>${file.ten}</h4>
+                            <p>Mã: ${file.ma} | Loại: ${file.loai_ten} | Tạo: ${new Date(file.created_at).toLocaleDateString('vi-VN')} | ${file.nguoi_tao}</p>
+                            <p>${file.mo_ta || 'Không có mô tả'}</p>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn btn-secondary btn-small" onclick="downloadFile(${file.id})">📥 Download</button>
+                            <button class="btn btn-primary btn-small" onclick="editFile(${file.id})">✏️ Sửa</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteFile(${file.id})">🗑️ Xóa</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                showAlert('Lỗi khi tải danh sách: ' + e.message, 'error');
+            }
+        }
+
+        async function loadLoaiMau() {
+            try {
+                const res = await fetch(apiBase + '/loai');
+                const data = await res.json();
+
+                const tbody = document.getElementById('loai-mau-list');
+                tbody.innerHTML = (data.data || []).map(loai => `
+                    <tr>
+                        <td><strong>${loai.ma}</strong></td>
+                        <td>${loai.ten}</td>
+                        <td>${loai.mo_ta || ''}</td>
+                        <td><span class="badge badge-primary">${loai.duoi_file}</span></td>
+                    </tr>
+                `).join('');
+
+                // Update dropdowns
+                const select = document.getElementById('form-loai-mau');
+                select.innerHTML = '<option value="">-- Chọn loại --</option>' +
+                    (data.data || []).map(l => `<option value="${l.id}">${l.ten}</option>`).join('');
+
+                const filterLoai = document.getElementById('filter-loai');
+                filterLoai.innerHTML = '<option value="">-- Tất cả loại --</option>' +
+                    (data.data || []).map(l => `<option value="${l.id}">${l.ten}</option>`).join('');
+            } catch (e) {
+                showAlert('Lỗi khi tải loại mẫu: ' + e.message, 'error');
+            }
+        }
+
+        async function loadLichSuAudit() {
+            try {
+                const res = await fetch(apiBase);
+                const data = await res.json();
+
+                if (!data.data || data.data.length === 0) {
+                    document.getElementById('lich-su-list').innerHTML = '<p>Chưa có lịch sử</p>';
+                    return;
+                }
+
+                const container = document.getElementById('lich-su-list');
+                container.innerHTML = '<p>Tải lịch sử khi click vào file mẫu...</p>';
+            } catch (e) {
+                showAlert('Lỗi: ' + e.message, 'error');
+            }
+        }
+
+        async function loadFileDetail(id) {
+            try {
+                const res = await fetch(`${apiBase}/${id}`);
+                const data = await res.json();
+
+                if (data.ok) {
+                    currentFile = data.data;
+                    document.getElementById('filter-loai').value = '';
+                    loadLichSuFileDetail(id);
+                }
+            } catch (e) {
+                showAlert('Lỗi: ' + e.message, 'error');
+            }
+        }
+
+        async function loadLichSuFileDetail(id) {
+            try {
+                const res = await fetch(`${apiBase}/${id}/lich-su`);
+                const data = await res.json();
+
+                const container = document.getElementById('lich-su-list');
+                if (!data.data || data.data.length === 0) {
+                    container.innerHTML = `<p>Chưa có lịch sử cho file này</p>`;
+                    return;
+                }
+
+                container.innerHTML = '<h3>' + (currentFile?.ten || 'File') + '</h3>' +
+                    data.data.map(l => `
+                    <div style="border-left: 4px solid #667eea; padding: 10px; margin-bottom: 10px; background: #f9f9f9;">
+                        <strong>${l.hanh_dong.toUpperCase()}</strong> - ${new Date(l.created_at).toLocaleString('vi-VN')}
+                        <br><small>${l.nguoi_tao || 'Hệ thống'} (${l.ip_dia_chi})</small>
+                        ${l.chi_tiet_moi ? '<br><code style="font-size:11px;">' + JSON.stringify(JSON.parse(l.chi_tiet_moi)).substring(0,100) + '...</code>' : ''}
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Lỗi:', e);
+            }
+        }
+
+        async function taoFileMau() {
+            const ma = document.getElementById('form-ma-mau').value.trim();
+            const ten = document.getElementById('form-ten-mau').value.trim();
+            const loai_id = document.getElementById('form-loai-mau').value;
+            const tro_cap = document.getElementById('form-tro-cap').value;
+            const mo_ta = document.getElementById('form-mo-ta').value.trim();
+            const file = document.getElementById('form-file-upload').files[0];
+
+            if (!ma || !ten || !loai_id || !file) {
+                showAlert('Vui lòng điền đầy đủ thông tin bắt buộc', 'error');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('ma', ma);
+                formData.append('ten', ten);
+                formData.append('loai_id', loai_id);
+                formData.append('tro_cap', tro_cap);
+                formData.append('mo_ta', mo_ta);
+                formData.append('tap_tin', file);
+
+                const res = await fetch(apiBase, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.ok) {
+                    showAlert('Tạo file mẫu thành công!');
+                    resetFormMau();
+                    loadFileMauList();
+                } else {
+                    showAlert('Lỗi: ' + data.loi, 'error');
+                }
+            } catch (e) {
+                showAlert('Lỗi: ' + e.message, 'error');
+            }
+        }
+
+        async function downloadFile(id) {
+            try {
+                const res = await fetch(`${apiBase}/${id}/download`);
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'template.file';
+                a.click();
+                showAlert('Download thành công!');
+            } catch (e) {
+                showAlert('Lỗi download: ' + e.message, 'error');
+            }
+        }
+
+        async function editFile(id) {
+            showAlert('Tính năng chỉnh sửa sẽ được cập nhật');
+        }
+
+        async function deleteFile(id) {
+            if (!confirm('Xác nhận xóa file mẫu này?')) return;
+            try {
+                const res = await fetch(`${apiBase}/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.ok) {
+                    showAlert('Xóa thành công!');
+                    loadFileMauList();
+                } else {
+                    showAlert('Lỗi: ' + data.loi, 'error');
+                }
+            } catch (e) {
+                showAlert('Lỗi: ' + e.message, 'error');
+            }
+        }
+
+        function resetFormMau() {
+            document.getElementById('form-ma-mau').value = '';
+            document.getElementById('form-ten-mau').value = '';
+            document.getElementById('form-loai-mau').value = '';
+            document.getElementById('form-tro-cap').value = 'noi_bo';
+            document.getElementById('form-mo-ta').value = '';
+            document.getElementById('form-file-upload').value = '';
+            document.getElementById('file-selected').style.display = 'none';
+        }
+
+        function timKiemFileMau() {
+            loadFileMauList();
+        }
+
+        // Initialize
+        loadLoaiMau();
+        loadFileMauList();
+    </script>
+</body>
+</html>

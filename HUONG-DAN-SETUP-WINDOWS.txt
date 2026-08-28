@@ -1,0 +1,139 @@
+================================================================================
+                    HƯỚNG DẪN CÀI ĐẶT QLCD v22.1 TRÊN WINDOWS
+================================================================================
+
+📋 YÊU CẦU:
+  ✓ Windows 10/11
+  ✓ Node.js 16+ (https://nodejs.org/)
+  ✓ PowerShell (có sẵn trên Windows)
+  ✓ Administrator access (quyền quản trị viên)
+
+================================================================================
+CÁCH 1: CÀI ĐẶT TỰ ĐỘNG BẰNG POWERSHELL SCRIPT (KHUYÊN DÙNG)
+================================================================================
+
+Bước 1: Chuẩn bị file
+  • Tải file: qlcd-v22.1.zip
+  • Tải file: SETUP-QLCD-v22.1.ps1
+  • Đặt cả 2 file vào cùng một thư mục (ví dụ: C:\Downloads)
+
+Bước 2: Mở PowerShell với quyền Administrator
+  • Nhấn Windows + R
+  • Gõ: powershell
+  • Nhấn Ctrl+Shift+Enter (hoặc click chuột phải "Run as administrator")
+
+Bước 3: Chạy script
+  • Copy-paste lệnh sau vào PowerShell:
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  • Nhấn Enter (cho phép chạy script)
+
+  • Sau đó, chạy lệnh:
+    C:\Downloads\SETUP-QLCD-v22.1.ps1
+    (Thay C:\Downloads bằng đường dẫn nơi bạn đặt file)
+
+Bước 4: Chờ hoàn tất
+  • Script sẽ tự động:
+    1. Kiểm tra Node.js
+    2. Tạo thư mục C:\QLCD
+    3. Giải nén file ZIP
+    4. Cài đặt dependencies (npm install)
+    5. Chạy 580 tests (kiểm tra toàn bộ hệ thống)
+    6. Khởi động server
+
+  • Sau khi xong, bạn sẽ thấy:
+    ✅ Tất cả 580 test PASS!
+    ============================================
+       Server sẽ khởi động tại http://localhost:3000
+    ============================================
+
+Bước 5: Truy cập dashboard
+  • Mở trình duyệt: http://localhost:3000
+  • Đăng nhập với:
+    - Username: admin
+    - Password: admin123
+
+  Hoặc:
+    - Username: viewer
+    - Password: viewer123
+
+================================================================================
+CÁCH 2: CÀI ĐẶT THỦ CÔNG TỪNG BƯỚC (NẾU SCRIPT GẶP LỖI)
+================================================================================
+
+Nếu script gặp vấn đề, bạn có thể chạy từng lệnh dưới đây:
+
+1️⃣  Kiểm tra Node.js:
+    node --version
+    npm --version
+
+2️⃣  Tạo thư mục:
+    mkdir C:\QLCD
+    cd C:\QLCD
+
+3️⃣  Giải nén file (thay đường dẫn nếu cần):
+    Expand-Archive -Path "C:\Downloads\qlcd-v22.1.zip" -DestinationPath "." -Force
+
+4️⃣  Di chuyển vào thư mục:
+    cd qlcd
+
+5️⃣  Cài đặt dependencies:
+    npm install
+
+6️⃣  Chạy test:
+    npm test
+
+7️⃣  Khởi động server:
+    npm start
+
+================================================================================
+🐛 KHẮC PHỤC SỰ CỐ
+================================================================================
+
+❌ Lỗi: "Node.js chưa được cài đặt"
+✅ Giải pháp:
+   - Tải Node.js từ https://nodejs.org/ (LTS version)
+   - Cài đặt và khởi động lại PowerShell
+   - Chạy lại script
+
+❌ Lỗi: "không tìm thấy file qlcd-v22.1.zip"
+✅ Giải pháp:
+   - Kiểm tra file ZIP có trong C:\QLCD không
+   - Hoặc chạy script từ thư mục chứa file ZIP
+
+❌ Lỗi: "Access denied" khi chạy script
+✅ Giải pháp:
+   - Chạy PowerShell với "Run as administrator"
+   - Hoặc chạy lệnh:
+     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+❌ Lỗi: "npm install" gặp vấn đề
+✅ Giải pháp:
+   - Xóa folder node_modules: rm -r node_modules
+   - Xóa file lock: rm package-lock.json
+   - Chạy lại: npm install
+
+================================================================================
+✅ KẾT QUẢ MONG ĐỢI
+================================================================================
+
+Sau khi setup thành công, bạn sẽ thấy:
+
+  Đạt: 580 | Trượt: 0 | Tỷ lệ: 100.0%
+
+Và server sẽ khởi động:
+
+  listening on 127.0.0.1:3000
+
+Truy cập http://localhost:3000 và đăng nhập để xem dashboard
+
+================================================================================
+📞 LIÊN HỆ HỖ TRỢ
+================================================================================
+
+Nếu gặp bất kỳ lỗi nào, hãy cung cấp:
+1. Thông báo lỗi đầy đủ
+2. Output từ PowerShell
+3. Phiên bản Node.js (node --version)
+4. Hệ điều hành Windows (win+pause để xem)
+
+================================================================================

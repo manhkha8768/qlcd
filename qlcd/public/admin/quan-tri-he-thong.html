@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản trị hệ thống - QLCD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: #2c3e50; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .header h1 { font-size: 24px; margin-bottom: 5px; }
+        .header p { font-size: 14px; opacity: 0.9; }
+
+        .menu { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .menu-item { background: white; border: 1px solid #ddd; padding: 15px; border-radius: 5px; cursor: pointer; transition: all 0.3s; }
+        .menu-item:hover { background: #ecf0f1; border-color: #3498db; }
+        .menu-item h3 { font-size: 16px; color: #2c3e50; margin-bottom: 5px; }
+        .menu-item p { font-size: 12px; color: #7f8c8d; }
+
+        .content { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .content h2 { margin-bottom: 15px; color: #2c3e50; }
+        .content p { margin-bottom: 10px; line-height: 1.6; }
+
+        .btn { display: inline-block; padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px 5px 5px 0; }
+        .btn:hover { background: #2980b9; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+
+        .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .table th { background: #ecf0f1; padding: 10px; text-align: left; border-bottom: 2px solid #bdc3c7; }
+        .table td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .table tr:hover { background: #f9f9f9; }
+
+        .hidden { display: none; }
+        .success { color: #27ae60; background: #d5f4e6; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { color: #e74c3c; background: #fadbd8; padding: 10px; border-radius: 4px; margin: 10px 0; }
+
+        .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #ddd; }
+        .tab { padding: 10px 15px; cursor: pointer; border: none; background: none; color: #7f8c8d; }
+        .tab.active { color: #3498db; border-bottom: 3px solid #3498db; margin-bottom: -2px; }
+
+        .loading { text-align: center; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>⚙️ Quản trị hệ thống QLCD</h1>
+        <p>Quản lý tài khoản, vai trò, quyền, đơn vị, phiên đăng nhập, audit, sao lưu</p>
+    </div>
+
+    <div class="menu">
+        <div class="menu-item" onclick="switchTab('taikhoan')">
+            <h3>👤 Tài khoản</h3>
+            <p>Thêm, sửa, khóa, reset mật khẩu</p>
+        </div>
+        <div class="menu-item" onclick="switchTab('vai-tro')">
+            <h3>🎭 Vai trò</h3>
+            <p>Tạo vai trò custom, liệt kê</p>
+        </div>
+        <div class="menu-item" onclick="switchTab('phanquyen')">
+            <h3>🔐 Phân quyền</h3>
+            <p>Gán quyền cho vai trò theo chức năng</p>
+        </div>
+        <div class="menu-item" onclick="switchTab('donvi')">
+            <h3>🏭 Đơn vị</h3>
+            <p>Thêm, sửa phân xưởng</p>
+        </div>
+        <div class="menu-item" onclick="switchTab('phien')">
+            <h3>🔗 Phiên đăng nhập</h3>
+            <p>Xem danh sách, cắt phiên</p>
+        </div>
+        <div class="menu-item" onclick="switchTab('nhatky')">
+            <h3>📝 Nhật ký audit</h3>
+            <p>Xem lịch sử thao tác, phân quyền</p>
+        </div>
+        <div class="menu-item" onclick="switchTab('saoluu')">
+            <h3>💾 Sao lưu dữ liệu</h3>
+            <p>Tạo, liệt kê bản sao lưu</p>
+        </div>
+        <div class="menu-item" onclick="openFileMauManager()">
+            <h3>📄 File mẫu</h3>
+            <p>Quản lý template sinh tài liệu</p>
+        </div>
+    </div>
+
+    <!-- === TÀI KHOẢN === -->
+    <div id="taikhoan" class="content hidden">
+        <h2>👤 Quản lý tài khoản</h2>
+        <button class="btn" onclick="showFormThemTaiKhoan()">+ Thêm tài khoản</button>
+
+        <div id="formThemTaiKhoan" class="hidden" style="margin-top: 15px; padding: 15px; background: #ecf0f1; border-radius: 4px;">
+            <h3>Tạo tài khoản mới</h3>
+            <div class="form-group">
+                <label>Tên đăng nhập:</label>
+                <input type="text" id="ndTenDangNhap" placeholder="ví dụ: ngankythuat">
+            </div>
+            <div class="form-group">
+                <label>Họ tên:</label>
+                <input type="text" id="ndHoTen" placeholder="Ngân Kỹ Thuật">
+            </div>
+            <div class="form-group">
+                <label>Chức vụ:</label>
+                <input type="text" id="ndChucVu" placeholder="Kỹ sư">
+            </div>
+            <div class="form-group">
+                <label>Vai trò:</label>
+                <select id="ndVaiTroList" multiple style="min-height: 80px;">
+                    <option value="admin">Admin</option>
+                    <option value="cd_cty">Phòng Cơ điện công ty</option>
+                    <option value="px">Cơ điện phân xưởng</option>
+                    <option value="xem">Chỉ xem</option>
+                </select>
+                <p style="font-size: 12px; color: #7f8c8d; margin-top: 5px;">Ctrl+Click để chọn nhiều vai trò</p>
+            </div>
+            <button class="btn" onclick="luuTaiKhoanMoi()">Lưu</button>
+            <button class="btn" onclick="document.getElementById('formThemTaiKhoan').classList.add('hidden')">Hủy</button>
+        </div>
+
+        <table class="table" id="taikhoanTable">
+            <thead>
+                <tr>
+                    <th>Tên đăng nhập</th>
+                    <th>Họ tên</th>
+                    <th>Chức vụ</th>
+                    <th>Vai trò</th>
+                    <th>Trạng thái</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="taikhoanList"></tbody>
+        </table>
+    </div>
+
+    <!-- === VAI TRÒ === -->
+    <div id="vai-tro" class="content hidden">
+        <h2>🎭 Quản lý vai trò</h2>
+        <button class="btn" onclick="showFormTaoVaiTro()">+ Tạo vai trò</button>
+
+        <div id="formTaoVaiTro" class="hidden" style="margin-top: 15px; padding: 15px; background: #ecf0f1; border-radius: 4px;">
+            <h3>Tạo vai trò mới</h3>
+            <div class="form-group">
+                <label>Mã vai trò:</label>
+                <input type="text" id="vtMa" placeholder="ví dụ: quanly_px">
+            </div>
+            <div class="form-group">
+                <label>Tên vai trò:</label>
+                <input type="text" id="vtTen" placeholder="Quản lý phân xưởng">
+            </div>
+            <div class="form-group">
+                <label>Mô tả:</label>
+                <textarea id="vtMoTa" placeholder="Mô tả chi tiết..." rows="3"></textarea>
+            </div>
+            <button class="btn" onclick="luuVaiTroMoi()">Lưu</button>
+            <button class="btn" onclick="document.getElementById('formTaoVaiTro').classList.add('hidden')">Hủy</button>
+        </div>
+
+        <table class="table" id="vaiTroTable">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Tên vai trò</th>
+                    <th>Mô tả</th>
+                    <th>Loại</th>
+                    <th>Số tài khoản</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="vaiTroList"></tbody>
+        </table>
+    </div>
+
+    <!-- === PHÂN QUYỀN === -->
+    <div id="phanquyen" class="content hidden">
+        <h2>🔐 Phân quyền theo vai trò</h2>
+        <p>Chọn vai trò và gán quyền các chức năng</p>
+
+        <div style="margin-top: 15px;">
+            <label>Chọn vai trò:</label>
+            <select id="vtSelectQuyen" onchange="taiQuyenVaiTro()" style="width: 300px; padding: 8px;">
+                <option value="">-- Chọn vai trò --</option>
+            </select>
+        </div>
+
+        <div id="quyenContainer" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- === ĐƠN VỊ === -->
+    <div id="donvi" class="content hidden">
+        <h2>🏭 Quản lý đơn vị / phân xưởng</h2>
+        <button class="btn" onclick="showFormThemDonVi()">+ Thêm đơn vị</button>
+
+        <div id="formThemDonVi" class="hidden" style="margin-top: 15px; padding: 15px; background: #ecf0f1; border-radius: 4px;">
+            <h3>Thêm đơn vị mới</h3>
+            <div class="form-group">
+                <label>Mã đơn vị:</label>
+                <input type="text" id="dvMa" placeholder="DL1">
+            </div>
+            <div class="form-group">
+                <label>Tên đơn vị:</label>
+                <input type="text" id="dvTen" placeholder="Phân xưởng Đào lò 1">
+            </div>
+            <div class="form-group">
+                <label>Tên ngắn:</label>
+                <input type="text" id="dvTenNgan" placeholder="DL1">
+            </div>
+            <button class="btn" onclick="luuDonViMoi()">Lưu</button>
+            <button class="btn" onclick="document.getElementById('formThemDonVi').classList.add('hidden')">Hủy</button>
+        </div>
+
+        <table class="table" id="donViTable">
+            <thead>
+                <tr>
+                    <th>Mã</th>
+                    <th>Tên đơn vị</th>
+                    <th>Loại</th>
+                    <th>Số thiết bị</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody id="donViList"></tbody>
+        </table>
+    </div>
+
+    <!-- === PHIÊN ĐĂNG NHẬP === -->
+    <div id="phien" class="content hidden">
+        <h2>🔗 Phiên đăng nhập</h2>
+        <p>Danh sách tài khoản đang hoạt động. Nhấn nút để cắt phiên.</p>
+
+        <table class="table" id="phienTable">
+            <thead>
+                <tr>
+                    <th>Tài khoản</th>
+                    <th>Họ tên</th>
+                    <th>Địa chỉ IP</th>
+                    <th>Thời gian vào</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody id="phienList"></tbody>
+        </table>
+
+        <button class="btn" onclick="taiDanhSachPhien()">🔄 Làm mới</button>
+    </div>
+
+    <!-- === NHẬT KÝ AUDIT === -->
+    <div id="nhatky" class="content hidden">
+        <h2>📝 Nhật ký hoạt động</h2>
+        <p>Lịch sử đăng nhập, thao tác, phân quyền.</p>
+
+        <div style="margin-bottom: 15px;">
+            <label>Loại hành động:</label>
+            <select id="auditHanhDong" style="width: 300px; padding: 8px;">
+                <option value="">-- Tất cả --</option>
+                <option value="them_tai_khoan">Thêm tài khoản</option>
+                <option value="sua_tai_khoan">Sửa tài khoản</option>
+                <option value="ghi_quyen">Ghi quyền</option>
+            </select>
+        </div>
+
+        <table class="table" id="auditTable">
+            <thead>
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Hành động</th>
+                    <th>Chi tiết</th>
+                    <th>Địa chỉ IP</th>
+                </tr>
+            </thead>
+            <tbody id="auditList"></tbody>
+        </table>
+
+        <button class="btn" onclick="taiDanhSachAudit()">🔄 Làm mới</button>
+    </div>
+
+    <!-- === SAO LƯU === -->
+    <div id="saoluu" class="content hidden">
+        <h2>💾 Sao lưu dữ liệu</h2>
+        <button class="btn" onclick="taoSaoLuu()">+ Tạo bản sao lưu ngay</button>
+
+        <table class="table" id="saoluuTable">
+            <thead>
+                <tr>
+                    <th>Tệp tin</th>
+                    <th>Dung lượng</th>
+                    <th>Ngày tạo</th>
+                </tr>
+            </thead>
+            <tbody id="saoluuList"></tbody>
+        </table>
+
+        <button class="btn" onclick="taiDanhSachSaoLuu()">🔄 Làm mới</button>
+    </div>
+
+    <div id="thongBao" style="margin-top: 20px;"></div>
+</div>
+
+<script>
+const API = '/api/quantri';
+let currentTab = 'taikhoan';
+
+function switchTab(tab) {
+    // Ẩn tất cả tab
+    document.querySelectorAll('.content').forEach(el => el.classList.add('hidden'));
+    // Hiện tab được chọn
+    document.getElementById(tab).classList.remove('hidden');
+    currentTab = tab;
+
+    // Tải dữ liệu khi chuyển tab
+    if (tab === 'taikhoan') taiDanhSachTaiKhoan();
+    else if (tab === 'vai-tro') taiDanhSachVaiTro();
+    else if (tab === 'phanquyen') taiDanhSachVaiTroChoPhanQuyen();
+    else if (tab === 'donvi') taiDanhSachDonVi();
+    else if (tab === 'phien') taiDanhSachPhien();
+    else if (tab === 'nhatky') taiDanhSachAudit();
+    else if (tab === 'saoluu') taiDanhSachSaoLuu();
+}
+
+async function api(endpoint, options = {}) {
+    const res = await fetch(API + endpoint, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...options.headers }
+    });
+    const data = await res.json();
+    if (!res.ok) showThongBao(data.loi || 'Lỗi!', 'error');
+    return data;
+}
+
+function showThongBao(msg, type = 'success') {
+    const el = document.getElementById('thongBao');
+    el.innerHTML = `<div class="${type}">${msg}</div>`;
+    setTimeout(() => el.innerHTML = '', 5000);
+}
+
+async function taiDanhSachTaiKhoan() {
+    const result = await api('/taikhoan');
+    if (!result.ok) return;
+    const html = result.data.map(tk => `
+        <tr>
+            <td>${tk.ten_dang_nhap}</td>
+            <td>${tk.ho_ten}</td>
+            <td>${tk.chuc_vu || '-'}</td>
+            <td>${tk.vai_tro_list || '-'}</td>
+            <td>${tk.hoat_dong ? '✅ Hoạt động' : '❌ Khóa'}</td>
+            <td>
+                <button class="btn" onclick="editTaiKhoan(${tk.id})">Sửa</button>
+                <button class="btn btn-danger" onclick="resetTaiKhoan(${tk.id})">Reset MK</button>
+            </td>
+        </tr>
+    `).join('');
+    document.getElementById('taikhoanList').innerHTML = html;
+}
+
+function showFormThemTaiKhoan() {
+    document.getElementById('formThemTaiKhoan').classList.toggle('hidden');
+}
+
+async function luuTaiKhoanMoi() {
+    const tenDangNhap = document.getElementById('ndTenDangNhap').value;
+    const hoTen = document.getElementById('ndHoTen').value;
+    const chucVu = document.getElementById('ndChucVu').value;
+    const vaiTroList = Array.from(document.getElementById('ndVaiTroList').selectedOptions).map(o => o.value);
+
+    if (!tenDangNhap || !hoTen) {
+        showThongBao('Nhập đầy đủ tên đăng nhập và họ tên', 'error');
+        return;
+    }
+
+    const result = await api('/taikhoan', {
+        method: 'POST',
+        body: JSON.stringify({ ten_dang_nhap: tenDangNhap, ho_ten: hoTen, chuc_vu: chucVu, vai_tro_list: vaiTroList })
+    });
+
+    if (result.ok) {
+        showThongBao(`Tài khoản tạo thành công! Mật khẩu tạm: ${result.mat_khau_tam}`, 'success');
+        document.getElementById('formThemTaiKhoan').classList.add('hidden');
+        taiDanhSachTaiKhoan();
+    }
+}
+
+async function resetTaiKhoan(id) {
+    if (!confirm('Reset mật khẩu tài khoản này?')) return;
+    const result = await api(`/taikhoan/${id}/reset-matkhau`, { method: 'POST' });
+    if (result.ok) {
+        showThongBao(`Mật khẩu tạm: ${result.mat_khau_tam}`, 'success');
+    }
+}
+
+async function taiDanhSachVaiTro() {
+    const result = await api('/vai-tro');
+    if (!result.ok) return;
+    const html = result.data.map(vt => `
+        <tr>
+            <td>${vt.ma}</td>
+            <td>${vt.ten}</td>
+            <td>${vt.mo_ta || '-'}</td>
+            <td>${vt.mac_dinh ? 'Tích hợp' : 'Custom'}</td>
+            <td>${vt.so_tai_khoan || 0}</td>
+            <td><button class="btn" onclick="editVaiTro(${vt.id})">Chi tiết</button></td>
+        </tr>
+    `).join('');
+    document.getElementById('vaiTroList').innerHTML = html;
+}
+
+function showFormTaoVaiTro() {
+    document.getElementById('formTaoVaiTro').classList.toggle('hidden');
+}
+
+async function luuVaiTroMoi() {
+    const ma = document.getElementById('vtMa').value;
+    const ten = document.getElementById('vtTen').value;
+    const moTa = document.getElementById('vtMoTa').value;
+
+    if (!ma || !ten) {
+        showThongBao('Nhập mã và tên vai trò', 'error');
+        return;
+    }
+
+    const result = await api('/vai-tro', {
+        method: 'POST',
+        body: JSON.stringify({ ma, ten, mo_ta: moTa })
+    });
+
+    if (result.ok) {
+        showThongBao('Tạo vai trò thành công', 'success');
+        document.getElementById('formTaoVaiTro').classList.add('hidden');
+        taiDanhSachVaiTro();
+    }
+}
+
+async function taiDanhSachVaiTroChoPhanQuyen() {
+    const result = await api('/vai-tro');
+    if (!result.ok) return;
+    const html = result.data.map(vt => `<option value="${vt.id}">${vt.ten}</option>`).join('');
+    document.getElementById('vtSelectQuyen').innerHTML = '<option value="">-- Chọn vai trò --</option>' + html;
+}
+
+async function taiQuyenVaiTro() {
+    const vtId = document.getElementById('vtSelectQuyen').value;
+    if (!vtId) return;
+
+    const result = await api(`/vai-tro/${vtId}/quyen`);
+    if (!result.ok) return;
+
+    const quyenList = await api('/ma-quyen');
+    if (!quyenList.ok) return;
+
+    let html = '<h3>Quyền hiện tại:</h3><table class="table"><thead><tr><th>Quyền</th><th>Hành động</th></tr></thead><tbody>';
+    result.data.forEach(q => {
+        html += `<tr><td>${q.ma_quyen} ${q.ten_donvi ? ' ('+q.ten_donvi+')' : ''}</td>
+                 <td><button class="btn btn-danger" onclick="xoaQuyenKhoi(${vtId}, ${q.id})">Xóa</button></td></tr>`;
+    });
+    html += '</tbody></table>';
+
+    html += '<h3 style="margin-top: 20px;">Thêm quyền mới:</h3>';
+    if (quyenList.nhom) {
+        html += '<select id="maQuyenSelect" style="width: 300px; padding: 8px;">';
+        for (const [hang, quyen_array] of Object.entries(quyenList.nhom)) {
+            html += `<optgroup label="${hang}">`;
+            quyen_array.forEach(q => {
+                html += `<option value="${q.ma}">${q.ten}</option>`;
+            });
+            html += '</optgroup>';
+        }
+        html += '</select>';
+        html += `<button class="btn" style="margin-left: 10px;" onclick="themQuyenChoVaiTro(${vtId})">Thêm</button>`;
+    }
+
+    document.getElementById('quyenContainer').innerHTML = html;
+}
+
+async function themQuyenChoVaiTro(vtId) {
+    const maQuyen = document.getElementById('maQuyenSelect').value;
+    if (!maQuyen) {
+        showThongBao('Chọn quyền để thêm', 'error');
+        return;
+    }
+
+    const result = await api(`/vai-tro/${vtId}/quyen`, {
+        method: 'POST',
+        body: JSON.stringify({ ma_quyen: maQuyen, donvi_id: null })
+    });
+
+    if (result.ok) {
+        showThongBao('Quyền được thêm', 'success');
+        taiQuyenVaiTro();
+    }
+}
+
+async function xoaQuyenKhoi(vtId, quyenId) {
+    if (!confirm('Xóa quyền này?')) return;
+    const result = await api(`/vai-tro/${vtId}/quyen/${quyenId}`, { method: 'DELETE' });
+    if (result.ok) {
+        showThongBao('Quyền được xóa', 'success');
+        taiQuyenVaiTro();
+    }
+}
+
+async function taiDanhSachDonVi() {
+    const result = await api('/donvi');
+    if (!result.ok) return;
+    const html = result.data.map(dv => `
+        <tr>
+            <td>${dv.ma}</td>
+            <td>${dv.ten}</td>
+            <td>${dv.loai}</td>
+            <td>${dv.so_thiet_bi || 0}</td>
+            <td>${dv.hoat_dong ? '✅' : '❌'}</td>
+        </tr>
+    `).join('');
+    document.getElementById('donViList').innerHTML = html;
+}
+
+function showFormThemDonVi() {
+    document.getElementById('formThemDonVi').classList.toggle('hidden');
+}
+
+async function luuDonViMoi() {
+    const ma = document.getElementById('dvMa').value;
+    const ten = document.getElementById('dvTen').value;
+    const tenNgan = document.getElementById('dvTenNgan').value;
+
+    if (!ma || !ten) {
+        showThongBao('Nhập mã và tên đơn vị', 'error');
+        return;
+    }
+
+    const result = await api('/donvi', {
+        method: 'POST',
+        body: JSON.stringify({ ma, ten, ten_ngan: tenNgan })
+    });
+
+    if (result.ok) {
+        showThongBao('Tạo đơn vị thành công', 'success');
+        document.getElementById('formThemDonVi').classList.add('hidden');
+        taiDanhSachDonVi();
+    }
+}
+
+async function taiDanhSachPhien() {
+    const result = await api('/phien-dang-nhap');
+    if (!result.ok) return;
+    const html = result.data.map(p => `
+        <tr>
+            <td>${p.ten_dang_nhap}</td>
+            <td>${p.ho_ten}</td>
+            <td>${p.diaChiIp}</td>
+            <td>${new Date(p.createdAt).toLocaleString('vi-VN')}</td>
+            <td><button class="btn btn-danger" onclick="catPhien('${p.id}')">Cắt</button></td>
+        </tr>
+    `).join('');
+    document.getElementById('phienList').innerHTML = html || '<tr><td colspan="5">Không có phiên nào</td></tr>';
+}
+
+async function catPhien(sid) {
+    if (!confirm('Cắt phiên này?')) return;
+    const result = await api(`/phien-dang-nhap/${sid}`, { method: 'DELETE' });
+    if (result.ok) {
+        showThongBao('Phiên được cắt', 'success');
+        taiDanhSachPhien();
+    }
+}
+
+async function taiDanhSachAudit() {
+    const result = await api('/nhat-ky-hoat-dong');
+    if (!result.ok) return;
+    const html = result.data.map(a => `
+        <tr>
+            <td>${new Date(a.ngay_gio).toLocaleString('vi-VN')}</td>
+            <td>${a.hanh_dong}</td>
+            <td>${a.chi_tiet_moi || '-'}</td>
+            <td>${a.dia_chi_ip || '-'}</td>
+        </tr>
+    `).join('');
+    document.getElementById('auditList').innerHTML = html || '<tr><td colspan="4">Không có audit</td></tr>';
+}
+
+async function taiDanhSachSaoLuu() {
+    const result = await api('/sao-luu');
+    if (!result.ok) return;
+    const html = result.data.map(s => `
+        <tr>
+            <td>${s.file}</td>
+            <td>${(s.size / 1024 / 1024).toFixed(2)} MB</td>
+            <td>${new Date(s.ngay_tao).toLocaleString('vi-VN')}</td>
+        </tr>
+    `).join('');
+    document.getElementById('saoluuList').innerHTML = html || '<tr><td colspan="3">Không có bản sao lưu</td></tr>';
+}
+
+async function taoSaoLuu() {
+    const result = await api('/sao-luu', { method: 'POST' });
+    if (result.ok) {
+        showThongBao(`Sao lưu thành công: ${result.file}`, 'success');
+        taiDanhSachSaoLuu();
+    }
+}
+
+function openFileMauManager() {
+    window.open('./quan-ly-file-mau.html', '_blank');
+}
+
+// Tải dữ liệu mặc định
+window.addEventListener('load', () => switchTab('taikhoan'));
+</script>
+</body>
+</html>

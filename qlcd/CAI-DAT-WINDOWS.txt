@@ -1,0 +1,263 @@
+========================================================================
+  HỆ THỐNG QUẢN LÝ THIẾT BỊ CƠ ĐIỆN VẬN TẢI (QLCD)
+  Công ty Xây lắp Mỏ - TKV
+  HƯỚNG DẪN CÀI ĐẶT TRÊN WINDOWS
+========================================================================
+
+
+BƯỚC 1. CÀI NODE.JS
+------------------------------------------------------------------------
+Tải Node.js bản LTS tại https://nodejs.org (chọn bản Windows Installer
+64-bit), cài đặt theo mặc định.
+
+Kiểm tra: mở Command Prompt, gõ:
+
+    node -v
+
+Nếu hiện ra số phiên bản (ví dụ v22.x.x) là được.
+
+
+BƯỚC 2. GIẢI NÉN
+------------------------------------------------------------------------
+Giải nén thư mục qlcd ra ổ đĩa, ví dụ:
+
+    D:\qlcd
+
+
+BƯỚC 3. CÀI THƯ VIỆN
+------------------------------------------------------------------------
+Mở Command Prompt tại thư mục vừa giải nén:
+
+    cd /d D:\qlcd
+    npm install
+
+Chờ vài phút cho tải xong (cần mạng internet ở bước này).
+
+
+BƯỚC 4. TẠO DATABASE
+------------------------------------------------------------------------
+    node db\init.js
+
+Màn hình sẽ báo đã tạo tài khoản:
+
+    Tên đăng nhập : admin
+    Mật khẩu      : admin123
+
+ĐỔI MẬT KHẨU NGAY sau lần đăng nhập đầu tiên.
+
+
+BƯỚC 5. CHẠY HỆ THỐNG
+------------------------------------------------------------------------
+    npm start
+
+Mở trình duyệt vào:  http://localhost:3000
+
+Máy khác trong mạng nội bộ truy cập bằng địa chỉ IP của máy chủ,
+ví dụ:  http://192.168.1.50:3000
+(Xem IP bằng lệnh ipconfig. Nhớ mở cổng 3000 trong Windows Firewall.)
+
+
+BƯỚC 6. CHẠY TỰ ĐỘNG KHI KHỞI ĐỘNG MÁY (tuỳ chọn)
+------------------------------------------------------------------------
+Cài pm2 để hệ thống tự chạy lại khi máy chủ khởi động:
+
+    npm install -g pm2 pm2-windows-startup
+    pm2-startup install
+    pm2 start server.js --name qlcd
+    pm2 save
+
+
+========================================================================
+  SỬ DỤNG LẦN ĐẦU
+========================================================================
+
+0. Lần đầu đăng nhập bằng admin/admin123, hệ thống BẮT BUỘC đổi mật khẩu
+   ngay trước khi cho làm gì khác. Đây là chủ ý, không phải lỗi.
+
+1. Đăng nhập bằng admin / admin123
+
+2. Vào mục QUẢN TRỊ, bấm "Thêm phân xưởng"
+   - Mã phân xưởng đặt ngắn, viết hoa, không dấu (DL1, DL2, KT1...)
+   - Mã này dùng làm tiền tố mã thiết bị: DL1.VT01.001
+
+3. Vẫn ở QUẢN TRỊ, bấm "Thêm tài khoản" cho từng phân xưởng
+   - Vai trò "Cơ điện phân xưởng": chỉ thao tác dữ liệu phân xưởng mình
+   - Vai trò "Cơ điện công ty": xem toàn công ty và duyệt dữ liệu
+   - Mật khẩu 4-6 ký tự
+
+4. Mỗi phân xưởng đăng nhập, vào mục TẢI DỮ LIỆU, tải file Excel
+   danh sách TSCĐ/CCDC của phân xưởng mình lên.
+
+   Không cần sửa file theo mẫu. Hệ thống tự:
+   - dò dòng tiêu đề (bỏ qua các dòng quốc hiệu, tên bảng ở đầu file)
+   - đoán cột nào là tên tài sản, nguyên giá, ngày sử dụng...
+   - đoán nhóm thiết bị từ tên (máng cào, băng tải, tời trục, quạt gió,
+     trạm biến áp, khởi động từ, máy bơm, combai...)
+
+   Người dùng chỉ đối chiếu lại rồi bấm nhập.
+
+5. Cơ điện công ty vào mục THIẾT BỊ, bấm vào từng thiết bị để
+   "Đồng ý" hoặc "Chuyển lại" kèm lý do.
+
+6. Dùng hằng ngày:
+
+   ĐIỀU CHUYỂN - khi chuyển máy giữa phân xưởng hoặc đổi vị trí lắp đặt.
+   Phân xưởng lập phiếu, cơ điện công ty duyệt, đến khi bàn giao thực tế
+   thì bấm "Bàn giao xong". Chỉ lúc đó vị trí máy mới đổi và hệ thống
+   ghi mốc vào lịch sử vị trí.
+
+   BẢO DƯỠNG - SỬA CHỮA - lập kế hoạch bảo dưỡng định kỳ cho từng máy
+   (hằng tháng, hằng quý...) để hệ thống nhắc khi đến hạn. Khi sửa chữa,
+   lập phiếu, nhập vật tư thay thế, hệ thống tự cộng chi phí. Hoàn thành
+   phiếu bảo dưỡng định kỳ thì hạn kế tiếp tự dời sang chu kỳ sau.
+
+   KIỂM ĐỊNH - nhập hồ sơ kiểm định, ngày hết hạn tính tự động theo chu kỳ
+   (thiết bị nâng 12 tháng, chịu áp lực 36 tháng, đo cách điện 6 tháng...).
+   Hệ thống tự biết máy nào bắt buộc loại kiểm định nào theo nhóm thiết bị.
+
+   TĂNG TÀI SẢN / GIẢM TÀI SẢN / ĐIỀU CHUYỂN - ba loại phiếu dùng chung
+   một luồng: Nháp -> Trình duyệt -> Chờ duyệt -> Duyệt hoặc Từ chối.
+
+   ĐIỂM QUAN TRỌNG NHẤT: số liệu tài sản KHÔNG thay đổi khi lập phiếu.
+   Chỉ khi người có thẩm quyền bấm Duyệt thì hệ thống mới cập nhật số
+   lượng, đơn vị quản lý và ghi lịch sử. Nếu bị từ chối, người lập xem
+   lý do, sửa lại rồi trình lại.
+
+   Người lập phiếu không được tự duyệt phiếu của mình (trừ admin, và
+   khi admin tự duyệt hệ thống ghi lại vào nhật ký kiểm toán).
+
+   Phiếu đã duyệt không sửa, không xóa, không hủy được. Muốn đảo lại
+   phải lập phiếu ngược chiều.
+
+   GIAO DỊCH CHỜ DUYỆT - nơi người có thẩm quyền xử lý tất cả phiếu
+   tăng, giảm, điều chuyển đang chờ.
+
+   HỒ SƠ KỸ THUẬT THIẾT BỊ - vào mục Thiết bị, bấm vào một máy rồi chọn
+   "Hồ sơ kỹ thuật". Màn hình có 10 tab:
+
+     Tổng quan   - số lần sửa chữa, bảo dưỡng, sự cố, chi phí tích lũy,
+                   ngày bảo dưỡng gần nhất và kế tiếp
+     Thông số    - bộ thông số riêng theo nhóm thiết bị (băng tải có
+                   chiều rộng băng, máy bơm có lưu lượng và cột áp...)
+     Cấu trúc    - cây cụm - chi tiết, không giới hạn số cấp
+     Lý lịch     - toàn bộ lịch sử máy gom từ mọi nguồn, lọc theo nhóm
+     Sửa chữa / Bảo dưỡng / Sự cố / Phụ tùng / Tài liệu / Chi phí
+
+   CÂY CẤU TRÚC - ví dụ băng tải:
+     Cụm truyền động > Động cơ, Hộp giảm tốc
+     Cụm tang > Tang chủ động > Gối đỡ > Vòng bi 22218
+   Mã cụm tự sinh theo cấp: C02.01.01.01
+   Bấm "+ Con" để thêm cấp sâu hơn, "Thay" để thay thế cụm.
+
+   THAY THẾ CỤM - cụm cũ KHÔNG bị xóa. Hệ thống chuyển nó sang trạng thái
+   đã thay thế, ẩn khỏi cây hiện hành nhưng giữ toàn bộ lịch sử; cụm mới
+   kế thừa đúng vị trí và các cụm con.
+
+   SỰ CỐ - mục riêng ở nhóm Kỹ thuật. Báo sự cố chọn được cụm nghi ngờ.
+   Sự cố làm dừng máy tự chuyển thiết bị sang trạng thái đang sửa.
+   Sự cố nghiêm trọng trở lên gửi thông báo cho cơ điện công ty.
+   Không đóng được sự cố khi chưa ghi nguyên nhân thực tế.
+
+   NCVT QUÝ - quản lý nhu cầu vật tư theo quý. Quy trình:
+
+     1. Lập kỳ: chọn năm, quý, đơn vị
+     2. Tải file NCVT Excel lên (không cần sửa theo mẫu)
+     3. Đối chiếu cột hệ thống đoán, sửa dòng lỗi nếu có
+     4. Nhập vào kỳ
+     5. Kích hoạt kỳ - từ lúc này chủ nhiệm công trình mới lấy được vật tư
+     6. Chủ nhiệm công trình bấm "Lấy" trên từng dòng vật tư
+     7. Cuối quý bấm "Đóng quý"
+
+   FILE NCVT GỐC KHÔNG BAO GIỜ BỊ SỬA. Số "đã lấy" và "còn lại" là kết
+   quả cộng dồn từ các giao dịch cấp phát, không phải số gõ tay. Mỗi vật
+   tư đều truy ngược được về đúng dòng trong file Excel gốc để đối chiếu
+   cuối quý.
+
+   KHÔNG CẤP VƯỢT: hệ thống kiểm tra ở backend trong transaction có khóa.
+   Hai chủ nhiệm cùng lấy một vật tư còn 10 (người xin 8, người xin 5)
+   thì chỉ một giao dịch thành công, không bao giờ thành 13.
+
+   HỦY GIAO DỊCH: giao dịch không bị xóa, chỉ đánh dấu đã hủy kèm lý do
+   và hoàn lại số lượng. Lịch sử giữ nguyên để truy vết.
+
+   BẢO MẬT TRUY CẬP (chỉ admin thấy) - màn hình quản trị gồm:
+     • Dải mạng được phép: khai mạng văn phòng, mạng từng phân xưởng,
+       dải VPN. Có nút "Thêm dải đang dùng" tự điền sẵn dải của máy
+       đang ngồi. Bật lọc thì chỉ các mạng đã khai mới vào được.
+     • Đang đăng nhập: xem ai đang mở phiên, ở địa chỉ nào, cắt phiên
+       từ xa khi nhân viên mất máy hoặc nghỉ việc.
+     • Đăng nhập sai gần đây: nhiều lần sai từ địa chỉ lạ là dấu hiệu
+       có người đang dò mật khẩu.
+     • Truy cập bị chặn: ai đang gõ cửa từ mạng ngoài danh sách.
+     • Máy chủ: đang lắng nghe ở địa chỉ nào, có những card mạng gì.
+
+   Mọi người đều có nút "Đổi mật khẩu" ở góc dưới thanh bên trái.
+
+   CẢNH BÁO HẠN - xem hằng tuần. Gồm kiểm định quá hạn, sắp hết hạn,
+   thiết bị chưa có hồ sơ kiểm định, và bảo dưỡng đến hạn.
+
+
+========================================================================
+  SAO LƯU DỮ LIỆU
+========================================================================
+
+Toàn bộ dữ liệu nằm trong 1 file:  db\qlcd.db
+File tải lên nằm trong thư mục:    uploads\
+
+Sao lưu = tắt hệ thống, copy 2 mục trên sang ổ khác hoặc USB.
+Nên sao lưu hằng tuần.
+
+Phục hồi = chép file qlcd.db trở lại thư mục db\ rồi chạy lại npm start.
+
+
+========================================================================
+  XỬ LÝ SỰ CỐ
+========================================================================
+
+"Chưa có database"
+    -> chạy:  node db\init.js
+
+"EADDRINUSE: address already in use :::3000"
+    -> cổng 3000 đang bị chiếm. Đổi cổng:
+       set PORT=3001 && npm start
+
+Quên mật khẩu admin
+    -> chạy lệnh sau tại thư mục qlcd:
+       node -e "const b=require('bcryptjs'),d=require('./db');d.prepare('UPDATE nguoi_dung SET mat_khau_hash=? WHERE ten_dang_nhap=?').run(b.hashSync('admin123',10),'admin');console.log('Da dat lai mat khau admin ve admin123')"
+
+Máy khác không vào được
+    -> kiểm tra Windows Firewall, cho phép Node.js qua cổng 3000
+    -> kiểm tra 2 máy cùng mạng LAN
+
+Kiểm tra hệ thống còn chạy đúng không
+    -> chạy:  npm test
+       Kết quả mong đợi: 87 + 44 + 93 + 58 + 83 + 37 + 45 = 447 đạt / 0 trượt
+
+
+========================================================================
+  BẢO MẬT KHI TRIỂN KHAI THẬT
+========================================================================
+
+Trước khi đưa vào dùng chính thức, đặt biến môi trường chuỗi bí mật
+phiên đăng nhập (thay chuỗi mặc định trong mã nguồn):
+
+    set QLCD_SECRET=chuoi-bi-mat-rieng-cua-cong-ty
+    npm start
+
+Hoặc với pm2:
+    pm2 set qlcd:QLCD_SECRET chuoi-bi-mat-rieng-cua-cong-ty
+
+
+========================================================================
+  MUỐN TRUY CẬP TỪ XA QUA INTERNET?
+========================================================================
+
+Tài liệu này hướng dẫn cài trong mạng nội bộ công ty.
+
+Nếu muốn truy cập từ nhà hoặc từ công trường qua internet, ĐỌC TỆP RIÊNG:
+
+    TRIEN-KHAI-INTERNET.txt
+
+Không tự ý mở cổng router ra internet theo hướng dẫn trong tệp này.
+Hệ thống cần bật chế độ bảo mật riêng trước khi phơi ra ngoài, nếu không
+thì bất kỳ ai cũng có thể thử mật khẩu vào hệ thống tài sản của Công ty.

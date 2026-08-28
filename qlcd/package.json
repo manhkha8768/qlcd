@@ -1,0 +1,22 @@
+{
+  "name": "qlcd",
+  "version": "1.0.0",
+  "description": "Quan ly thiet bi co dien van tai - Cong ty Xay lap Mo TKV",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init": "node db/init.js",
+    "test": "node test/test.js && node test/test-nghiep-vu.js && node test/test-giao-dich.js && node test/test-ky-thuat.js && node test/test-ncvt.js && node test/test-bao-mat.js && node test/test-dai-mang.js && node test/test-phan-quyen-dong.js && node test/test-file-mau.js && node test/test-kiem-ke.js && node test/test-doi-chieu.js && node test/test-kho-vat-tu.js && node test/test-dashboard.js",
+    "sao-luu": "node scripts/sao-luu.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.11.1",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.1",
+    "express-session": "^1.18.1",
+    "multer": "^2.2.0",
+    "pdfkit": "^0.20.1",
+    "xlsx": "^0.18.5"
+  }
+}

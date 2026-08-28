@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Quản lý Thiết bị</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f7fa; color: #333; }
+        .dashboard { max-width: 1400px; margin: 20px auto; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; }
+        .header h1 { margin: 0 0 5px 0; font-size: 32px; }
+        .header p { opacity: 0.9; font-size: 14px; }
+        .tabs { display: flex; background: white; border-bottom: 1px solid #e0e0e0; }
+        .tab { flex: 1; padding: 15px; border: none; cursor: pointer; font-size: 16px; text-align: center; transition: all 0.3s; background: #f9f9f9; }
+        .tab:hover { background: #f0f0f0; }
+        .tab.active { background: white; border-bottom: 3px solid #3498db; color: #3498db; font-weight: bold; }
+        .content { background: white; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: all 0.3s; }
+        .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .card.danger { border-left: 4px solid #e74c3c; }
+        .card.warning { border-left: 4px solid #f39c12; }
+        .card.success { border-left: 4px solid #27ae60; }
+        .card.info { border-left: 4px solid #3498db; }
+        .card-label { font-size: 14px; color: #7f8c8d; margin-bottom: 10px; font-weight: bold; }
+        .card-value { font-size: 32px; font-weight: bold; color: #2c3e50; margin-bottom: 5px; }
+        .card-unit { font-size: 12px; color: #95a5a6; }
+        .card-progress { margin-top: 10px; background: #ecf0f1; height: 4px; border-radius: 2px; overflow: hidden; }
+        .card-progress-bar { height: 100%; background: #3498db; }
+        .table-container { overflow-x: auto; }
+        .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .table th { background: #ecf0f1; padding: 12px; text-align: left; font-weight: bold; border-bottom: 2px solid #bdc3c7; }
+        .table td { padding: 10px; border-bottom: 1px solid #ecf0f1; }
+        .table tr:hover { background: #f8f9fa; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge.danger { background: #f8d7da; color: #721c24; }
+        .badge.warning { background: #fff3cd; color: #856404; }
+        .badge.success { background: #d4edda; color: #155724; }
+        .badge.info { background: #d1ecf1; color: #0c5460; }
+        .loading { text-align: center; padding: 40px; color: #7f8c8d; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .filter-bar { background: #f9f9f9; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+        .filter-bar input, .filter-bar select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; transition: all 0.3s; }
+        .btn-primary { background: #3498db; color: white; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .export-btn { padding: 8px 12px; margin-left: 10px; }
+        .summary { background: linear-gradient(135deg, #ecf0f1 0%, #bdc3c7 100%); padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .summary-text { font-size: 14px; color: #2c3e50; line-height: 1.6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="header">
+            <h1>📊 Dashboard Quản lý Thiết bị Cơ điện</h1>
+            <p>Tổng quan toàn hệ thống — Cập nhật thực tế</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('tab-overview')">Tổng quan</button>
+            <button class="tab" onclick="switchTab('tab-reports')">Báo cáo</button>
+            <button class="tab" onclick="switchTab('tab-kpi')">KPI</button>
+        </div>
+
+        <!-- TAB 1: Tổng quan -->
+        <div class="tab-content active" id="tab-overview">
+            <div class="content">
+                <div id="stats-container" class="grid">
+                    <div class="loading"><div class="spinner"></div><p>Đang tải dữ liệu...</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Báo cáo -->
+        <div class="tab-content" id="tab-reports">
+            <div class="content">
+                <div class="filter-bar">
+                    <input type="date" id="filter-from" placeholder="Từ ngày">
+                    <input type="date" id="filter-to" placeholder="Đến ngày">
+                    <select id="filter-report">
+                        <option value="">-- Chọn báo cáo --</option>
+                        <option value="danh-sach-thiet-bi">Danh sách thiết bị</option>
+                        <option value="kho-vat-tu">Tồn kho vật tư</option>
+                        <option value="kiem-ke">Kiểm kê</option>
+                        <option value="giao-dich">Giao dịch tăng/giảm</option>
+                        <option value="su-co">Sự cố</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadReport()">Xem báo cáo</button>
+                    <button class="btn btn-secondary export-btn" onclick="exportExcel()">📥 Excel</button>
+                    <button class="btn btn-secondary export-btn" onclick="exportPDF()">📄 PDF</button>
+                </div>
+
+                <div class="summary" id="summary" style="display:none;"></div>
+
+                <div class="table-container" id="report-container">
+                    <p style="text-align:center; color:#7f8c8d;">Chọn báo cáo để xem</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: KPI -->
+        <div class="tab-content" id="tab-kpi">
+            <div class="content">
+                <div id="kpi-container" class="grid">
+                    <div class="loading"><div class="spinner"></div><p>Đang tính toán KPI...</p></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api/dashboard';
+
+        async function loadOverview() {
+            try {
+                const res = await fetch(`${API}/thong-ke-cong-ty`);
+                const data = await res.json();
+                const stats = data.data;
+
+                let html = `
+                    <div class="card info">
+                        <div class="card-label">👥 Phân xưởng</div>
+                        <div class="card-value">${stats.so_phan_xuong}</div>
+                    </div>
+                    <div class="card info">
+                        <div class="card-label">⚙️ Tổng thiết bị</div>
+                        <div class="card-value">${stats.so_thiet_bi}</div>
+                    </div>
+                    <div class="card success">
+                        <div class="card-label">✓ Hoạt động</div>
+                        <div class="card-value">${stats.thiet_bi_hoat_dong}</div>
+                        <div class="card-unit">${stats.so_thiet_bi > 0 ? (stats.thiet_bi_hoat_dong / stats.so_thiet_bi * 100).toFixed(1) : 0}%</div>
+                        <div class="card-progress"><div class="card-progress-bar" style="width:${stats.so_thiet_bi > 0 ? (stats.thiet_bi_hoat_dong / stats.so_thiet_bi * 100) : 0}%"></div></div>
+                    </div>
+                    <div class="card warning">
+                        <div class="card-label">🔧 Đang sửa</div>
+                        <div class="card-value">${stats.thiet_bi_sua}</div>
+                        <div class="card-unit">${stats.so_thiet_bi > 0 ? (stats.thiet_bi_sua / stats.so_thiet_bi * 100).toFixed(1) : 0}%</div>
+                    </div>
+                    <div class="card danger">
+                        <div class="card-label">❌ Hỏng/kém</div>
+                        <div class="card-value">${stats.thiet_bi_kem_hong}</div>
+                        <div class="card-unit">${stats.so_thiet_bi > 0 ? (stats.thiet_bi_kem_hong / stats.so_thiet_bi * 100).toFixed(1) : 0}%</div>
+                    </div>
+                    <div class="card warning">
+                        <div class="card-label">📋 Kiểm định sắp hết hạn</div>
+                        <div class="card-value">${stats.kiem_dinh_het_han}</div>
+                        <div class="card-unit">trong 30 ngày</div>
+                    </div>
+                    <div class="card warning">
+                        <div class="card-label">🔩 Bảo dưỡng hôm nay</div>
+                        <div class="card-value">${stats.bao_duong_het_han}</div>
+                    </div>
+                    <div class="card danger">
+                        <div class="card-label">⚠️ Sự cố đang mở</div>
+                        <div class="card-value">${stats.su_co_mo}</div>
+                    </div>
+                    <div class="card warning">
+                        <div class="card-label">⏳ Giao dịch chờ duyệt</div>
+                        <div class="card-value">${stats.giao_dich_cho_duyet}</div>
+                    </div>
+                    <div class="card warning">
+                        <div class="card-label">📦 NCVT chưa cấp đủ</div>
+                        <div class="card-value">${stats.ncvt_thieu}</div>
+                        <div class="card-unit">kỳ</div>
+                    </div>
+                    <div class="card danger">
+                        <div class="card-label">🛢️ Kho dưới mức tối thiểu</div>
+                        <div class="card-value">${stats.kho_thap}</div>
+                        <div class="card-unit">vật tư</div>
+                    </div>
+                    <div class="card info">
+                        <div class="card-label">💰 Giá trị tài sản</div>
+                        <div class="card-value">${(stats.gia_tri_tai_san / 1000000).toFixed(1)}M</div>
+                        <div class="card-unit">VNĐ</div>
+                    </div>
+                    <div class="card warning">
+                        <div class="card-label">🔨 Chi phí sửa (3 tháng)</div>
+                        <div class="card-value">${(stats.chi_phi_sua / 1000000).toFixed(1)}M</div>
+                        <div class="card-unit">VNĐ</div>
+                    </div>
+                `;
+
+                document.querySelector('#stats-container').innerHTML = html;
+            } catch (e) {
+                console.error('Lỗi:', e);
+                document.querySelector('#stats-container').innerHTML = '<p style="color:red;">Lỗi tải dữ liệu</p>';
+            }
+        }
+
+        async function loadKPI() {
+            try {
+                const res = await fetch(`${API}/kpi`);
+                const data = await res.json();
+                const kpi = data.data;
+
+                let html = `
+                    <div class="card success">
+                        <div class="card-label">✓ Tỷ lệ thiết bị tốt</div>
+                        <div class="card-value">${kpi.ty_le_thiet_bi_tot}%</div>
+                    </div>
+                    <div class="card danger">
+                        <div class="card-label">❌ Tỷ lệ thiết bị kém/hỏng</div>
+                        <div class="card-value">${kpi.ty_le_thiet_bi_kem_hong}%</div>
+                    </div>
+                    <div class="card info">
+                        <div class="card-label">📋 Tỷ lệ kiểm định đúng hạn</div>
+                        <div class="card-value">${kpi.ty_le_kiem_dinh_dung_han}%</div>
+                    </div>
+                    <div class="card warning">
+                        <div class="card-label">⏳ Ghi chú</div>
+                        <div class="card-value" style="font-size:14px;">${kpi.chu_y}</div>
+                    </div>
+                `;
+
+                document.querySelector('#kpi-container').innerHTML = html;
+            } catch (e) {
+                console.error('Lỗi:', e);
+                document.querySelector('#kpi-container').innerHTML = '<p style="color:red;">Lỗi tải KPI</p>';
+            }
+        }
+
+        async function loadReport() {
+            const type = document.querySelector('#filter-report').value;
+            if (!type) {
+                alert('Vui lòng chọn báo cáo');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/baocao/${type}`);
+                const data = await res.json();
+
+                let html = '<table class="table"><thead><tr>';
+
+                // Xác định cột dựa trên loại báo cáo
+                if (type === 'danh-sach-thiet-bi') {
+                    html += '<th>Mã</th><th>Tên</th><th>Model</th><th>SL</th><th>Hoạt động</th><th>Sửa</th><th>Hỏng</th><th>Nguyên giá</th>';
+                } else if (type === 'kho-vat-tu') {
+                    html += '<th>Mã</th><th>Tên</th><th>Chi tiêu</th><th>DVT</th><th>Tồn</th><th>Min</th><th>Max</th><th>Tình trạng</th>';
+                } else if (type === 'kiem-ke') {
+                    html += '<th>Mã</th><th>Tên</th><th>PX</th><th>Ngày</th><th>Khớp</th><th>Sai lệch</th>';
+                } else if (type === 'giao-dich') {
+                    html += '<th>Mã</th><th>Loại</th><th>Thiết bị</th><th>SL</th><th>Người lập</th><th>Ngày</th><th>Trạng thái</th>';
+                } else if (type === 'su-co') {
+                    html += '<th>Mã</th><th>Thiết bị</th><th>Mô tả</th><th>Ngày</th><th>Trạng thái</th><th>Người lập</th>';
+                }
+
+                html += '</tr></thead><tbody>';
+
+                data.data.forEach(row => {
+                    html += '<tr>';
+                    if (type === 'danh-sach-thiet-bi') {
+                        html += `<td>${row.ma}</td><td>${row.ten}</td><td>${row.model || '-'}</td><td>${row.so_luong}</td><td>${row.hoat_dong || 0}</td><td>${row.dang_sua || 0}</td><td>${row.hong || 0}</td><td>${row.nguyen_gia ? row.nguyen_gia.toLocaleString('vi-VN') : 0}</td>`;
+                    } else if (type === 'kho-vat-tu') {
+                        html += `<td>${row.ma}</td><td>${row.ten}</td><td>${row.chi_tieu || '-'}</td><td>${row.dvt}</td><td>${row.ton_hien_tai}</td><td>${row.muc_toi_thieu || '-'}</td><td>${row.muc_toi_da || '-'}</td><td><span class="badge ${row.tinh_trang === 'canh_bao_thap' ? 'warning' : row.tinh_trang === 'canh_bao_cao' ? 'danger' : 'success'}">${row.tinh_trang}</span></td>`;
+                    } else if (type === 'kiem-ke') {
+                        html += `<td>${row.ma}</td><td>${row.ten}</td><td>${row.phan_xuong || '-'}</td><td>${row.ngay_kiem_ke}</td><td>${row.so_khop || 0}</td><td>${row.so_sai_lech || 0}</td>`;
+                    } else if (type === 'giao-dich') {
+                        html += `<td>${row.ma}</td><td>${row.loai}</td><td>${row.thiet_bi_ma || '-'}</td><td>${row.so_luong_thay_doi}</td><td>${row.nguoi_lap || '-'}</td><td>${row.ngay_tao}</td><td><span class="badge ${row.trang_thai === 'cho_duyet' ? 'warning' : 'success'}">${row.trang_thai}</span></td>`;
+                    } else if (type === 'su-co') {
+                        html += `<td>${row.ma}</td><td>${row.thiet_bi_ma || '-'}</td><td>${row.mo_ta}</td><td>${row.ngay_phat_sinh}</td><td><span class="badge ${row.trang_thai === 'dang_mo' ? 'danger' : 'success'}">${row.trang_thai}</span></td><td>${row.nguoi_lap || '-'}</td>`;
+                    }
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                document.querySelector('#report-container').innerHTML = html;
+            } catch (e) {
+                alert('Lỗi: ' + e.message);
+            }
+        }
+
+        function exportExcel() {
+            const type = document.querySelector('#filter-report').value;
+            if (!type) {
+                alert('Vui lòng chọn báo cáo để xuất');
+                return;
+            }
+
+            fetch(`${API}/export/excel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ loai_bao_cao: type })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Lỗi export');
+                return res.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `baocao-${type}-${Date.now()}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(e => alert('Lỗi: ' + e.message));
+        }
+
+        function exportPDF() {
+            const type = document.querySelector('#filter-report').value;
+            if (!type) {
+                alert('Vui lòng chọn báo cáo để xuất');
+                return;
+            }
+
+            fetch(`${API}/export/pdf`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ loai_bao_cao: type })
+            })
+            .then(res => {
+                if (!res.ok) throw new Error('Lỗi export');
+                return res.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `baocao-${type}-${Date.now()}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(e => alert('Lỗi: ' + e.message));
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+            document.querySelector(`#${tabId}`).classList.add('active');
+            event.target.classList.add('active');
+
+            if (tabId === 'tab-overview') loadOverview();
+            else if (tabId === 'tab-kpi') loadKPI();
+        }
+
+        // Tải dữ liệu ban đầu
+        loadOverview();
+    </script>
+</body>
+</html>

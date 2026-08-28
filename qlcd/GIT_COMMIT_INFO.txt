@@ -1,0 +1,162 @@
+═════════════════════════════════════════════════════════════════════════════
+                    GIT COMMIT INFORMATION v22.1
+═════════════════════════════════════════════════════════════════════════════
+
+THÔNG TIN COMMIT:
+────────────────────────────────────────────────────────────────────────────
+
+Commit ID:        1ea1e4b
+Author:           QLCD Developer <dev@qlcd.local>
+Ngày:             $(date '+%d/%m/%Y %H:%M:%S')
+Nhánh:            master (initial commit)
+Số files thay đổi: 98
+Thêm mới:         27,985 insertions(+)
+
+GIT LOG:
+────────────────────────────────────────────────────────────────────────────
+1ea1e4b Phase G+ (v22.1): Excel & PDF Export for Dashboard Reports
+
+commit 1ea1e4ba8f77dcfd86fed236f48de722ff8891e0
+Author:     QLCD Developer <dev@qlcd.local>
+AuthorDate: Fri Aug 28 08:23:46 2026 +0000
+Commit:     QLCD Developer <dev@qlcd.local>
+CommitDate: Fri Aug 28 08:23:46 2026 +0000
+
+    Phase G+ (v22.1): Excel & PDF Export for Dashboard Reports
+    
+    Tính năng mới:
+    - Excel export endpoint POST /api/dashboard/export/excel
+    - PDF export endpoint POST /api/dashboard/export/pdf
+    - Hỗ trợ 5 loại báo cáo (danh sách thiết bị, tồn kho, kiểm định, giao dịch, sự cố)
+    - UI dashboard tích hợp nút Export Excel & PDF
+    - Thêm 12 tests (6 Excel + 6 PDF)
+    
+    Tổng tests: 580/580 ✅ (100%)
+    
+    Files thay đổi:
+    - routes/dashboard.js: Thêm /export/excel & /export/pdf endpoints
+    - public/admin/dashboard.html: Triển khai exportExcel() & exportPDF()
+    - test/test-dashboard.js: Thêm 12 tests cho export functionality
+    - package.json: Thêm pdfkit dependency
+
+FILES TRONG COMMIT:
+────────────────────────────────────────────────────────────────────────────
+commit 1ea1e4ba8f77dcfd86fed236f48de722ff8891e0
+Author: QLCD Developer <dev@qlcd.local>
+Date:   Fri Aug 28 08:23:46 2026 +0000
+
+    Phase G+ (v22.1): Excel & PDF Export for Dashboard Reports
+    
+    Tính năng mới:
+    - Excel export endpoint POST /api/dashboard/export/excel
+    - PDF export endpoint POST /api/dashboard/export/pdf
+    - Hỗ trợ 5 loại báo cáo (danh sách thiết bị, tồn kho, kiểm định, giao dịch, sự cố)
+    - UI dashboard tích hợp nút Export Excel & PDF
+    - Thêm 12 tests (6 Excel + 6 PDF)
+    
+    Tổng tests: 580/580 ✅ (100%)
+    
+    Files thay đổi:
+    - routes/dashboard.js: Thêm /export/excel & /export/pdf endpoints
+    - public/admin/dashboard.html: Triển khai exportExcel() & exportPDF()
+    - test/test-dashboard.js: Thêm 12 tests cho export functionality
+    - package.json: Thêm pdfkit dependency
+
+A	.dockerignore
+A	.gitignore
+A	BAN-GIAO.md
+A	CAI-DAT-WINDOWS.txt
+A	CAI-DAT.bat
+A	CHAY-INTERNET.bat
+A	CHAY.bat
+A	DAT-LAI-MAT-KHAU.bat
+A	DOC-TRUOC-KHI-CAI.txt
+A	Dockerfile
+A	GO-CAI-DAT.bat
+A	KE-HOACH-TRIEN-KHAI.md
+A	KIEM-TRA.bat
+A	SAO-LUU.bat
+A	TRIEN-KHAI-INTERNET.txt
+A	TUNNEL-INTERNET.txt
+A	db/01-schema.sql
+A	db/02-import.sql
+A	db/03-bosung.sql
+A	db/04-giao-dich.sql
+A	db/05-ky-thuat.sql
+A	db/06-ncvt.sql
+A	db/07-bao-mat.sql
+A	db/08-dai-mang.sql
+A	db/09-phan-quyen-dong.sql
+A	db/10-file-mau.sql
+A	db/11-kiem-ke.sql
+A	db/12-doi-chieu.sql
+A	db/13-kho-vat-tu.sql
+A	db/index.js
+A	db/init.js
+A	lib/cay-thiet-bi.js
+A	lib/dai-mang.js
+A	lib/doc-excel.js
+A	lib/giao-dich.js
+A	lib/ky-thuat.js
+A	lib/ma-thiet-bi.js
+A	lib/phien-sqlite.js
+A	lib/so-phieu.js
+A	middleware/bao-mat.js
+A	middleware/quyen-ma.js
+A	middleware/quyen.js
+A	package-lock.json
+A	package.json
+A	public/admin/dashboard.html
+A	public/admin/quan-ly-doi-chieu.html
+A	public/admin/quan-ly-file-mau.html
+A	public/admin/quan-ly-kho-vat-tu.html
+A	public/admin/quan-ly-kiem-ke.html
+A	public/admin/quan-tri-he-thong.html
+A	public/css/style.css
+A	public/index.html
+A	public/js/app.js
+A	public/js/bao-mat.js
+A	public/js/giao-dich.js
+A	public/js/ky-thuat.js
+A	public/js/man-hinh.js
+A	public/js/ncvt.js
+A	public/js/nghiep-vu.js
+A	public/js/nhap-lieu.js
+A	public/js/tien-ich.js
+A	routes/auth.js
+A	routes/baoduong.js
+A	routes/danhmuc.js
+A	routes/dashboard.js
+A	routes/doichieu.js
+A	routes/filemau.js
+A	routes/giaodich.js
+A	routes/import.js
+A	routes/khovat.js
+A	routes/kiemdinh.js
+A	routes/kiemke.js
+A	routes/kythuat.js
+A	routes/mang.js
+A	routes/ncvt.js
+A	routes/quantri.js
+A	routes/suco.js
+A	routes/thietbi.js
+A	routes/tienich.js
+A	routes/tonghop.js
+A	scripts/dat-lai-mat-khau.js
+A	scripts/sao-luu.js
+A	server.js
+A	test/tao-file-mau.js
+A	test/test-bao-mat.js
+A	test/test-dai-mang.js
+A	test/test-dashboard.js
+A	test/test-doi-chieu.js
+A	test/test-file-mau.js
+A	test/test-giao-dich.js
+A	test/test-kho-vat-tu.js
+A	test/test-kiem-ke.js
+A	test/test-ky-thuat.js
+A	test/test-ncvt.js
+A	test/test-nghiep-vu.js
+A	test/test-phan-quyen-dong.js
+A	test/test.js
+A	uploads/.gitkeep
