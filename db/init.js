@@ -48,17 +48,19 @@ function taoAdmin() {
     console.log(`  Đã tạo tài khoản admin / ${matKhau}  <-- ĐỔI MẬT KHẨU NGAY SAU KHI ĐĂNG NHẬP`);
 }
 
-console.log('Khởi tạo database:', db.DB_PATH || '');
-chayMigration();
-taoAdmin();
+function khoiTaoDatabase() {
+    console.log('Khởi tạo database:', db.DB_PATH || '');
+    chayMigration();
+    taoAdmin();
 
-const dem = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
-console.log('\nTóm tắt:');
-console.log('  Nhóm thiết bị :', dem('nhom_thiet_bi'));
-console.log('  Loại kiểm định:', dem('loai_kiem_dinh'));
-console.log('  Từ khoá nhận diện nhóm:', dem('tu_khoa_nhom'));
-console.log('  Phân xưởng    :', dem('phan_xuong'), '(admin tự thêm trong phần Quản trị)');
-console.log('\nXong. Chạy: npm start');
+    const dem = (t) => db.prepare(`SELECT COUNT(*) n FROM ${t}`).get().n;
+    console.log('\nTóm tắt:');
+    console.log('  Nhóm thiết bị :', dem('nhom_thiet_bi'));
+    console.log('  Loại kiểm định:', dem('loai_kiem_dinh'));
+    console.log('  Từ khoá nhận diện nhóm:', dem('tu_khoa_nhom'));
+    console.log('  Phân xưởng    :', dem('phan_xuong'), '(admin tự thêm trong phần Quản trị)');
+    return db;
+}
 
 /**
  * Đóng database và thoát dứt khoát.
@@ -68,5 +70,18 @@ console.log('\nXong. Chạy: npm start');
  * gây lỗi "Assertion failed: (env) != nullptr" tuy dữ liệu đã ghi xong.
  * Đóng tay rồi thoát ngay sẽ tránh được đường dẫn code đó.
  */
-try { db.close(); } catch (e) { /* đã đóng sẵn */ }
-process.exit(0);
+if (require.main === module) {
+    try {
+        khoiTaoDatabase();
+        console.log('\nXong. Chạy: npm start');
+        db.close();
+        process.exit(0);
+    } catch (e) {
+        console.error('\nKhông thể khởi tạo database:', e.message);
+        try { db.close(); } catch (_) { /* đã đóng sẵn */ }
+        process.exit(1);
+    }
+}
+
+module.exports = { khoiTaoDatabase };
+
