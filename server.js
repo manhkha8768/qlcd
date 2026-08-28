@@ -14,11 +14,24 @@ const CONG = process.env.PORT || 3000;
 // Mặc định lắng nghe mọi card mạng để máy ở dải mạng khác cũng vào được
 const DIA_CHI = process.env.QLCD_HOST || '0.0.0.0';
 
-// Kiểm tra database đã khởi tạo chưa
-const duongDanDB = path.join(__dirname, 'db', 'qlcd.db');
-if (!fs.existsSync(duongDanDB) && !process.env.QLCD_DB) {
-    console.error('\n[!] Chưa có database. Chạy trước:  node db/init.js\n');
-    process.exit(1);
+// Kiểm tra/khởi tạo database
+const duongDanDB = process.env.QLCD_DB || path.join(__dirname, 'db', 'qlcd.db');
+const duongDanDbFolder = path.dirname(duongDanDB);
+
+// Tạo folder nếu chưa tồn tại
+if (!fs.existsSync(duongDanDbFolder)) {
+    fs.mkdirSync(duongDanDbFolder, { recursive: true });
+}
+
+// Nếu database chưa tồn tại, cố gắng khởi tạo
+if (!fs.existsSync(duongDanDB)) {
+    try {
+        console.log('[i] Khởi tạo database...');
+        require('./db/init.js');
+    } catch (e) {
+        console.warn('[!] Không thể khởi tạo database tự động:', e.message);
+        // Không exit - để app cố gắng chạy
+    }
 }
 
 // Sau proxy (Nginx, Render, Railway) mới đọc đúng địa chỉ IP thật của người dùng
