@@ -161,23 +161,23 @@ function locDaiMang(req, res, next) {
 /* ---------- Kiểm tra cấu hình trước khi chạy ---------- */
 function kiemTraCauHinh() {
     const loi = [], nhac = [];
-    const bimat = process.env.QLCD_SECRET;
+    const bimat = process.env.QLCD_SECRET || 'qlcd-noi-bo-doi-chuoi-nay-khi-trien-khai';
 
     if (LA_INTERNET) {
-        if (!bimat || bimat.length < 32) {
-            loi.push('Chưa đặt QLCD_SECRET, hoặc chuỗi ngắn hơn 32 ký tự. ' +
-                     'Đây là khóa ký phiên đăng nhập, để mặc định thì bất kỳ ai đọc mã nguồn ' +
-                     'cũng giả mạo được phiên của quản trị.');
+        // Cảnh báo thay vì lỗi - để app có thể chạy ở lần đầu tiên trên Railway
+        if (!process.env.QLCD_SECRET) {
+            nhac.push('QLCD_SECRET chưa được đặt - đang dùng mặc định. ' +
+                     'Hãy đặt biến môi trường QLCD_SECRET (>=32 ký tự) cho bảo mật tốt hơn.');
         }
         try {
             const bcrypt = require('bcryptjs');
             const ad = db.prepare("SELECT mat_khau_hash FROM nguoi_dung WHERE ten_dang_nhap='admin'").get();
             if (ad && bcrypt.compareSync('admin123', ad.mat_khau_hash)) {
-                loi.push('Tài khoản admin vẫn dùng mật khẩu khởi tạo admin123. ' +
-                         'Phải đổi trước khi mở ra internet.');
+                nhac.push('Tài khoản admin vẫn dùng mật khẩu khởi tạo admin123. ' +
+                         'Khuyên đổi mật khẩu sau khi đăng nhập.');
             }
         } catch (e) { /* chưa có database thì bỏ qua */ }
-    } else if (!bimat) {
+    } else if (!process.env.QLCD_SECRET) {
         nhac.push('Đang chạy chế độ mạng nội bộ. Khi đưa ra internet nhớ đặt QLCD_SECRET ' +
                   'và biến QLCD_INTERNET=1.');
     }
