@@ -1,13 +1,22 @@
 {
   "name": "qlcd",
   "version": "1.0.0",
-  "description": "Quan ly thiet bi co dien van tai - Cong ty Xay lap Mo TKV",
-  "main": "server.js",
+  "description": "QLCD - Equipment Lifecycle Management System (Cloudflare-first)",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
-    "start": "node server.js",
-    "init": "node db/init.js",
-    "test": "node test/test.js && node test/test-nghiep-vu.js && node test/test-giao-dich.js && node test/test-ky-thuat.js && node test/test-ncvt.js && node test/test-bao-mat.js && node test/test-dai-mang.js && node test/test-phan-quyen-dong.js && node test/test-file-mau.js && node test/test-kiem-ke.js && node test/test-doi-chieu.js && node test/test-kho-vat-tu.js && node test/test-dashboard.js",
-    "sao-luu": "node scripts/sao-luu.js"
+    "dev": "npm run dev --workspace=backend & npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
+    "type-check": "npm run type-check --workspace=backend && npm run type-check --workspace=frontend",
+    "lint": "npm run lint --workspace=backend && npm run lint --workspace=frontend",
+    "test": "npm run test --workspace=backend && npm run test --workspace=frontend",
+    "deploy": "npm run deploy --workspace=backend",
+    "legacy:start": "node server.js",
+    "legacy:test": "node test/test.js && node test/test-nghiep-vu.js && node test/test-giao-dich.js && node test/test-ky-thuat.js && node test/test-ncvt.js && node test/test-bao-mat.js && node test/test-dai-mang.js && node test/test-phan-quyen-dong.js && node test/test-file-mau.js && node test/test-kiem-ke.js && node test/test-doi-chieu.js && node test/test-kho-vat-tu.js && node test/test-dashboard.js",
+    "legacy:backup": "node scripts/sao-luu.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -18,5 +27,16 @@
     "multer": "^2.2.0",
     "pdfkit": "^0.20.1",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "eslint": "^8.50.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manhkha8768/qlcd.git"
   }
 }

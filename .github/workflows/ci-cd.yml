@@ -1,0 +1,123 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - feature/**
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  # Backend validation
+  backend-validation:
+    name: Backend - TypeCheck, Lint, Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: "backend/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeCheck
+        run: npm run type-check
+        continue-on-error: false
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Build
+        run: npm run build
+        continue-on-error: false
+
+  # Frontend validation
+  frontend-validation:
+    name: Frontend - TypeCheck, Lint, Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: "frontend/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeCheck
+        run: npm run type-check
+        continue-on-error: false
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Build
+        run: npm run build
+        continue-on-error: false
+
+  # Security scan (future enhancement)
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "table"
+
+  # Notification
+  status-check:
+    name: Status Check Complete
+    runs-on: ubuntu-latest
+    needs: [backend-validation, frontend-validation]
+    if: always()
+
+    steps:
+      - name: Determine result
+        run: |
+          if [ "${{ needs.backend-validation.result }}" = "failure" ] || [ "${{ needs.frontend-validation.result }}" = "failure" ]; then
+            echo "CI/CD pipeline failed"
+            exit 1
+          fi
+          echo "CI/CD pipeline passed"
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ CI/CD Pipeline Passed\n\n- TypeCheck: ✓\n- Lint: ✓\n- Build: ✓'
+            })

@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Wrangler
+.wrangler/
+wrangler.toml.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Development
+.env
+.env.local
+.env.*.local
+qlcd.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/

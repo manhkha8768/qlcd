@@ -1,0 +1,62 @@
+name = "qlcd-api"
+type = "javascript"
+main = "src/index.ts"
+compatibility_date = "2024-08-09"
+
+# Environment Configuration
+env = {
+  production = { name = "qlcd-api-prod", vars = { ENVIRONMENT = "production" } },
+  staging = { name = "qlcd-api-staging", vars = { ENVIRONMENT = "staging" } },
+  development = { name = "qlcd-api-dev", vars = { ENVIRONMENT = "development" } }
+}
+
+# Database Binding (D1)
+[[d1_databases]]
+binding = "DB"
+database_name = "qlcd_prod"
+database_id = "00000000-0000-0000-0000-000000000000"  # Will be populated after D1 creation
+
+# Object Storage Binding (R2)
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "qlcd-files"
+jurisdiction = "eu"
+
+# Key-Value Storage Binding (KV)
+[[kv_namespaces]]
+binding = "KV"
+id = "00000000000000000000000000000000"  # Will be populated after KV creation
+preview_id = "00000000000000000000000000000001"  # Will be populated after KV creation
+
+# Scheduled Triggers (for background jobs)
+[[triggers.scheduled]]
+crons = ["0 0 * * *"]  # Daily at midnight UTC
+
+# Build configuration
+build = {
+  command = "npm run build",
+  cwd = "./backend",
+  watch_paths = ["backend/src/**/*.ts"]
+}
+
+# Development Server
+dev = {
+  ip = "127.0.0.1",
+  port = 8787,
+  local_protocol = "http"
+}
+
+# Routes (for local development)
+routes = [
+  { pattern = "qlcd-api.workers.dev", custom_domain = true }
+]
+
+# Observability
+observability = {
+  enabled = true
+}
+
+# Rate Limiting
+limits = {
+  cpu_ms = 50
+}

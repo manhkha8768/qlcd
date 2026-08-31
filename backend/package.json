@@ -1,0 +1,32 @@
+{
+  "name": "qlcd-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "QLCD Backend - Cloudflare Workers + Hono",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler publish",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "test": "node --loader tsx node_modules/vitest/vitest.mjs",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "hono": "^4.0.0",
+    "zod": "^3.22.4",
+    "@cloudflare/workers-types": "^4.20230904.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "wrangler": "^3.15.0",
+    "vitest": "^0.34.6",
+    "tsx": "^3.14.0",
+    "eslint": "^8.50.0",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
