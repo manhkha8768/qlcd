@@ -109,6 +109,10 @@ Migration `25-warehouse-transfer-return.sql` tạo workflow `warehouse_transfers
 
 Migration `26-ncvt-period-submission.sql` tách `ncvt_periods` cấp Công ty khỏi `ncvt_submissions` theo từng PX. Mỗi năm/quý chỉ có một period, mỗi PX chỉ có một submission trong period. Dòng submission bắt buộc Material ID, UOM canonical và số lượng dương; mutation chỉ được phép khi submission DRAFT và period OPEN. Submit tăng optimistic version, khóa nội dung và ghi event append-only. `ncvt_ky/ncvt_chi_tiet` được map/backfill sang draft canonical, không đổi trạng thái hoặc số lượng nguồn.
 
+## 19. TASK 14 implementation
+
+Migration `27-ncvt-review-approval.sql` tạo assignment theo period/PX, giữ lịch sử khi phân công lại và chỉ cho một assignment ACTIVE. Mỗi vòng submit chỉ có một `ncvt_review_decisions`, gắn submission version, reviewer, lý do, tổng dòng/tổng lượng và JSON snapshot; trigger database cấm update/delete. RETURN chuyển submission sang RETURNED để PX phản hồi, mở lại DRAFT, sửa và submit vòng mới. REJECT/APPROVE là trạng thái terminal. Period chỉ được LOCKED khi mọi submission đã có quyết định cuối.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

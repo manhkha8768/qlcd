@@ -3,7 +3,7 @@ const fs=require('fs'),path=require('path'),os=require('os'),bcrypt=require('bcr
 process.env.QLCD_DB=path.join(os.tmpdir(),`qlcd-stock-${Date.now()}.db`);
 const db=require('../db'),dir=path.join(__dirname,'..','db');
 const files=fs.readdirSync(dir).filter(x=>/^\d+.*\.sql$/.test(x)).sort();
-for(const f of files.filter(x=>!['23-material-master.sql','24-stock-ledger.sql','25-warehouse-transfer-return.sql','26-ncvt-period-submission.sql'].includes(x)))db.exec(fs.readFileSync(path.join(dir,f),'utf8'));
+for(const f of files.filter(x=>!['23-material-master.sql','24-stock-ledger.sql','25-warehouse-transfer-return.sql','26-ncvt-period-submission.sql','27-ncvt-review-approval.sql'].includes(x)))db.exec(fs.readFileSync(path.join(dir,f),'utf8'));
 const hash=bcrypt.hashSync('admin123',8);
 db.prepare("INSERT INTO nguoi_dung(ten_dang_nhap,mat_khau_hash,ho_ten,vai_tro) VALUES('stock_admin',?,'Admin Stock','admin')").run(hash);
 const legacyId=db.prepare("INSERT INTO kho_vat_tu(ma,ten,chi_tieu,dvt) VALUES('K-BOLT','Bu lông M12','M12','cái')").run().lastInsertRowid;
