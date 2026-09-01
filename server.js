@@ -75,6 +75,7 @@ try {
     app.use('/api/technical-profiles', require('./routes/technical-profile'));
     app.use('/api/component-tree', require('./routes/component-tree'));
     app.use('/api/documents', require('./routes/documents'));
+    app.use('/api/materials', require('./routes/materials'));
     app.use('/api/tai-san', require('./routes/taisan'));
     app.use('/api/giao-dich', require('./routes/giaodich'));
     app.use('/api', require('./routes/tienich'));

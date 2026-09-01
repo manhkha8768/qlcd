@@ -93,6 +93,10 @@ Migration `21-component-tree.sql` tạo `device_components` theo `Device ID`, qu
 
 Migration `22-document-management.sql` tạo `documents`, version bất biến, entity links và access log append-only. Một document có nhiều version; version lưu provider/object key, SHA-256, MIME, size, uploader và change note. Link hỗ trợ Device, Component, Asset, Asset Transaction, giao dịch legacy, sửa chữa và kiểm định. Metadata tài liệu kỹ thuật, giao dịch và điều chuyển được backfill; file vật lý legacy giữ nguyên tại chỗ. Storage adapter giới hạn object key trong vùng upload được phép và dành provider `EXTERNAL` cho object storage sau khi cấu hình môi trường thực.
 
+## 15. TASK 10 implementation
+
+Migration `23-material-master.sql` tạo `materials`, `uoms`, alias ĐVT, source mappings và duplicate candidates. Phụ tùng, kho và NCVT được backfill có truy vết; NCVT chỉ gom bản ghi tương đương trong cùng nguồn. Trùng giữa nguồn tạo candidate, không tự merge. Review xác nhận cùng vật tư mới remap nguồn và archive master thừa; giữ riêng không đổi mapping.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

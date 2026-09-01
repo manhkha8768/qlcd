@@ -16,7 +16,7 @@
 | 7 | Hồ sơ kỹ thuật | Hoàn thành | Device ID canonical, UI profile/tab, typed validation, optimistic version và immutable history |
 | 8 | Cây cấu tạo | Hoàn thành | Device ID canonical, cycle guard, optimistic version, replace/move và repair/material integration |
 | 9 | Document/file management | Hoàn thành | Canonical metadata/version/hash/entity link, storage adapter, download ACL và safe legacy backfill |
-| 10 | Material master | Một phần sơ khai | canonical material/UOM/dedup review |
+| 10 | Material master | Hoàn thành | Material ID/UOM canonical, source mapping và duplicate review không auto-merge |
 | 11 | Warehouse + stock ledger | Một phần | append-only ledger + on-hand/reserved/available/incoming |
 | 12 | Chuyển kho + hoàn trả | Chưa đầy đủ | in-transit, receive/return atomic, không double stock |
 | 13 | NCVT period + PX submission | Một phần | submission/version/state/material link |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 10 — Material Master**, chuẩn hóa Material ID/UOM, mapping vật tư/phụ tùng/NCVT/kho legacy và quy trình rà soát nghi trùng không tự merge.
+Task tiếp theo đề xuất: **TASK 11 — Warehouse + Stock Ledger**, append-only stock ledger và projection ON_HAND/RESERVED/AVAILABLE/INCOMING theo Material ID/UOM canonical.
 
 ## 4. Quality gate sau mỗi Task
 
