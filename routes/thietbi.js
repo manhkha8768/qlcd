@@ -10,6 +10,7 @@ r.use(dangNhap);
 r.get('/', (req, res) => {
     const gh = gioiHanPX(req);
     let sql = `SELECT tb.id, tb.ma_tb, tb.ten, tb.so_seri, tb.nam_sx, tb.ma_tscd, tb.loai_ts,
+                      d.id AS device_id, a.id AS asset_id,
                       tb.so_luong, tb.dvt, tb.nguyen_gia, tb.gia_tri_con_lai, tb.ngay_su_dung,
                       tb.trang_thai, tb.tinh_trang_kt, tb.trang_thai_duyet, tb.gio_chay_luy_ke,
                       n.ma AS ma_nhom, n.ten AS ten_nhom,
@@ -18,6 +19,8 @@ r.get('/', (req, res) => {
                LEFT JOIN nhom_thiet_bi n ON n.id = tb.nhom_id
                LEFT JOIN phan_xuong px   ON px.id = tb.phan_xuong_id
                LEFT JOIN vi_tri vt       ON vt.id = tb.vi_tri_id
+               LEFT JOIN devices d       ON d.legacy_thiet_bi_id = tb.id
+               LEFT JOIN assets a        ON a.legacy_thiet_bi_id = tb.id
                WHERE 1=1`;
     const p = [];
 
@@ -46,7 +49,8 @@ r.get('/', (req, res) => {
 /* ---------- Hồ sơ chi tiết ---------- */
 r.get('/:id', (req, res) => {
     const tb = db.prepare(`
-        SELECT tb.*, n.ma AS ma_nhom, n.ten AS ten_nhom, nc.ten AS ten_nhom_cha,
+        SELECT tb.*, d.id AS device_id, a.id AS asset_id,
+               n.ma AS ma_nhom, n.ten AS ten_nhom, nc.ten AS ten_nhom_cha,
                m.ma_model, m.hang_sx AS model_hang, m.cong_suat_kw,
                px.ten AS ten_px, px.ten_ngan AS px, vt.ten AS ten_vi_tri
         FROM thiet_bi tb
@@ -55,6 +59,8 @@ r.get('/:id', (req, res) => {
         LEFT JOIN model_thiet_bi m ON m.id = tb.model_id
         LEFT JOIN phan_xuong px    ON px.id = tb.phan_xuong_id
         LEFT JOIN vi_tri vt        ON vt.id = tb.vi_tri_id
+        LEFT JOIN devices d        ON d.legacy_thiet_bi_id = tb.id
+        LEFT JOIN assets a         ON a.legacy_thiet_bi_id = tb.id
         WHERE tb.id = ?`).get(req.params.id);
 
     if (!tb) return res.status(404).json({ loi: 'Không tìm thấy thiết bị' });

@@ -9,7 +9,7 @@
 | 0 | Audit + baseline/docs | Hoàn thành trong commit Task 0 | 8 tài liệu, test/build report, không đổi nghiệp vụ |
 | 1 | Foundation stabilization | Hoàn thành | Authorization service thống nhất, scope nhiều đơn vị, project/unit foundation, migration journal, CI/PWA foundation và regression test |
 | 2 | Asset/TSCĐ/CCDC master | Hoàn thành | `assets` tách khỏi device, legacy mapping, CRUD/import/export/pagination, RBAC và multi-unit scope |
-| 3 | Device master | Một phần | Device ID + mapping asset/device + profile boundary |
+| 3 | Device master | Hoàn thành | `devices`, legacy mapping, asset/device history, CRUD/RBAC/scope/version và compatibility read |
 | 4 | Asset transaction ledger | Một phần | Append-only ledger, reversal, projection, idempotency |
 | 5 | Điều chuyển + giao nhận hai đầu | Một phần | sender/receiver/approval/atomic post, attachment/timeline |
 | 6 | Kiểm kê + đối chiếu + QR | Một phần | QR/mobile/offline draft, adjustment qua ledger |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 3 — Device Master**, chuẩn hóa hồ sơ kỹ thuật thiết bị và quan hệ `device ↔ asset` dựa trên mapping legacy; chưa triển khai Asset Ledger trước Task 4.
+Task tiếp theo đề xuất: **TASK 4 — Asset Transaction Ledger**, tạo ledger append-only, reversal, projection và idempotency trên Asset Master; chưa thay thế workflow legacy trước khi có parity test.
 
 ## 4. Quality gate sau mỗi Task
 

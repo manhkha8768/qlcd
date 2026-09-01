@@ -65,6 +65,10 @@ Các bảng kiểm kê, kỹ thuật, bảo dưỡng và sửa chữa liên kế
 
 Migration `15-asset-master.sql` tạo `assets` làm Master Asset mới và `asset_legacy_map` để truy vết về `thiet_bi`. Backfill giữ mã TSCĐ duy nhất; bản ghi thiếu/trùng mã nhận mã ổn định `QLCD-LEGACY-{id}`. Bảng legacy tiếp tục tồn tại, không dual-write và không bị drop. Asset mới có optimistic `version`, soft archive, RBAC, scope đơn vị, API phân trang/filter và import/export Excel. Việc đổi đơn vị bị chặn khỏi CRUD để buộc đi qua ledger/transfer ở Task 4–5.
 
+## 8. TASK 3 implementation
+
+Migration `16-device-master.sql` tạo `devices` chỉ chứa nhận dạng và hồ sơ kỹ thuật, `device_legacy_map` giữ ID `thiet_bi`, còn `asset_device_links` biểu diễn quan hệ nhiều-nhiều có hiệu lực theo thời gian. Backfill tạo Device ID ổn định và liên kết chính tới Asset sinh từ cùng record legacy. API Device Master có CRUD, filter/pagination, RBAC, multi-unit scope, optimistic version và đóng liên kết thay vì xóa lịch sử. API `/api/thiet-bi` cũ trả thêm `device_id`/`asset_id` để các màn hình hiện hữu chuyển đổi dần.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.
