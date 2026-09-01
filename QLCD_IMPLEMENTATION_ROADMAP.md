@@ -12,7 +12,7 @@
 | 3 | Device master | Hoàn thành | `devices`, legacy mapping, asset/device history, CRUD/RBAC/scope/version và compatibility read |
 | 4 | Asset transaction ledger | Hoàn thành | Opening backfill, append-only posting, reversal, projection/rebuild, idempotency và reconciliation |
 | 5 | Điều chuyển + giao nhận hai đầu | Hoàn thành | sender/receiver/approval bắt buộc, evidence ACL, timeline, reject và atomic ledger post |
-| 6 | Kiểm kê + đối chiếu + QR | Một phần | QR/mobile/offline draft, adjustment qua ledger |
+| 6 | Kiểm kê + đối chiếu + QR | Hoàn thành | Ledger snapshot bất biến, QR identity, mobile offline queue, idempotent sync, reviewed adjustment |
 | 7 | Hồ sơ kỹ thuật | Một phần đáng kể | UI profile/tab, version/data validation |
 | 8 | Cây cấu tạo | Một phần đáng kể | cycle/concurrency/UX và integration repair/material |
 | 9 | Document/file management | Một phần | object storage, version/hash/link/signed URL/ACL |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 6 — Kiểm kê + đối chiếu + QR**, nối snapshot/kết quả kiểm kê với Asset Master và chỉ tạo adjustment qua Asset Ledger sau review/approval.
+Task tiếp theo đề xuất: **TASK 7 — Hồ sơ kỹ thuật**, chuyển profile kỹ thuật sang Device ID canonical, bổ sung validation/version và giữ mapping nghiệp vụ legacy.
 
 ## 4. Quality gate sau mỗi Task
 

@@ -1,5 +1,6 @@
-const CACHE = 'qlcd-shell-v1';
-const SHELL = ['/', '/index.html', '/css/style.css', '/icons/qlcd.svg'];
+const CACHE = 'qlcd-shell-v2';
+const SHELL = ['/', '/index.html', '/css/style.css', '/icons/qlcd.svg', '/js/tien-ich.js',
+    '/js/kiem-ke-ledger.js', '/js/app.js'];
 
 self.addEventListener('install', event => {
     event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));

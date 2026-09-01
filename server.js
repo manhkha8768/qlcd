@@ -71,6 +71,7 @@ try {
     app.use('/api/thiet-bi', require('./routes/thietbi'));
     app.use('/api/device-master', require('./routes/device-master'));
     app.use('/api/asset-ledger', require('./routes/asset-ledger'));
+    app.use('/api/inventory', require('./routes/inventory'));
     app.use('/api/tai-san', require('./routes/taisan'));
     app.use('/api/giao-dich', require('./routes/giaodich'));
     app.use('/api', require('./routes/tienich'));

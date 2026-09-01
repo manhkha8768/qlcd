@@ -1,0 +1,32 @@
+/** TASK 6 integration tests: ledger snapshot, QR batch sync, review and adjustment. */
+const fs=require('fs');const path=require('path');const os=require('os');const bcrypt=require('bcryptjs');
+process.env.QLCD_DB=path.join(os.tmpdir(),`qlcd-inventory-${Date.now()}.db`);const db=require('../db'),dbDir=path.join(__dirname,'..','db');
+const migrations=fs.readdirSync(dbDir).filter(f=>/^\d+.*\.sql$/.test(f)).sort();for(const f of migrations.filter(f=>!['17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql'].includes(f)))db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
+const px=db.prepare("INSERT INTO phan_xuong(ma,ten,loai) VALUES('I1','PX Inventory','san_xuat')").run().lastInsertRowid;
+const a1=db.prepare("INSERT INTO assets(ma_tai_san,loai_tai_san,ten,dvt,so_luong,don_vi_id,trang_thai) VALUES ('INV-001','TSCD','Asset kiểm kê 1','Cái',5,?,'dang_su_dung')").run(px).lastInsertRowid;
+const a2=db.prepare("INSERT INTO assets(ma_tai_san,loai_tai_san,ten,dvt,so_luong,don_vi_id,trang_thai) VALUES ('INV-002','CCDC','Asset kiểm kê 2','Cái',2,?,'dang_su_dung')").run(px).lastInsertRowid;
+for(const f of ['17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql'])db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
+db.prepare("INSERT INTO nguoi_dung(ten_dang_nhap,mat_khau_hash,ho_ten,vai_tro) VALUES ('inv_admin',?,'Admin Inventory','admin')").run(bcrypt.hashSync('admin123',8));
+db.prepare("INSERT INTO nguoi_dung(ten_dang_nhap,mat_khau_hash,ho_ten,vai_tro,phan_xuong_id) VALUES ('inv_px',?,'PX Inventory','px',?)").run(bcrypt.hashSync('px12345',8),px);
+const app=require('../server');let dat=0,truot=0;function kt(n,d){if(d){dat++;console.log(`  [ĐẠT]   ${n}`);}else{truot++;console.log(`  [TRƯỢT] ${n}`);}}
+(async()=>{console.log('\n===== TEST TASK 6 INVENTORY LEDGER + QR =====');const server=app.listen(0),base=`http://127.0.0.1:${server.address().port}`;let cookie='';async function api(url,options={}){const headers={...(options.headers||{})};if(cookie)headers.cookie=cookie;if(options.body){headers['content-type']='application/json';options.body=JSON.stringify(options.body);}const response=await fetch(base+url,{...options,headers});const sc=response.headers.get('set-cookie');if(sc)cookie=sc.split(';')[0];let body;try{body=await response.json();}catch(_){body=null;}return{response,body};}async function login(u,p){cookie='';return api('/api/auth/dang-nhap',{method:'POST',body:{ten_dang_nhap:u,mat_khau:p}});}
+await login('inv_admin','admin123');let result=await api('/api/inventory',{method:'POST',body:{ma_dot:'KK-LEDGER-001',ten:'Kiểm kê ledger',don_vi_id:px}});const sid=result.body.id;kt('Mở kỳ và chụp snapshot Asset Ledger',result.response.status===201&&sid);
+result=await api(`/api/inventory/${sid}`);kt('Snapshot giữ đúng hai Asset và số lượng sổ',result.body.snapshot.length===2&&result.body.snapshot.find(x=>x.asset_id===a1).so_luong_so===5);
+let immutable=false;try{db.prepare('UPDATE inventory_snapshot_lines SET so_luong_so=99 WHERE session_id=?').run(sid);}catch(e){immutable=/immutable/.test(e.message);}kt('Snapshot không thể sửa',immutable);
+const qr1='QLCD:ASSET:INV-001',qr2='QLCD:ASSET:INV-002';result=await api('/api/inventory/qr/'+encodeURIComponent(qr1));kt('QR resolve đúng Asset ID',result.body.id===a1);
+await login('inv_px','px12345');const observations=[{qr_value:qr1,so_luong_thuc_te:3,tinh_trang:'tot',client_updated_at:'2026-09-01T12:00:00Z'},{qr_value:qr2,so_luong_thuc_te:2,tinh_trang:'tot'}];
+result=await api(`/api/inventory/${sid}/sync`,{method:'POST',body:{client_batch_id:'mobile-batch-001',device_ref:'phone-01',observations}});kt('Đồng bộ batch draft từ thiết bị mobile',result.body.accepted===2&&!result.body.idempotent);
+result=await api(`/api/inventory/${sid}/sync`,{method:'POST',body:{client_batch_id:'mobile-batch-001',device_ref:'phone-01',observations}});kt('Sync batch idempotent không nhân đôi',result.body.accepted===2&&result.body.idempotent&&db.prepare('SELECT COUNT(*) n FROM inventory_observations WHERE session_id=?').get(sid).n===2);
+kt('Chặn tái sử dụng batch ID với payload khác',(await api(`/api/inventory/${sid}/sync`,{method:'POST',body:{client_batch_id:'mobile-batch-001',observations:[{qr_value:qr1,so_luong_thuc_te:4}]}})).response.status===409);
+result=await api(`/api/inventory/${sid}/submit`,{method:'POST'});kt('PX trình kết quả và khóa draft',result.body.trang_thai==='SUBMITTED');
+kt('Kỳ đã trình không nhận sync mới',(await api(`/api/inventory/${sid}/sync`,{method:'POST',body:{client_batch_id:'late',observations}})).response.status===409);
+let discrepancy=db.prepare('SELECT * FROM inventory_discrepancies WHERE session_id=?').get(sid);kt('Sinh sai lệch số lượng từ snapshot và thực tế',discrepancy.asset_id===a1&&discrepancy.so_luong_so===5&&discrepancy.so_luong_thuc_te===3);
+await login('inv_admin','admin123');kt('Chặn phê duyệt khi sai lệch chưa review',(await api(`/api/inventory/${sid}/approve`,{method:'POST'})).response.status===409);
+result=await api(`/api/inventory/${sid}/discrepancies/${discrepancy.id}/review`,{method:'POST',body:{status:'APPROVED',reason:'Xác nhận thiếu 2'}});kt('Review chấp thuận sai lệch',result.response.status===200);
+result=await api(`/api/inventory/${sid}/approve`,{method:'POST'});kt('Phê duyệt tạo adjustment và post ledger',result.body.trang_thai==='POSTED'&&result.body.adjustment_transaction_id);const txId=result.body.adjustment_transaction_id;
+kt('Adjustment có đúng một entry -2',db.prepare('SELECT so_luong_thay_doi FROM asset_ledger_entries WHERE transaction_id=?').get(txId).so_luong_thay_doi===-2);
+kt('Projection cập nhật từ 5 xuống 3',db.prepare('SELECT so_luong FROM asset_balance_projection WHERE asset_id=? AND don_vi_id=?').get(a1,px).so_luong===3);
+kt('Asset Master snapshot không bị sửa trực tiếp',db.prepare('SELECT so_luong FROM assets WHERE id=?').get(a1).so_luong===5);
+kt('Phê duyệt lặp bị chặn và không nhân entry',(await api(`/api/inventory/${sid}/approve`,{method:'POST'})).response.status===409&&db.prepare('SELECT COUNT(*) n FROM asset_ledger_entries WHERE transaction_id=?').get(txId).n===1);
+result=await api(`/api/inventory/${sid}`);kt('Timeline truy vết open/sync/submit/review/approve',result.body.timeline.length>=5);
+server.close();console.log(`===== KẾT QUẢ: ${dat} đạt / ${truot} trượt / ${dat+truot} test =====`);try{db.close();}catch(_){}process.exit(truot?1:0);})().catch(e=>{console.error(e);process.exit(1);});

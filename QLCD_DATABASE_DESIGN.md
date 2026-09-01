@@ -77,6 +77,10 @@ Migration `17-asset-ledger.sql` thêm transaction header, draft lines, immutable
 
 Migration `18-transfer-handover.sql` thêm `asset_transfer_workflows`, `asset_transfer_timeline` và `asset_transfer_documents`. Workflow tách khỏi status kế toán của transaction để không rewrite bảng ledger. Phê duyệt và post là một transaction nguyên tử; lỗi tồn nguồn hoặc lỗi ghi entry rollback cả approval. Chứng từ lưu metadata và đường dẫn có ACL ở upload/download; object storage và versioning thuộc Task 9.
 
+## 11. TASK 6 implementation
+
+Migration `19-inventory-ledger-qr.sql` tạo QR identity, kỳ kiểm kê canonical, snapshot bất biến từ projection, batch sync idempotent, observation, discrepancy review và timeline. Kết quả submit không sửa snapshot. Chỉ sai lệch được reviewer chấp thuận mới sinh transaction `ADJUSTMENT`; approval và ledger post chạy nguyên tử. Asset Master/legacy không bị sửa trực tiếp.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

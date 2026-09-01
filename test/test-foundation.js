@@ -63,7 +63,7 @@ const app = require('../server');
         (await manifest.json()).short_name === 'QLCD');
     const sw = await fetch(base + '/service-worker.js');
     kt('PWA service worker được phục vụ', sw.status === 200 &&
-        (await sw.text()).includes("qlcd-shell-v1"));
+        /qlcd-shell-v\d+/.test(await sw.text()));
 
     server.close();
     console.log(`===== KẾT QUẢ: ${dat} đạt / ${truot} trượt / ${dat + truot} test =====`);
