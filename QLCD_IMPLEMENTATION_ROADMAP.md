@@ -19,7 +19,7 @@
 | 10 | Material master | Hoàn thành | Material ID/UOM canonical, source mapping và duplicate review không auto-merge |
 | 11 | Warehouse + stock ledger | Hoàn thành | Kho canonical, opening backfill, append-only/idempotent posting, reversal, projection on-hand/reserved/available/incoming và reconciliation legacy |
 | 12 | Chuyển kho + hoàn trả | Hoàn thành | workflow hai đầu, dispatch in-transit, receive/return atomic, idempotent và không double stock |
-| 13 | NCVT period + PX submission | Một phần | submission/version/state/material link |
+| 13 | NCVT period + PX submission | Hoàn thành | period/version/state, PX draft/submit, Material ID/UOM lines, legacy mapping và immutable events |
 | 14 | Review + approval NCVT | Chưa đầy đủ | assignment review, return/reject/approve immutable |
 | 15 | Tổng hợp NCVT Công ty | Một phần | material/PX drill-down và nguồn cung chuẩn |
 | 16 | Reservation | Chưa làm | concurrency-safe reservation/allocation |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 13 — NCVT period + PX submission**, chuẩn hóa kỳ, version/state machine, dòng theo Material ID và luồng PX draft/submit.
+Task tiếp theo đề xuất: **TASK 14 — Review + approval NCVT**, assignment reviewer, return/reject/approve và quyết định bất biến.
 
 ## 4. Quality gate sau mỗi Task
 

@@ -105,6 +105,10 @@ Migration `24-stock-ledger.sql` tạo `warehouses`, transaction header/draft lin
 
 Migration `25-warehouse-transfer-return.sql` tạo workflow `warehouse_transfers`, dòng canonical và timeline append-only. Dispatch ghi một stock transaction gồm `ON_HAND -q` tại nguồn và `INCOMING +q` tại đích; receive ghi `ON_HAND +q / INCOMING -q` tại đích; return trước khi nhận ghi `ON_HAND +q` về nguồn và `INCOMING -q` tại đích. Mỗi transition, ledger entries, projection và workflow status cùng commit hoặc cùng rollback. Transaction ID được lưu trên workflow và retry trạng thái cuối không sinh entry kép.
 
+## 18. TASK 13 implementation
+
+Migration `26-ncvt-period-submission.sql` tách `ncvt_periods` cấp Công ty khỏi `ncvt_submissions` theo từng PX. Mỗi năm/quý chỉ có một period, mỗi PX chỉ có một submission trong period. Dòng submission bắt buộc Material ID, UOM canonical và số lượng dương; mutation chỉ được phép khi submission DRAFT và period OPEN. Submit tăng optimistic version, khóa nội dung và ghi event append-only. `ncvt_ky/ncvt_chi_tiet` được map/backfill sang draft canonical, không đổi trạng thái hoặc số lượng nguồn.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.
