@@ -1,7 +1,7 @@
 /** TASK 7 integration tests: canonical Device profile, typed validation and version history. */
 const fs=require('fs');const path=require('path');const os=require('os');const bcrypt=require('bcryptjs');
 process.env.QLCD_DB=path.join(os.tmpdir(),`qlcd-profile-${Date.now()}.db`);const db=require('../db'),dbDir=path.join(__dirname,'..','db');
-const migrations=fs.readdirSync(dbDir).filter(f=>/^\d+.*\.sql$/.test(f)).sort();const later=['15-asset-master.sql','16-device-master.sql','17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql'];for(const f of migrations.filter(f=>!later.includes(f)))db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
+const migrations=fs.readdirSync(dbDir).filter(f=>/^\d+.*\.sql$/.test(f)).sort();const later=['15-asset-master.sql','16-device-master.sql','17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql','21-component-tree.sql'];for(const f of migrations.filter(f=>!later.includes(f)))db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
 const px1=db.prepare("INSERT INTO phan_xuong(ma,ten,loai) VALUES('T1','PX Technical 1','san_xuat')").run().lastInsertRowid;const px2=db.prepare("INSERT INTO phan_xuong(ma,ten,loai) VALUES('T2','PX Technical 2','san_xuat')").run().lastInsertRowid;
 const defLegacy=db.prepare("SELECT id,nhom_id FROM dinh_nghia_thong_so WHERE kieu_du_lieu='so' LIMIT 1").get();const legacyId=db.prepare("INSERT INTO thiet_bi(ma_tb,ten,nhom_id,phan_xuong_id) VALUES ('TECH.LEGACY.001','Thiết bị kỹ thuật legacy',?,?)").run(defLegacy.nhom_id,px1).lastInsertRowid;
 db.prepare("INSERT INTO gia_tri_thong_so(thiet_bi_id,dinh_nghia_id,gia_tri_so) VALUES (?,?,42)").run(legacyId,defLegacy.id);

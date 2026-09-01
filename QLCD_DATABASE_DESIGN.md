@@ -85,6 +85,10 @@ Migration `19-inventory-ledger-qr.sql` tạo QR identity, kỳ kiểm kê canoni
 
 Migration `20-technical-profile.sql` tạo định nghĩa thuộc tính theo nhóm/model, trạng thái phiên bản hồ sơ, giá trị typed và lịch sử thay đổi bất biến theo `Device ID`. Kiểu dữ liệu gồm text, number, boolean, date và enum; định nghĩa hỗ trợ đơn vị, min/max, pattern, bắt buộc và thứ tự. Dữ liệu `dinh_nghia_thong_so`/`gia_tri_thong_so` được backfill qua legacy mapping, không xóa hay sửa bảng nguồn. Profile canonical trả các tab tài sản, cấu tạo, tài liệu, bảo trì và kiểm định; các tab chưa canonical tiếp tục đọc qua mapping cho tới Task tương ứng.
 
+## 13. TASK 8 implementation
+
+Migration `21-component-tree.sql` tạo `device_components` theo `Device ID`, quan hệ `parent_id` không giới hạn cấp, optimistic `version`, soft removal và legacy mapping. `component_events` là lịch sử append-only được trigger bảo vệ. Backfill chạy hai pha để giữ đúng node và parent; sửa chữa, vật tư sửa chữa và phụ tùng tương thích được nối qua các bảng link canonical riêng. API kiểm tra parent cùng Device và dùng recursive descendants để chặn cycle; move, replace và chuyển node con chạy trong transaction. Bảng `cum_thiet_bi` không bị drop hay rewrite.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

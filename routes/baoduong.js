@@ -111,9 +111,18 @@ r.post('/phieu', duocGhi, (req, res) => {
     if (!b.mo_ta_hu_hong || !b.mo_ta_hu_hong.trim()) {
         return res.status(400).json({ loi: 'Mô tả nội dung hư hỏng hoặc công việc bảo dưỡng' });
     }
+    const component = b.component_id ? db.prepare('SELECT * FROM device_components WHERE id=? AND active=1').get(b.component_id) : null;
+    if (b.component_id && !component) return res.status(400).json({ loi: 'Không tìm thấy component canonical' });
+    if (component) {
+        const canonicalDevice = db.prepare('SELECT * FROM devices WHERE id=?').get(component.device_id);
+        if (Number(canonicalDevice?.legacy_thiet_bi_id) !== Number(tb.id)) {
+            return res.status(422).json({ loi: 'Component không thuộc thiết bị của phiếu sửa chữa' });
+        }
+    }
 
     const soPhieu = sinhSoPhieu('phieu_sua_chua', 'so_phieu', 'SC');
-    const info = db.prepare(`
+    const repairId = db.transaction(() => {
+      const info = db.prepare(`
         INSERT INTO phieu_sua_chua (so_phieu, thiet_bi_id, phan_xuong_id, loai, cap_bd, muc_do,
             ngay_bao_hong, mo_ta_hu_hong, nguyen_nhan, bien_phap_xu_ly, ngay_bat_dau,
             don_vi_thuc_hien, ten_don_vi_ngoai, so_cong, chi_phi_nhan_cong, chi_phi_khac,
@@ -127,13 +136,24 @@ r.post('/phieu', duocGhi, (req, res) => {
            b.so_cong || 0, b.chi_phi_nhan_cong || 0, b.chi_phi_khac || 0,
            req.session.nguoiDung.id, b.ghi_chu || null);
 
-    capNhatTongChiPhi(info.lastInsertRowid);
+      capNhatTongChiPhi(info.lastInsertRowid);
+      if (component) {
+        db.prepare('INSERT INTO component_repair_links(component_id,legacy_repair_id,linked_by) VALUES (?,?,?)')
+          .run(component.id, info.lastInsertRowid, req.session.nguoiDung.id);
+        if (component.legacy_component_id) db.prepare('UPDATE phieu_sua_chua SET cum_id=? WHERE id=?')
+          .run(component.legacy_component_id, info.lastInsertRowid);
+        db.prepare(`INSERT INTO component_events(component_id,device_id,event_type,component_version,details_json,actor_id)
+                    VALUES (?,?,?,?,?,?)`).run(component.id, component.device_id, 'REPAIR', component.version,
+                    JSON.stringify({ legacy_repair_id: info.lastInsertRowid }), req.session.nguoiDung.id);
+      }
 
-    // Sự cố dừng máy thì đánh dấu thiết bị đang sửa ngay
-    if (b.muc_do === 'dung_san_xuat' || b.loai === 'su_co') {
+      // Sự cố dừng máy thì đánh dấu thiết bị đang sửa ngay
+      if (b.muc_do === 'dung_san_xuat' || b.loai === 'su_co') {
         db.prepare("UPDATE thiet_bi SET trang_thai='dang_sua' WHERE id=?").run(tb.id);
-    }
-    res.json({ id: info.lastInsertRowid, so_phieu: soPhieu });
+      }
+      return info.lastInsertRowid;
+    })();
+    res.json({ id: repairId, so_phieu: soPhieu });
 });
 
 r.put('/phieu/:id', duocGhi, (req, res) => {
@@ -164,9 +184,24 @@ r.post('/phieu/:id/vat-tu', duocGhi, (req, res) => {
     db.transaction(() => {
         for (const v of ds) {
             if (!v.ten_vthh) continue;
+            const component = v.component_id ? db.prepare('SELECT * FROM device_components WHERE id=? AND active=1').get(v.component_id) : null;
+            if (v.component_id && !component) throw Object.assign(new Error('Không tìm thấy component canonical'), { status: 400 });
+            if (component) {
+                const canonicalDevice = db.prepare('SELECT legacy_thiet_bi_id FROM devices WHERE id=?').get(component.device_id);
+                if (Number(canonicalDevice?.legacy_thiet_bi_id) !== Number(p.thiet_bi_id)) throw Object.assign(new Error('Component không thuộc thiết bị sửa chữa'), { status: 422 });
+            }
             const i = them.run(p.id, v.ma_vthh || null, v.ten_vthh.trim(), v.dvt || null,
                 Number(v.so_luong) || 0, Number(v.don_gia) || 0, v.nguon || 'kho', v.ghi_chu || null);
             ids.push(i.lastInsertRowid);
+            if (component) {
+                db.prepare('INSERT INTO component_material_links(component_id,legacy_repair_material_id,part_id,linked_by) VALUES (?,?,?,?)')
+                  .run(component.id, i.lastInsertRowid, v.phu_tung_id || null, req.session.nguoiDung.id);
+                if (component.legacy_component_id) db.prepare('UPDATE vat_tu_sua_chua SET cum_id=?,phu_tung_id=? WHERE id=?')
+                  .run(component.legacy_component_id, v.phu_tung_id || null, i.lastInsertRowid);
+                db.prepare(`INSERT INTO component_events(component_id,device_id,event_type,component_version,details_json,actor_id)
+                            VALUES (?,?,?,?,?,?)`).run(component.id, component.device_id, 'MATERIAL_USE', component.version,
+                            JSON.stringify({ legacy_repair_material_id: i.lastInsertRowid }), req.session.nguoiDung.id);
+            }
         }
     })();
     if (!ids.length) return res.status(400).json({ loi: 'Chưa nhập tên vật tư' });
