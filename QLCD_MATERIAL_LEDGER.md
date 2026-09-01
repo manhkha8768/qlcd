@@ -61,3 +61,7 @@ Carry-forward không post Stock Ledger và không làm thay đổi ON_HAND/RESER
 ## 11. TASK 20 dashboard projection
 
 Dashboard đọc reservation và issue từ cùng nguồn Stock Ledger/workflow canonical nhưng không tự tính lại ON_HAND hoặc sửa projection kho. Mỗi KPI giữ `uom_code`; received chỉ là accepted acknowledgement, còn damaged/wrong/refused được cộng vào discrepancy. Drill-down từ dòng nhu cầu tới reservation/kho, issue voucher, receipt và carry lineage cho phép giải thích số liệu mà không tạo một balance song song.
+
+## 12. TASK 21 technical Material Issue
+
+`technical_material_issues` không giữ tồn kho riêng. Mỗi dòng liên kết work order, Component, Material ID/UOM, Warehouse và stock transaction ISSUE đã POSTED. Việc tạo ISSUE, ledger entry `ON_HAND -q`, rebuild projection, lifecycle event và Component event cùng commit hoặc cùng rollback. Idempotency key ngăn retry trừ tồn lần hai; reversal tham chiếu entry gốc, phục hồi ON_HAND và giữ cả hai giao dịch trong lịch sử. Inspection không được xuất vật tư qua write path này.

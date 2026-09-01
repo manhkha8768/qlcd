@@ -48,12 +48,19 @@
 29. `issued` khác `received`; thiếu/hỏng/sai chủng loại tạo discrepancy, không tự coi nhận đủ.
 30. Carry-forward liên kết dòng nguồn và chỉ chuyển phần còn hợp lệ, không nhân đôi nhu cầu.
 
-## 7. Cross-cutting
+## 7. Technical operations
 
-31. Mọi approval, reversal, override, upload/delete file và thay đổi quyền phải ghi audit actor/time/IP/before/after/reason.
-32. API mutation có validation, transaction và idempotency phù hợp; lỗi giữa chừng phải rollback toàn bộ aggregate.
-33. AI/OCR chỉ đề xuất; user kiểm tra, submit và approval trước khi dữ liệu thành chính thức.
-34. Dev/staging/prod tách database/storage/secrets; không dùng dữ liệu dev làm production.
+31. Repair, maintenance và inspection dùng work order có state machine; work order terminal và lifecycle event không được sửa/xóa.
+32. Component gắn công việc phải thuộc đúng Device; kết quả hoàn thành mới cập nhật tình trạng Device/Component.
+33. Vật tư sửa chữa/bảo dưỡng chỉ được xuất khi công việc đang thực hiện, theo Material ID/UOM canonical; post và reversal phải nguyên tử với Stock Ledger.
+34. Inspection phải lưu PASS/CONDITIONAL/FAIL và hạn kế tiếp khi có; FAIL đưa thiết bị về trạng thái không an toàn để tiếp tục vận hành.
+
+## 8. Cross-cutting
+
+35. Mọi approval, reversal, override, upload/delete file và thay đổi quyền phải ghi audit actor/time/IP/before/after/reason.
+36. API mutation có validation, transaction và idempotency phù hợp; lỗi giữa chừng phải rollback toàn bộ aggregate.
+37. AI/OCR chỉ đề xuất; user kiểm tra, submit và approval trước khi dữ liệu thành chính thức.
+38. Dev/staging/prod tách database/storage/secrets; không dùng dữ liệu dev làm production.
 
 ## 8. Gap so với baseline
 
@@ -87,4 +94,6 @@ TASK 18 triển khai rule 29: issued không tự trở thành received. PX xác 
 
 TASK 19 triển khai rule 30: chỉ kỳ nguồn LOCKED được carry sang đúng kỳ quý kế tiếp đang OPEN. Số hợp lệ từng dòng bằng `APPROVED - POSTED issued - active reserved - already carried`; mọi số âm hoặc vượt phần còn lại đều bị từ chối và rollback cả batch. Carry tạo dòng DRAFT mới theo cùng Material ID/UOM, giữ lineage và snapshot nguồn, không sửa dòng đã duyệt. Idempotency key gắn với toàn bộ payload và lý do; retry không nhân dòng. Period, submission và line thuộc kỳ LOCKED, cùng batch/line/event đã post, đều không được update/delete ở tầng database.
 
-TASK 20 triển khai rule 31: dashboard chỉ đọc projection canonical và mọi đại lượng số lượng phải giữ UOM trong khóa nhóm. Không được cộng EA với M/KG/SET thành một KPI chung. KPI, alert count và danh sách chi tiết phải được tính lại trên cùng bộ lọc period/PX/Material/status/search/alert và cùng data scope server-side. `received` trên dashboard là accepted receipt; damaged, wrong và refused nằm ở discrepancy riêng. Alert UNALLOCATED, PENDING_RECEIPT, DISCREPANCY và CARRY_AVAILABLE chỉ phản ánh projection, không tự post, approve, reserve, issue, receipt hay carry.
+TASK 20 triển khai quy tắc dashboard read-only: dashboard chỉ đọc projection canonical và mọi đại lượng số lượng phải giữ UOM trong khóa nhóm. Không được cộng EA với M/KG/SET thành một KPI chung. KPI, alert count và danh sách chi tiết phải được tính lại trên cùng bộ lọc period/PX/Material/status/search/alert và cùng data scope server-side. `received` trên dashboard là accepted receipt; damaged, wrong và refused nằm ở discrepancy riêng. Alert UNALLOCATED, PENDING_RECEIPT, DISCREPANCY và CARRY_AVAILABLE chỉ phản ánh projection, không tự post, approve, reserve, issue, receipt hay carry.
+
+TASK 21 triển khai rules 31–34: work order canonical dùng DRAFT → SUBMITTED → APPROVED → IN_PROGRESS → COMPLETED cùng nhánh RETURNED/REJECTED/CANCELLED, optimistic version và event append-only. Material Issue chỉ post cho REPAIR/MAINTENANCE đang thực hiện, bắt buộc Component cùng Device và kiểm tra AVAILABLE; retry không nhân stock, reversal tạo entry đối ứng. Complete mới đồng bộ kết quả sang Device/Component; inspection FAIL đánh dấu thiết bị hỏng/đang sửa. Dữ liệu legacy chỉ backfill, không bị rewrite.

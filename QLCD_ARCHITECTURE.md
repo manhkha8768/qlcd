@@ -72,3 +72,7 @@ Carry-forward được triển khai như một nghiệp vụ canonical riêng tr
 ## 9. TASK 20 architecture note
 
 Dashboard NCVT là read model riêng: migration 33 hợp nhất các projection Task 13–19 ở cấp submission line, route áp dụng permission/data scope rồi mới filter và tổng hợp theo UOM. API drill-down giữ liên kết tới workflow nguồn thay vì lưu bản sao KPI. Giao diện NCVT hiện hữu được mở rộng bằng KPI cards, filter, alerts và bảng chi tiết; không đổi stack và không thêm write path. Release C vì vậy có một đường đọc canonical end-to-end mà không phụ thuộc dashboard NCVT legacy.
+
+## 10. TASK 21 architecture note
+
+Repair, maintenance và inspection dùng chung aggregate `technical_work_orders` theo Device ID, có Component chính tùy chọn, optimistic version và event lifecycle append-only. Material Issue là write path kỹ thuật riêng nhưng vẫn post vào Stock Ledger canonical trong cùng transaction; reversal tạo stock entry đối ứng. Kết quả hoàn thành cập nhật Device/Component canonical và compatibility state của thiết bị legacy, trong khi các phiếu legacy được backfill chỉ đọc, không rewrite hoặc xóa. UI nghiệp vụ cũ tiếp tục hoạt động song song và được bổ sung card canonical theo strangler pattern.

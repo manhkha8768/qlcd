@@ -32,6 +32,7 @@ Legend: V=view, C=create/edit draft, S=submit, A=approve/reject, X=admin/config,
 | Asset transaction | X | V/C/A company | V/C/S assigned | V/C/S own | V/C/S warehouse | V scoped |
 | Inventory/reconciliation | X | V/C/A company | V/C/S assigned | V/C/S own | V/C/S own | V scoped |
 | Technical profile/files | X | V/C company | V/C assigned | V/C own | V scoped | V scoped |
+| Repair/maintenance/inspection | X | V/C/A company | V assigned | V/C/S own | V/issue scoped | V scoped |
 | Material master | X | V/C/A company | V | V | V/C | V scoped |
 | Warehouse ledger | X | V/A company | V assigned | V own | V/C/S own warehouse | V scoped |
 | NCVT draft/submit | X | V/A company | V/A assigned | V/C/S own | V | V scoped |
@@ -67,3 +68,5 @@ TASK 18: PX có `ncvt.receipt.view/create/confirm` nhưng tất cả API lọc v
 TASK 19: `ncvt.carry.manage` chỉ cấp `admin` và `cd_cty`, cho phép post carry-forward ở phạm vi Công ty. `ncvt.carry.view` cấp thêm PX nhưng API eligible, danh sách batch và chi tiết lineage đều kiểm tra scope đơn vị ở server. PX không thể post bằng API thủ công; batch có nhiều PX chỉ được trả khi toàn bộ dòng nằm trong scope của người đọc.
 
 TASK 20: `ncvt.dashboard.view` cấp cho `admin`, `cd_cty`, `px` và vai trò chỉ xem. Admin/CĐVT xem theo scope được gán hoặc COMPANY; PX/chỉ xem chỉ nhận các dòng thuộc đơn vị hiệu lực của mình. Tham số `don_vi_id` ngoài scope trả 403 và drill-down kiểm tra lại đơn vị của submission line. Permission chỉ cho đọc; dashboard không có endpoint mutation.
+
+TASK 21: `technical_operation.view` áp dụng data scope theo đơn vị Device. PX có quyền create/submit, execute và material issue trong đơn vị được giao nhưng không có `technical_operation.review`; admin/CĐVT thực hiện return/approve/reject. Người xem chỉ có view. Mọi Material Issue còn kiểm tra scope kho, Component cùng Device và AVAILABLE tại server; UI ẩn nút không thay thế authorization.

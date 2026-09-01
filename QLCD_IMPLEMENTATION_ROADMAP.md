@@ -27,7 +27,7 @@
 | 18 | PX xác nhận nhận | Hoàn thành | partial receipt, accepted/damaged/wrong/refused, scoped PX confirmation và immutable audit |
 | 19 | Carry forward + lock | Hoàn thành | eligible projection, source-target lineage/snapshot, atomic/idempotent post và database-enforced locked period |
 | 20 | NCVT dashboard | Hoàn thành | KPI theo UOM, filter/alert scoped và drill-down reservation/issue/receipt/carry |
-| 21 | Repair/maintenance/inspection | Một phần đáng kể | nối component + material issue + lifecycle |
+| 21 | Repair/maintenance/inspection | Hoàn thành | work order lifecycle, Device/Component, atomic Material Issue/reversal và legacy compatibility |
 | 22 | Notifications + data quality | Một phần sơ khai | rules/jobs/ownership/triage |
 | 23 | Reporting/Excel/PDF/print | Một phần | chuẩn mẫu, scope, pagination/performance |
 | 24 | Security hardening | Một phần | route policy audit, upload/secrets/idempotency/concurrency tests |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 21 — Repair/maintenance/inspection**, nối Component + Material Issue + lifecycle và đóng các gap còn lại của nghiệp vụ vận hành kỹ thuật.
+Task tiếp theo đề xuất: **TASK 22 — Notifications + data quality**, xây rule/ownership/triage, cảnh báo có người chịu trách nhiệm và kiểm tra chất lượng dữ liệu canonical.
 
 ## 4. Quality gate sau mỗi Task
 

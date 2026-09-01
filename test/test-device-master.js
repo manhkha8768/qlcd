@@ -8,7 +8,7 @@ process.env.QLCD_DB = path.join(os.tmpdir(), `qlcd-device-${Date.now()}.db`);
 const db = require('../db');
 const dbDir = path.join(__dirname,'..','db');
 const migrations = fs.readdirSync(dbDir).filter(f => /^\d+.*\.sql$/.test(f)).sort();
-for (const f of migrations.filter(f => !['15-asset-master.sql','16-device-master.sql','17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql','21-component-tree.sql','22-document-management.sql','23-material-master.sql','24-stock-ledger.sql','25-warehouse-transfer-return.sql','26-ncvt-period-submission.sql','27-ncvt-review-approval.sql','28-ncvt-company-aggregation.sql','29-ncvt-reservation.sql','30-ncvt-material-issue.sql','31-ncvt-receipt-confirmation.sql','32-ncvt-carry-forward-lock.sql','33-ncvt-dashboard.sql'].includes(f))) {
+for (const f of migrations.filter(f => !['15-asset-master.sql','16-device-master.sql','17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql','21-component-tree.sql','22-document-management.sql','23-material-master.sql','24-stock-ledger.sql','25-warehouse-transfer-return.sql','26-ncvt-period-submission.sql','27-ncvt-review-approval.sql','28-ncvt-company-aggregation.sql','29-ncvt-reservation.sql','30-ncvt-material-issue.sql','31-ncvt-receipt-confirmation.sql','32-ncvt-carry-forward-lock.sql','33-ncvt-dashboard.sql','34-technical-operations.sql'].includes(f))) {
     db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
 }
 

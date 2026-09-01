@@ -57,8 +57,10 @@ async function mhSuaChua(el) {
             <div class="eyebrow">Chứng từ</div><h2>Bảo dưỡng — sửa chữa</h2></div>
             <div style="display:flex;gap:8px">
                 <button onclick="formKeHoachBD()">Kế hoạch bảo dưỡng</button>
+                <button onclick="formCongViecKyThuatCanonical()">Lập công việc canonical</button>
                 <button class="chinh-nut" onclick="formPhieuSC()">Lập phiếu</button></div></div>
         <div id="vung-bao"></div>
+        <div class="the"><h3>Repair / Maintenance canonical</h3><div id="technical-operations">Đang tải…</div></div>
         <div class="thanh-loc">
             <select id="l-sc" onchange="locSC=this.value;taiBangSC()">
                 <option value="">Mọi trạng thái</option>
@@ -69,7 +71,7 @@ async function mhSuaChua(el) {
         <div class="the"><h3>Kế hoạch bảo dưỡng định kỳ</h3><div id="bang-kh" class="bao-bang"></div></div>`;
 
     await napDanhSachTB();
-    taiBangSC(); taiBangKeHoach();
+    taiBangSC(); taiBangKeHoach(); taiCongViecKyThuatCanonical('');
 }
 
 async function taiBangSC() {
@@ -358,12 +360,14 @@ async function mhKiemDinh(el) {
     el.innerHTML = `<div class="dau-trang"><div>
             <div class="eyebrow">Hồ sơ an toàn</div><h2>Kiểm định thiết bị</h2>
             <div class="phu">Hạn hết hiệu lực tính tự động theo chu kỳ từng loại kiểm định</div></div>
-            <div><button class="chinh-nut" onclick="formKiemDinh()">Nhập hồ sơ kiểm định</button></div></div>
+            <div><button onclick="formCongViecKyThuatCanonical('INSPECTION')">Lập kiểm định canonical</button>
+            <button class="chinh-nut" onclick="formKiemDinh()">Nhập hồ sơ kiểm định</button></div></div>
         <div id="vung-bao"></div>
+        <div class="the"><h3>Inspection lifecycle canonical</h3><div id="technical-operations">Đang tải…</div></div>
         <div class="the"><h3>Hồ sơ kiểm định</h3><div id="bang-kd" class="bao-bang">Đang tải…</div></div>`;
 
     await Promise.all([napDanhSachTB(), napLoaiKD()]);
-    taiBangKD();
+    taiBangKD(); taiCongViecKyThuatCanonical('INSPECTION');
 }
 
 async function napLoaiKD() {

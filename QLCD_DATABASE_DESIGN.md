@@ -137,6 +137,10 @@ Migration `32-ncvt-carry-forward-lock.sql` tạo batch carry-forward POSTED, cá
 
 Migration `33-ncvt-dashboard.sql` tạo view đọc `v_ncvt_dashboard_lines` theo khóa `period_id + submission_line_id + don_vi_id + material_id + uom_code`. Mỗi dòng chiếu approved, active reserved, POSTED issued, accepted received, damaged/wrong/refused, pending confirmation, unallocated, remaining-to-issue, carried-in/out và carry-eligible bằng các nguồn canonical Task 13–19. API chỉ tổng hợp các dòng sau khi áp dụng data scope và trả `kpis_by_uom`, không tạo một tổng số lượng xuyên UOM. Dashboard là read projection, không ghi workflow, ledger hoặc legacy; drill-down truy ngược reservation, issue, receipt và carry lineage.
 
+## 26. TASK 21 implementation
+
+Migration `34-technical-operations.sql` tạo `technical_work_orders` cho ba loại REPAIR/MAINTENANCE/INSPECTION, state machine có version và `technical_work_order_events` append-only. `technical_material_issues` nối trực tiếp work order + Component + Material ID/UOM + Warehouse + Stock Transaction. Post ISSUE và reversal cập nhật `stock_ledger_entries`, projection và lifecycle trong một transaction; không tạo balance kỹ thuật riêng. Work order terminal bị trigger cấm update/delete. Phiếu sửa chữa, bảo dưỡng và kiểm định legacy được backfill có khóa nguồn riêng, không bị sửa hoặc xóa.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.
