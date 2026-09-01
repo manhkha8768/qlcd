@@ -25,7 +25,7 @@
 | 16 | Reservation | Hoàn thành | approved-line allocation, atomic stock reserve/release, idempotency, concurrency và audit |
 | 17 | Phiếu xuất/cấp phát | Hoàn thành | canonical voucher, approval snapshot, partial issue, atomic reservation consume/ledger và reversal |
 | 18 | PX xác nhận nhận | Hoàn thành | partial receipt, accepted/damaged/wrong/refused, scoped PX confirmation và immutable audit |
-| 19 | Carry forward + lock | Chưa làm | source link/idempotency/immutable locked period |
+| 19 | Carry forward + lock | Hoàn thành | eligible projection, source-target lineage/snapshot, atomic/idempotent post và database-enforced locked period |
 | 20 | NCVT dashboard | Một phần sơ khai | KPI/filter/alert đúng UOM và scope |
 | 21 | Repair/maintenance/inspection | Một phần đáng kể | nối component + material issue + lifecycle |
 | 22 | Notifications + data quality | Một phần sơ khai | rules/jobs/ownership/triage |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 19 — Carry forward + lock**, liên kết dòng nguồn, chỉ chuyển phần còn hợp lệ, idempotent và giữ kỳ khóa bất biến.
+Task tiếp theo đề xuất: **TASK 20 — NCVT dashboard**, KPI/filter/alert đúng UOM và data scope từ approved, reserved, issued, received, discrepancy và carry-forward.
 
 ## 4. Quality gate sau mỗi Task
 

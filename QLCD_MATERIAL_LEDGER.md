@@ -53,3 +53,7 @@ Phiếu cấp phát canonical chỉ nhận dòng từ reservation. Post ISSUE gh
 ## 9. TASK 18 receipt acknowledgement
 
 Receipt là xác nhận nghiệp vụ tại PX, không phải giao dịch kho thứ hai. Accepted, damaged, wrong và refused được lưu riêng theo issue line; pending là issued trừ tổng đã xác nhận terminal. Nhiều receipt partial được phép và confirm dùng atomic recheck để không vượt issued. Không thay đổi ON_HAND/RESERVED khi xác nhận. Issue đã có receipt terminal không được reversal trực tiếp vì hàng không thể tự quay lại kho trên sổ sách.
+
+## 10. TASK 19 carry-forward
+
+Carry-forward không post Stock Ledger và không làm thay đổi ON_HAND/RESERVED. Phần được chuyển lấy nhu cầu APPROVED trừ lượng issue còn POSTED, reservation còn hiệu lực và lượng đã carry; do đó hàng đã xuất hoặc đang giữ không bị nhân thành nhu cầu kỳ mới. Dòng đích giữ nguyên Material ID/UOM canonical và nằm trong submission DRAFT của kỳ kế tiếp để tiếp tục review. Snapshot nguồn và lineage bất biến cho phép dashboard Task 20 giải thích từng lượng carry mà không đọc hoặc sửa tồn kho legacy.

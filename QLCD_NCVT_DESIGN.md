@@ -4,7 +4,7 @@
 
 Legacy đã có kỳ quý, import Excel/staging, dòng nhu cầu, cấp phát nhiều lần, chống cấp vượt cơ bản, hủy cấp và test module. Trạng thái kỳ hiện là `nhap/da_nhap/dang_ap_dung/da_dong/huy`; chưa biểu diễn đầy đủ draft theo PX, submit/review/return/approve, reservation, issued-vs-received, discrepancy và carry-forward. Material được nhận diện chủ yếu bằng mã/text, chưa bắt buộc liên kết Material Master.
 
-Kết luận sau Task 18: Task 13–18 đã có luồng canonical và acceptance test; Task 19–20 chưa hoàn chỉnh. Cấp phát legacy vẫn được giữ để tương thích nhưng không bị canonical posting/receipt ghi ngược.
+Kết luận sau Task 19: Task 13–19 đã có luồng canonical và acceptance test; Task 20 dashboard chưa hoàn chỉnh. Cấp phát legacy vẫn được giữ để tương thích nhưng không bị canonical posting/receipt/carry-forward ghi ngược.
 
 Reservation canonical chỉ được tạo từ dòng APPROVED, có thể phân bổ nhiều kho nhưng tổng không vượt nhu cầu. Mỗi allocation post RESERVED vào Stock Ledger nguyên tử; release/cancel hoàn nguyên bằng entry mới và giữ audit bất biến. Reservation không đồng nghĩa đã xuất hoặc đã nhận.
 
@@ -45,7 +45,7 @@ File gốc bất biến. Pipeline: upload -> parse staging -> map columns/materi
 
 ## 6. Carry forward
 
-Khi close kỳ, từng dòng chọn close/cancel/carry. Carry chỉ lấy phần approved còn hợp lệ, tạo line kỳ mới có `source_line_id`, không thay đổi kỳ đã LOCKED và không nhân đôi reservation/issue.
+Khi period đã LOCKED, carry chỉ được post sang đúng quý kế tiếp đang OPEN. Eligible theo dòng là `APPROVED - POSTED issued - active reserved - already carried`; projection được đọc lại bên trong transaction ngay trước khi tạo target line. Batch tạo hoặc dùng submission DRAFT theo PX, giữ cùng Material ID/UOM, `source_line_id -> target_line_id`, snapshot định lượng, actor, reason và event POST. Idempotency payload chặn retry sinh kép. Trigger database chặn mutation kỳ nguồn và niêm phong batch sau POST; adjustment/reversal thuộc ledger riêng, không mở khóa approved demand.
 
 ## 7. Acceptance
 

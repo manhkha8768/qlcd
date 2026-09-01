@@ -129,6 +129,10 @@ Migration `30-ncvt-material-issue.sql` tạo voucher cấp phát canonical và d
 
 Migration `31-ncvt-receipt-confirmation.sql` tạo receipt header và dòng xác nhận liên kết issue line POSTED. Mỗi dòng tách `accepted_quantity`, `damaged_quantity`, `wrong_quantity`, `refused_quantity`; nhiều receipt có thể ghi nhận từng đợt nhưng tổng terminal không vượt quantity đã issued. Confirm recheck trong transaction để hai draft cạnh tranh không double-confirm, sau đó phân loại batch thành RECEIVED, DISCREPANCY hoặc REFUSED. Dòng và event đã confirm được trigger bảo vệ. View `v_ncvt_receipt_progress` giữ riêng issued, accepted, từng loại discrepancy và pending. Receipt không ghi Stock Ledger; issue đã có receipt terminal bị chặn reversal trực tiếp để tránh hoàn tồn sai thực tế.
 
+## 24. TASK 19 implementation
+
+Migration `32-ncvt-carry-forward-lock.sql` tạo batch carry-forward POSTED, các dòng lineage `source_line_id -> target_line_id`, snapshot định lượng nguồn và event POST bất biến. View `v_ncvt_carry_forward_eligible` tính phần được chuyển bằng nhu cầu APPROVED trừ issue voucher còn POSTED, reservation đang còn hiệu lực và lượng đã carry. API chỉ nhận kỳ nguồn LOCKED và đúng kỳ quý kế tiếp đang OPEN; toàn bộ validation, tạo draft đích, dòng canonical, lineage và event cùng nằm trong một transaction có idempotency payload. Trigger khóa cứng period, submission và submission line của kỳ LOCKED; batch đã có event POST không nhận thêm dòng. Bảng NCVT legacy không bị sửa.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

@@ -64,3 +64,7 @@ Giữ một monorepo và chuyển dần theo strangler pattern: legacy Express/S
 ## 7. TASK 1 implementation note
 
 `task1/foundation-stabilization` giữ Express/SQLite làm canonical runtime. `middleware/quyen.js` là authorization service duy nhất; `quyen-ma.js` chỉ còn compatibility facade. Migration 14 thêm Project/Unit assignment, user-many-units, dynamic per-user permission override và migration journal checksum. Dashboard/kho dùng permission predicate thật; PWA app shell và GitHub Actions quality gate đã được bổ sung.
+
+## 8. TASK 19 architecture note
+
+Carry-forward được triển khai như một nghiệp vụ canonical riêng trên Express/SQLite, không ghi ngược bảng NCVT legacy và không tác động Stock Ledger. Route chỉ orchestration; invariant quan trọng được neo bằng view eligibility, foreign key, unique idempotency, transaction và trigger bất biến trong migration 32. Dòng kỳ mới giữ Material ID/UOM và lineage về dòng nguồn, tạo nền giải thích số liệu cho dashboard Task 20. UI hiện hữu được mở rộng tại module NCVT thay vì đổi frontend stack.
