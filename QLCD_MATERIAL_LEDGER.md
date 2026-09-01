@@ -65,3 +65,7 @@ Dashboard đọc reservation và issue từ cùng nguồn Stock Ledger/workflow 
 ## 12. TASK 21 technical Material Issue
 
 `technical_material_issues` không giữ tồn kho riêng. Mỗi dòng liên kết work order, Component, Material ID/UOM, Warehouse và stock transaction ISSUE đã POSTED. Việc tạo ISSUE, ledger entry `ON_HAND -q`, rebuild projection, lifecycle event và Component event cùng commit hoặc cùng rollback. Idempotency key ngăn retry trừ tồn lần hai; reversal tham chiếu entry gốc, phục hồi ON_HAND và giữ cả hai giao dịch trong lịch sử. Inspection không được xuất vật tư qua write path này.
+
+## 13. TASK 22 material data quality
+
+Rule chất lượng dữ liệu theo dõi source mapping chưa MAPPED và duplicate candidate còn PENDING. Mỗi phát hiện tạo case có owner CĐVT, không tự remap, archive hoặc merge Material. Sau khi người có quyền hoàn tất review trong Material Master, lần job kế tiếp tự đóng case; lịch sử case vẫn giữ để truy vết.

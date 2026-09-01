@@ -141,6 +141,10 @@ Migration `33-ncvt-dashboard.sql` tạo view đọc `v_ncvt_dashboard_lines` the
 
 Migration `34-technical-operations.sql` tạo `technical_work_orders` cho ba loại REPAIR/MAINTENANCE/INSPECTION, state machine có version và `technical_work_order_events` append-only. `technical_material_issues` nối trực tiếp work order + Component + Material ID/UOM + Warehouse + Stock Transaction. Post ISSUE và reversal cập nhật `stock_ledger_entries`, projection và lifecycle trong một transaction; không tạo balance kỹ thuật riêng. Work order terminal bị trigger cấm update/delete. Phiếu sửa chữa, bảo dưỡng và kiểm định legacy được backfill có khóa nguồn riêng, không bị sửa hoặc xóa.
 
+## 27. TASK 22 implementation
+
+Migration `35-notifications-data-quality.sql` tạo registry `notification_rules`, hàng đợi `notification_cases`, delivery theo người nhận, event triage/rule append-only và `notification_job_runs`. Fingerprint unique bảo đảm một nguồn/rule không sinh case kép. Case có category, entity reference, unit scope, severity, owner, SLA, escalation level, occurrence count và optimistic version. Rule change bắt buộc lý do và lưu before/after; job terminal và event không thể sửa/xóa. Engine chỉ auto-resolve case khi nguồn không còn vi phạm, không update Material, Document, NCVT hoặc work order nguồn.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

@@ -7,6 +7,7 @@ let MAN_HINH = 'tong-quan';
 const CAC_MAN_HINH = {
     'tong-quan': { ten: 'Tổng quan',      ve: mhTongQuan,  nhom: 'Theo dõi' },
     'canh-bao':  { ten: 'Cảnh báo hạn',   ve: mhCanhBao,   nhom: 'Theo dõi' },
+    'notifications': { ten: 'Thông báo & chất lượng', ve: mhNotifications, nhom: 'Theo dõi' },
     'thiet-bi':  { ten: 'Thiết bị',       ve: mhThietBi,   nhom: 'Dữ liệu' },
     'tai-san':   { ten: 'TSCĐ / CCDC',    ve: mhTaiSan,    nhom: 'Dữ liệu' },
     'kiem-ke-ledger': { ten: 'Kiểm kê & QR', ve: mhKiemKeLedger, nhom: 'Quản lý' },
@@ -148,8 +149,8 @@ async function veManHinh() {
 async function capNhatChip() {
     if (!window.PHIEN) return;
     try {
-        const [cb, cd] = await Promise.all([
-            api('/tong-hop/canh-bao'), api('/tong-hop/cho-duyet')]);
+        const [cb, cd, nt] = await Promise.all([
+            api('/tong-hop/canh-bao'), api('/tong-hop/cho-duyet'), api('/notifications/summary')]);
         const s = cb.tom_tat;
         const soCB = s.kd_qua_han + s.kd_sap_het_han + s.bd_qua_han + s.bd_den_han;
         const eCB = document.getElementById('chip-canh-bao');
@@ -160,6 +161,7 @@ async function capNhatChip() {
         };
         chip('chip-thiet-bi', cd.thiet_bi);
         chip('chip-sua-chua', cd.sua_chua);
+        chip('chip-notifications', nt.unread || nt.mine || nt.open, nt.critical ? '' : 'am');
         try {
             const gd = await api('/giao-dich/cho-duyet');
             chip('chip-phe-duyet', gd.kpi?.tong || 0, 'chip-so');

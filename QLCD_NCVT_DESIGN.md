@@ -58,3 +58,7 @@ Tổng hợp Công ty là projection đọc, không phải số tổng nhập ta
 ## 9. TASK 20 dashboard
 
 Dashboard nhận một period bắt buộc và có filter PX, Material, submission status, search và alert. API áp dụng scope trước khi tạo filter metadata, KPI và danh sách. KPI trả thành mảng theo UOM; không tồn tại trường tổng số lượng chung xuyên UOM. Alert gồm chờ review, returned, chưa phân bổ, chờ xác nhận nhận, discrepancy và có thể carry. Mỗi dòng drill-down tới reservation, issue, receipt và carry lineage; dashboard không phải write path.
+
+## 10. TASK 22 notification integration
+
+Submission ở trạng thái SUBMITTED tạo case `NCVT_REVIEW_PENDING`. Owner ưu tiên reviewer ACTIVE đúng period/PX; nếu chưa phân công thì fallback CĐVT. Case dùng unit scope, SLA cấu hình và không thay thế quyết định review. Khi submission rời SUBMITTED, job tự đóng case; nếu hồ sơ được gửi lại, cùng fingerprint được mở lại và giữ lịch sử vòng trước.

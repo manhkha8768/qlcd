@@ -86,6 +86,7 @@ try {
     app.use('/api/ncvt-carry-forward', require('./routes/ncvt-carry-forward'));
     app.use('/api/ncvt-dashboard', require('./routes/ncvt-dashboard'));
     app.use('/api/technical-operations', require('./routes/technical-operations'));
+    app.use('/api/notifications', require('./routes/notifications'));
     app.use('/api/tai-san', require('./routes/taisan'));
     app.use('/api/giao-dich', require('./routes/giaodich'));
     app.use('/api', require('./routes/tienich'));
@@ -130,6 +131,7 @@ if (require.main === module) {
     kt.nhac.forEach(x => console.log('\n  Lưu ý: ' + x));
 
     app.listen(CONG, DIA_CHI, () => {
+        require('./lib/notification-engine').startNotificationScheduler();
         console.log(`\n  Hệ thống QLCD đang chạy: http://localhost:${CONG}`);
         console.log(`  Database: ${duongDanDB}`);
         console.log(`  Chế độ:   ${BM.LA_INTERNET ? 'INTERNET (đã bật HTTPS, cookie bảo mật, chặn dò mật khẩu)' : 'mạng nội bộ'}\n`);

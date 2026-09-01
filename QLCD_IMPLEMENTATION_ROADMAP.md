@@ -28,7 +28,7 @@
 | 19 | Carry forward + lock | Hoàn thành | eligible projection, source-target lineage/snapshot, atomic/idempotent post và database-enforced locked period |
 | 20 | NCVT dashboard | Hoàn thành | KPI theo UOM, filter/alert scoped và drill-down reservation/issue/receipt/carry |
 | 21 | Repair/maintenance/inspection | Hoàn thành | work order lifecycle, Device/Component, atomic Material Issue/reversal và legacy compatibility |
-| 22 | Notifications + data quality | Một phần sơ khai | rules/jobs/ownership/triage |
+| 22 | Notifications + data quality | Hoàn thành | rule registry, scheduled/manual jobs, ownership, triage/escalation và data-quality cases |
 | 23 | Reporting/Excel/PDF/print | Một phần | chuẩn mẫu, scope, pagination/performance |
 | 24 | Security hardening | Một phần | route policy audit, upload/secrets/idempotency/concurrency tests |
 | 25 | Performance + production readiness | Chưa đầy đủ | profiling/index/monitoring/error tracking/restore drill/load test |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 22 — Notifications + data quality**, xây rule/ownership/triage, cảnh báo có người chịu trách nhiệm và kiểm tra chất lượng dữ liệu canonical.
+Task tiếp theo đề xuất: **TASK 23 — Reporting/Excel/PDF/print**, chuẩn hóa biểu mẫu, scope dữ liệu, pagination và kiểm tra hiệu năng xuất báo cáo.
 
 ## 4. Quality gate sau mỗi Task
 

@@ -76,3 +76,7 @@ Dashboard NCVT là read model riêng: migration 33 hợp nhất các projection 
 ## 10. TASK 21 architecture note
 
 Repair, maintenance và inspection dùng chung aggregate `technical_work_orders` theo Device ID, có Component chính tùy chọn, optimistic version và event lifecycle append-only. Material Issue là write path kỹ thuật riêng nhưng vẫn post vào Stock Ledger canonical trong cùng transaction; reversal tạo stock entry đối ứng. Kết quả hoàn thành cập nhật Device/Component canonical và compatibility state của thiết bị legacy, trong khi các phiếu legacy được backfill chỉ đọc, không rewrite hoặc xóa. UI nghiệp vụ cũ tiếp tục hoạt động song song và được bổ sung card canonical theo strangler pattern.
+
+## 11. TASK 22 architecture note
+
+Thông báo và vấn đề chất lượng dữ liệu được chuẩn hóa thành `notification_cases`, tách khỏi các aggregate nguồn. Rule engine chỉ đọc projection canonical, tạo fingerprint để retry không nhân case, tự đóng khi nguồn đã đạt và mở lại nếu vấn đề tái diễn. Mỗi case có owner, scope đơn vị, optimistic version, SLA escalation, in-app delivery và timeline append-only. Job chạy định kỳ trong tiến trình Express hoặc chạy thủ công có journal riêng; không sửa dữ liệu nguồn để “chữa” cảnh báo. Năm rule đầu gồm hạn kỹ thuật, NCVT chờ review, mapping Material, duplicate Material và file thiếu SHA-256.

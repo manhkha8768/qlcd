@@ -62,6 +62,14 @@
 37. AI/OCR chỉ đề xuất; user kiểm tra, submit và approval trước khi dữ liệu thành chính thức.
 38. Dev/staging/prod tách database/storage/secrets; không dùng dữ liệu dev làm production.
 
+## 9. Notifications and data quality
+
+39. Mỗi cảnh báo có rule, fingerprint, mức độ, owner và trạng thái triage; retry job không được tạo case kép.
+40. Case đi qua OPEN → ACKNOWLEDGED → IN_PROGRESS → RESOLVED; bỏ qua hoặc đổi rule bắt buộc lý do và audit.
+41. Quá SLA phải escalation có cấp độ và delivery cho người chịu trách nhiệm/cấp quản trị; đã đọc không đồng nghĩa đã xử lý.
+42. Data-quality engine chỉ phát hiện và theo dõi; không tự merge Material, sửa file, duyệt NCVT hay update work order nguồn.
+43. Khi nguồn được sửa, case đang mở tự RESOLVED; nếu cùng vấn đề xuất hiện lại sau đó, case RESOLVED được REOPENED và giữ toàn bộ lịch sử.
+
 ## 8. Gap so với baseline
 
 Baseline đáp ứng một phần rules 1, 5, 9-16, 23 và 28. Các rule về tách asset/device, ledger chuẩn, multi-unit scope, object storage/version, reservation, received/discrepancy và carry-forward chưa hoàn chỉnh. Không tuyên bố rule “đạt” chỉ vì có bảng hoặc màn hình; cần acceptance test end-to-end.
@@ -97,3 +105,5 @@ TASK 19 triển khai rule 30: chỉ kỳ nguồn LOCKED được carry sang đú
 TASK 20 triển khai quy tắc dashboard read-only: dashboard chỉ đọc projection canonical và mọi đại lượng số lượng phải giữ UOM trong khóa nhóm. Không được cộng EA với M/KG/SET thành một KPI chung. KPI, alert count và danh sách chi tiết phải được tính lại trên cùng bộ lọc period/PX/Material/status/search/alert và cùng data scope server-side. `received` trên dashboard là accepted receipt; damaged, wrong và refused nằm ở discrepancy riêng. Alert UNALLOCATED, PENDING_RECEIPT, DISCREPANCY và CARRY_AVAILABLE chỉ phản ánh projection, không tự post, approve, reserve, issue, receipt hay carry.
 
 TASK 21 triển khai rules 31–34: work order canonical dùng DRAFT → SUBMITTED → APPROVED → IN_PROGRESS → COMPLETED cùng nhánh RETURNED/REJECTED/CANCELLED, optimistic version và event append-only. Material Issue chỉ post cho REPAIR/MAINTENANCE đang thực hiện, bắt buộc Component cùng Device và kiểm tra AVAILABLE; retry không nhân stock, reversal tạo entry đối ứng. Complete mới đồng bộ kết quả sang Device/Component; inspection FAIL đánh dấu thiết bị hỏng/đang sửa. Dữ liệu legacy chỉ backfill, không bị rewrite.
+
+TASK 22 triển khai rules 39–43: năm rule chuẩn được đánh giá bằng job có journal; fingerprint unique ngăn sinh case/delivery kép. Owner lấy từ reviewer NCVT, người PX trong scope hoặc role fallback. Acknowledge/start/resolve/reassign/escalate/dismiss dùng version và event bất biến. Engine auto-resolve/reopen theo nguồn nhưng tuyệt đối không sửa aggregate nghiệp vụ để làm mất cảnh báo.
