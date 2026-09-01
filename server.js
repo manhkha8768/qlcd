@@ -79,6 +79,7 @@ try {
     app.use('/api/stock-ledger', require('./routes/stock-ledger'));
     app.use('/api/warehouse-transfers', require('./routes/warehouse-transfers'));
     app.use('/api/ncvt-canonical', require('./routes/ncvt-canonical'));
+    app.use('/api/ncvt-canonical', require('./routes/ncvt-aggregate'));
     app.use('/api/tai-san', require('./routes/taisan'));
     app.use('/api/giao-dich', require('./routes/giaodich'));
     app.use('/api', require('./routes/tienich'));

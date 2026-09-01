@@ -113,6 +113,10 @@ Migration `26-ncvt-period-submission.sql` tách `ncvt_periods` cấp Công ty kh
 
 Migration `27-ncvt-review-approval.sql` tạo assignment theo period/PX, giữ lịch sử khi phân công lại và chỉ cho một assignment ACTIVE. Mỗi vòng submit chỉ có một `ncvt_review_decisions`, gắn submission version, reviewer, lý do, tổng dòng/tổng lượng và JSON snapshot; trigger database cấm update/delete. RETURN chuyển submission sang RETURNED để PX phản hồi, mở lại DRAFT, sửa và submit vòng mới. REJECT/APPROVE là trạng thái terminal. Period chỉ được LOCKED khi mọi submission đã có quyết định cuối.
 
+## 20. TASK 15 implementation
+
+Migration `28-ncvt-company-aggregation.sql` tạo view `v_ncvt_company_aggregate` tính trực tiếp từ `ncvt_submissions.status='APPROVED'`, nhóm theo period, Material ID và UOM; không lưu một bảng tổng dễ stale. Drill-down dùng cùng điều kiện nguồn và nhóm theo PX nên tổng chi tiết phải khớp tổng Công ty. `supply_sources` là danh mục nguồn cung canonical, có thể liên kết kho nội bộ; `material_supply_sources` ánh xạ nhiều nguồn cho một Material với priority, preferred, lead time và minimum order. Mỗi Material chỉ có tối đa một nguồn ưu tiên ACTIVE. Thay đổi mapping dùng optimistic version và ghi `material_supply_source_events` bất biến; bảng NCVT legacy không bị sửa.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

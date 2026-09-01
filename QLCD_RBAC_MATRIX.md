@@ -53,3 +53,7 @@ Chuẩn hóa dạng `resource.action`, ví dụ: `asset.view`, `asset.create`, `
 - Gọi API thủ công với `unit_id` khác không mở rộng scope.
 - Admin bypass được ghi audit; deny override ở user thắng allow role theo policy đã chốt.
 - Test toàn bộ route table tự động phát hiện endpoint không gắn policy.
+
+## 6. TASK 15 permissions
+
+`ncvt.aggregate.view` chỉ cấp cho `admin` và `cd_cty`, phạm vi COMPANY; PX không được đọc tổng hợp hoặc drill-down toàn Công ty. `ncvt.supply.manage` chỉ cấp cho hai vai trò này để tạo nguồn cung và thay đổi mapping Material. API kiểm tra permission ở server; việc ẩn nút trên UI không thay thế authorization.

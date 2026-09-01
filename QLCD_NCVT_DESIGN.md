@@ -4,7 +4,7 @@
 
 Legacy đã có kỳ quý, import Excel/staging, dòng nhu cầu, cấp phát nhiều lần, chống cấp vượt cơ bản, hủy cấp và test module. Trạng thái kỳ hiện là `nhap/da_nhap/dang_ap_dung/da_dong/huy`; chưa biểu diễn đầy đủ draft theo PX, submit/review/return/approve, reservation, issued-vs-received, discrepancy và carry-forward. Material được nhận diện chủ yếu bằng mã/text, chưa bắt buộc liên kết Material Master.
 
-Kết luận: Task 13-15 và 17 có prototype/MVP **một phần**; Task 14, 16, 18-20 chưa hoàn chỉnh theo Roadmap mới.
+Kết luận sau Task 15: Task 13–15 đã có luồng canonical và acceptance test; Task 16, 18–20 chưa hoàn chỉnh. Task 17 còn nghiệp vụ legacy nhưng chưa nối reservation canonical.
 
 ## 2. Aggregate target
 
@@ -44,3 +44,7 @@ Khi close kỳ, từng dòng chọn close/cancel/carry. Carry chỉ lấy phần
 ## 7. Acceptance
 
 Multi-unit scope cho Chủ nhiệm; return-for-edit tạo version; approve bất biến; concurrent reserve không vượt available; nhiều issue không vượt approved; issued 10/received 9 tạo discrepancy 1; carry-forward chạy lặp không nhân đôi; lock ngăn mọi mutation trừ adjustment/reversal có quyền.
+
+## 8. Company aggregation và supply source
+
+Tổng hợp Công ty là projection đọc, không phải số tổng nhập tay: chỉ lấy submission APPROVED và nhóm đúng `period_id + material_id + uom_code`. Drill-down theo PX phải dùng cùng predicate và tổng chi tiết bằng tổng Công ty. Nguồn cung chuẩn được quản lý độc lập với submission; một Material có thể có nhiều nguồn nhưng chỉ một nguồn preferred ACTIVE. Material chưa mapping vẫn xuất hiện trong tổng hợp với cảnh báo để người dùng xử lý, không bị loại khỏi nhu cầu đã duyệt.
