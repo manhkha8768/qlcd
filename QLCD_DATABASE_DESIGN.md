@@ -125,6 +125,10 @@ Migration `29-ncvt-reservation.sql` tạo `material_reservations` liên kết tr
 
 Migration `30-ncvt-material-issue.sql` tạo voucher cấp phát canonical và dòng bắt buộc tham chiếu reservation. Workflow `DRAFT -> SUBMITTED -> APPROVED -> POSTED`, có REJECTED/CANCELLED và REVERSED; quyết định approve/reject lưu snapshot bất biến theo version. Khi post, mỗi dòng kiểm tra lại phần reservation chưa consume, ghi stock transaction `ISSUE` với cả `on_hand_delta=-q` và `reserved_delta=-q`, cập nhật consumed/status reservation và voucher trong một database transaction. Vì vậy cấp nhiều đợt không vượt reservation và hai phiếu cạnh tranh không double-consume. Reversal tạo entry đối ứng, phục hồi cả ON_HAND/RESERVED và consumed reservation; phiếu REVERSED bị loại khỏi projection issued.
 
+## 23. TASK 18 implementation
+
+Migration `31-ncvt-receipt-confirmation.sql` tạo receipt header và dòng xác nhận liên kết issue line POSTED. Mỗi dòng tách `accepted_quantity`, `damaged_quantity`, `wrong_quantity`, `refused_quantity`; nhiều receipt có thể ghi nhận từng đợt nhưng tổng terminal không vượt quantity đã issued. Confirm recheck trong transaction để hai draft cạnh tranh không double-confirm, sau đó phân loại batch thành RECEIVED, DISCREPANCY hoặc REFUSED. Dòng và event đã confirm được trigger bảo vệ. View `v_ncvt_receipt_progress` giữ riêng issued, accepted, từng loại discrepancy và pending. Receipt không ghi Stock Ledger; issue đã có receipt terminal bị chặn reversal trực tiếp để tránh hoàn tồn sai thực tế.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

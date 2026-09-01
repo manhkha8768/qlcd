@@ -82,6 +82,7 @@ try {
     app.use('/api/ncvt-canonical', require('./routes/ncvt-aggregate'));
     app.use('/api/ncvt-reservations', require('./routes/ncvt-reservations'));
     app.use('/api/ncvt-issues', require('./routes/ncvt-issues'));
+    app.use('/api/ncvt-receipts', require('./routes/ncvt-receipts'));
     app.use('/api/tai-san', require('./routes/taisan'));
     app.use('/api/giao-dich', require('./routes/giaodich'));
     app.use('/api', require('./routes/tienich'));

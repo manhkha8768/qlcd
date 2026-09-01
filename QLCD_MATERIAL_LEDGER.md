@@ -49,3 +49,7 @@ Test race reserve/issue, over-reserve, tồn âm, transfer lỗi giữa chừng,
 ## 8. TASK 17 issue
 
 Phiếu cấp phát canonical chỉ nhận dòng từ reservation. Post ISSUE ghi `ON_HAND -q` và `RESERVED -q` đồng thời, tăng `consumed_quantity` của reservation và khóa voucher POSTED trong cùng transaction. Nhiều phiếu có thể cấp từng đợt; phần còn lại luôn được đọc lại tại thời điểm post để chống double-consume. Reversal sinh stock entry đối ứng và phục hồi reservation. `issued` là số phiếu POSTED chưa reversal; chưa được coi là `received` cho tới TASK 18.
+
+## 9. TASK 18 receipt acknowledgement
+
+Receipt là xác nhận nghiệp vụ tại PX, không phải giao dịch kho thứ hai. Accepted, damaged, wrong và refused được lưu riêng theo issue line; pending là issued trừ tổng đã xác nhận terminal. Nhiều receipt partial được phép và confirm dùng atomic recheck để không vượt issued. Không thay đổi ON_HAND/RESERVED khi xác nhận. Issue đã có receipt terminal không được reversal trực tiếp vì hàng không thể tự quay lại kho trên sổ sách.
