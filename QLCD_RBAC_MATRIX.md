@@ -1,0 +1,55 @@
+# QLCD RBAC and Data Scope Matrix
+
+## 1. Baseline
+
+Role legacy: `admin`, `cd_cty`, `px`, `xem`. Session chỉ mang một `phan_xuong_id`. Code có hai engine quyền:
+
+- `middleware/quyen.js`: role guard, scope một PX và các bảng `vai_tro_quyen`/`nguoi_dung_vai_tro`.
+- `middleware/quyen-ma.js`: permission override qua `quyen_vai_tro`/`quyen_nguoi_dung`.
+
+Sự trùng lặp này làm kết quả quyền phụ thuộc route dùng middleware nào. P0: `dashboard.js` và `khovat.js` gọi sai `coMaQuyenNay`; authorization không thực thi. Anonymous hiện bị chặn gián tiếp bởi router `/api`, nhưng audit runtime xác nhận user role `xem` không có permission vẫn nhận HTTP 200. Tất cả quyền dưới đây là target contract, chưa được coi là đạt cho tới khi có test 401/403/scope.
+
+## 2. Data scopes đích
+
+| Scope | Ý nghĩa |
+|---|---|
+| `COMPANY` | Toàn Công ty theo permission cụ thể |
+| `ASSIGNED_UNITS` | Nhiều phân xưởng/kho/công trình được giao, có hiệu lực từ–đến |
+| `OWN_UNIT` | Đơn vị làm việc chính |
+| `OWN_RECORDS` | Bản nháp do chính user tạo |
+
+Scope phải được resolve server-side từ assignment; không tin `unit_id` client gửi. Danh sách Phân xưởng/kho là seed có thể thay đổi, tuyệt đối không hard-code.
+
+## 3. Matrix vai trò nghiệp vụ
+
+Legend: V=view, C=create/edit draft, S=submit, A=approve/reject, X=admin/config, `—`=deny.
+
+| Chức năng | System Admin | Phòng CĐVT | Chủ nhiệm công trình | PX/Cơ điện PX | Thủ kho | Người xem |
+|---|---:|---:|---:|---:|---:|---:|
+| User/role/permission | X | — | — | — | — | — |
+| Organization/assignment | X | C/A company | V assigned | V own | V own | V scoped |
+| Asset/device master | X | V/C/A company | V/C assigned | V/C own | V scoped | V scoped |
+| Asset transaction | X | V/C/A company | V/C/S assigned | V/C/S own | V/C/S warehouse | V scoped |
+| Inventory/reconciliation | X | V/C/A company | V/C/S assigned | V/C/S own | V/C/S own | V scoped |
+| Technical profile/files | X | V/C company | V/C assigned | V/C own | V scoped | V scoped |
+| Material master | X | V/C/A company | V | V | V/C | V scoped |
+| Warehouse ledger | X | V/A company | V assigned | V own | V/C/S own warehouse | V scoped |
+| NCVT draft/submit | X | V/A company | V/A assigned | V/C/S own | V | V scoped |
+| Material reserve/issue | X | V/C/A company | V assigned | V/receive own | V/C/S own warehouse | V scoped |
+| Report/export | X | V company | V assigned | V own | V own | V scoped if granted |
+| Audit/security/config | X | V audit if granted | — | — | — | — |
+
+Separation of duties: người tạo không tự duyệt giao dịch nhạy cảm; override cấp vượt/tồn âm mặc định bị cấm và nếu được mở phải có permission riêng, lý do và approval.
+
+## 4. Permission naming target
+
+Chuẩn hóa dạng `resource.action`, ví dụ: `asset.view`, `asset.create`, `asset_transaction.submit`, `asset_transaction.approve`, `inventory.perform`, `document.upload`, `material.manage`, `stock.issue`, `ncvt.submit`, `ncvt.approve`, `report.export`, `audit.view`. Loại bỏ việc cùng tồn tại mã hoa (`GD_TAO`) và mã thường (`filemau.xem`) sau migration có mapping.
+
+## 5. Acceptance tests bắt buộc Task 1
+
+- Anonymous nhận 401 ở mọi API trừ health/login; không có route chỉ dựa vào function truthy.
+- Authenticated thiếu permission nhận 403; không rò existence của record ngoài scope.
+- User có 2+ đơn vị chỉ thấy đúng assignments còn hiệu lực.
+- Gọi API thủ công với `unit_id` khác không mở rộng scope.
+- Admin bypass được ghi audit; deny override ở user thắng allow role theo policy đã chốt.
+- Test toàn bộ route table tự động phát hiện endpoint không gắn policy.

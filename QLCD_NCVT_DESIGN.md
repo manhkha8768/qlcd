@@ -1,0 +1,46 @@
+# QLCD NCVT Design
+
+## 1. Baseline assessment
+
+Legacy đã có kỳ quý, import Excel/staging, dòng nhu cầu, cấp phát nhiều lần, chống cấp vượt cơ bản, hủy cấp và test module. Trạng thái kỳ hiện là `nhap/da_nhap/dang_ap_dung/da_dong/huy`; chưa biểu diễn đầy đủ draft theo PX, submit/review/return/approve, reservation, issued-vs-received, discrepancy và carry-forward. Material được nhận diện chủ yếu bằng mã/text, chưa bắt buộc liên kết Material Master.
+
+Kết luận: Task 13-15 và 17 có prototype/MVP **một phần**; Task 14, 16, 18-20 chưa hoàn chỉnh theo Roadmap mới.
+
+## 2. Aggregate target
+
+```text
+ncvt_periods
+  -> ncvt_submissions (một PX/kỳ, versioned)
+      -> ncvt_lines -> materials
+      -> submission_reviews / approvals
+      -> allocations -> material_reservations
+      -> issue_lines -> material_ledger
+      -> receipt_confirmations / discrepancies
+      -> carry_forward_links
+```
+
+## 3. State machines
+
+Period: `DRAFT -> OPEN -> REVIEWING -> APPROVED -> FULFILLING -> CLOSING -> LOCKED`, kèm `CANCELLED` có kiểm soát.
+
+Submission: `DRAFT -> SUBMITTED -> IN_REVIEW -> RETURN_FOR_EDIT | REJECTED | APPROVED`. Mỗi lần submit tạo version/audit; approved quantity không update trực tiếp.
+
+Issue: `DRAFT -> SUBMITTED -> APPROVED -> POSTED -> PARTIALLY_RECEIVED | RECEIVED | DISPUTED`; cancellation trước POSTED, reversal sau POSTED.
+
+## 4. Business calculations
+
+Theo material và PX: requested, approved, reserved, issued, received, discrepancy, remaining-to-issue, available, incoming và shortage. Dashboard không cộng khác UOM. Drill-down từ toàn Công ty tới từng PX, kỳ, submission, issue và receipt.
+
+`remaining_to_issue = approved - valid_posted_issued`; `remaining_to_receive = issued - accepted_received`. Cancel/reversal phải cập nhật qua transaction links, không sửa tổng.
+
+## 5. Import
+
+File gốc bất biến. Pipeline: upload -> parse staging -> map columns/material candidates -> validate -> user review -> save draft -> submit. Dòng chưa map Material Master không được approve. Import lặp dùng file hash + business key để cảnh báo/idempotency.
+
+## 6. Carry forward
+
+Khi close kỳ, từng dòng chọn close/cancel/carry. Carry chỉ lấy phần approved còn hợp lệ, tạo line kỳ mới có `source_line_id`, không thay đổi kỳ đã LOCKED và không nhân đôi reservation/issue.
+
+## 7. Acceptance
+
+Multi-unit scope cho Chủ nhiệm; return-for-edit tạo version; approve bất biến; concurrent reserve không vượt available; nhiều issue không vượt approved; issued 10/received 9 tạo discrepancy 1; carry-forward chạy lặp không nhân đôi; lock ngăn mọi mutation trừ adjustment/reversal có quyền.

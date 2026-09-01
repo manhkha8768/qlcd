@@ -1,0 +1,62 @@
+# QLCD Official Implementation Roadmap
+
+> Chốt từ MASTER PROMPT/Roadmap và hiệu chỉnh bằng audit `main@fd65edc` ngày 2026-09-01. Trạng thái chỉ phản ánh bằng chứng source; “một phần” không đồng nghĩa production-ready.
+
+## 1. Task mapping
+
+| Task | Phạm vi | Baseline | Gap chính / exit gate |
+|---:|---|---|---|
+| 0 | Audit + baseline/docs | Hoàn thành trong commit Task 0 | 8 tài liệu, test/build report, không đổi nghiệp vụ |
+| 1 | Foundation stabilization | Một phần | Sửa P0 auth, thống nhất RBAC/scope nhiều đơn vị, migration journal, CI/PWA foundation |
+| 2 | Asset/TSCĐ/CCDC master | Một phần | Tách Asset ID khỏi device, CRUD/import/export/pagination có scope |
+| 3 | Device master | Một phần | Device ID + mapping asset/device + profile boundary |
+| 4 | Asset transaction ledger | Một phần | Append-only ledger, reversal, projection, idempotency |
+| 5 | Điều chuyển + giao nhận hai đầu | Một phần | sender/receiver/approval/atomic post, attachment/timeline |
+| 6 | Kiểm kê + đối chiếu + QR | Một phần | QR/mobile/offline draft, adjustment qua ledger |
+| 7 | Hồ sơ kỹ thuật | Một phần đáng kể | UI profile/tab, version/data validation |
+| 8 | Cây cấu tạo | Một phần đáng kể | cycle/concurrency/UX và integration repair/material |
+| 9 | Document/file management | Một phần | object storage, version/hash/link/signed URL/ACL |
+| 10 | Material master | Một phần sơ khai | canonical material/UOM/dedup review |
+| 11 | Warehouse + stock ledger | Một phần | append-only ledger + on-hand/reserved/available/incoming |
+| 12 | Chuyển kho + hoàn trả | Chưa đầy đủ | in-transit, receive/return atomic, không double stock |
+| 13 | NCVT period + PX submission | Một phần | submission/version/state/material link |
+| 14 | Review + approval NCVT | Chưa đầy đủ | assignment review, return/reject/approve immutable |
+| 15 | Tổng hợp NCVT Công ty | Một phần | material/PX drill-down và nguồn cung chuẩn |
+| 16 | Reservation | Chưa làm | concurrency-safe reservation/allocation |
+| 17 | Phiếu xuất/cấp phát | Một phần | issue workflow nối stock ledger/reservation |
+| 18 | PX xác nhận nhận | Chưa làm | received/discrepancy/refusal |
+| 19 | Carry forward + lock | Chưa làm | source link/idempotency/immutable locked period |
+| 20 | NCVT dashboard | Một phần sơ khai | KPI/filter/alert đúng UOM và scope |
+| 21 | Repair/maintenance/inspection | Một phần đáng kể | nối component + material issue + lifecycle |
+| 22 | Notifications + data quality | Một phần sơ khai | rules/jobs/ownership/triage |
+| 23 | Reporting/Excel/PDF/print | Một phần | chuẩn mẫu, scope, pagination/performance |
+| 24 | Security hardening | Một phần | route policy audit, upload/secrets/idempotency/concurrency tests |
+| 25 | Performance + production readiness | Chưa đầy đủ | profiling/index/monitoring/error tracking/restore drill/load test |
+| 26 | UAT dữ liệu thực | Chưa làm | staging + 1–2 PX, end-to-end sign-off |
+| 27 | Production deployment | Một phần hạ tầng legacy | tách env, domain/HTTPS, prod DB/storage, pipeline/rollback |
+| 28 | Controlled go-live | Chưa làm | pilot 1–2 PX, observability/support, staged rollout |
+| 29 | AI/OCR | Chưa làm | chỉ sau dữ liệu ổn định; preview/user confirm/approval |
+
+## 2. Release gates
+
+- Release A Core: Task 0–9.
+- Release B Material: Task 10–12.
+- Release C NCVT: Task 13–20.
+- Release D Operations: Task 21–25.
+- Release E Production: Task 26–29.
+
+## 3. Thứ tự bắt buộc
+
+Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
+
+Task tiếp theo đề xuất: **TASK 1 — Foundation Stabilization**, ưu tiên hotfix authorization dashboard/kho, thống nhất một RBAC/data-scope service và thêm route authorization tests trước mọi migration Cloudflare.
+
+## 4. Quality gate sau mỗi Task
+
+`INSPECT -> PLAN -> MIGRATION -> IMPLEMENT -> PERMISSION -> VALIDATION -> TEST -> LINT -> TYPECHECK -> BUILD -> REVIEW DIFF -> COMMIT -> REPORT -> STOP`.
+
+Mỗi checkpoint báo: STATUS, BRANCH, COMMIT SHA, FILES CHANGED, MIGRATIONS, TEST, TYPECHECK, BUILD, KNOWN ISSUES, TASK MAPPING và NEXT RECOMMENDED TASK. Không tự sang Task tiếp theo khi chưa review.
+
+## 5. Cloudflare decision
+
+Không coi `feature/cloudflare-foundation` là Task 1 hoàn tất. Audit hiện tại: typecheck/build đạt, lint thiếu config, không có test/spec và CI tham chiếu workspace lockfile không tồn tại. Chỉ tiếp tục/merge sau khi: cấu hình placeholder được thay bằng môi trường thật an toàn; legacy parity/migration plan được duyệt; CI thực sự chạy; test auth/RBAC/data scope đạt; D1 transaction/concurrency và R2 lifecycle đáp ứng ledger/file; có rollback. Nếu không đạt, ổn định Express/SQLite trước và dùng Cloudflare Tunnel cho pilot vẫn là lựa chọn hợp lệ.
