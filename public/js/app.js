@@ -20,6 +20,7 @@ const CAC_MAN_HINH = {
     'ncvt':      { ten: 'NCVT Quý',       ve: mhNCVT,      nhom: 'Vật tư' },
     'su-co':     { ten: 'Sự cố thiết bị', ve: mhSuCo,      nhom: 'Kỹ thuật' },
     'phu-tung':  { ten: 'Danh mục phụ tùng', ve: mhPhuTung, nhom: 'Kỹ thuật' },
+    'ho-so-ky-thuat': { ten: 'Hồ sơ kỹ thuật', ve: mhHoSoKyThuat, nhom: 'Kỹ thuật' },
     'ho-so-tb':  { ten: 'Hồ sơ thiết bị', ve: veHoSo,      nhom: 'Kỹ thuật', an: true },
     'quan-tri':  { ten: 'Quản trị',       ve: mhQuanTri,   nhom: 'Hệ thống', chiAdmin: true },
     'bao-mat':   { ten: 'Bảo mật truy cập', ve: mhBaoMat,   nhom: 'Hệ thống', chiAdmin: true }

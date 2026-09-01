@@ -13,7 +13,7 @@
 | 4 | Asset transaction ledger | Hoàn thành | Opening backfill, append-only posting, reversal, projection/rebuild, idempotency và reconciliation |
 | 5 | Điều chuyển + giao nhận hai đầu | Hoàn thành | sender/receiver/approval bắt buộc, evidence ACL, timeline, reject và atomic ledger post |
 | 6 | Kiểm kê + đối chiếu + QR | Hoàn thành | Ledger snapshot bất biến, QR identity, mobile offline queue, idempotent sync, reviewed adjustment |
-| 7 | Hồ sơ kỹ thuật | Một phần đáng kể | UI profile/tab, version/data validation |
+| 7 | Hồ sơ kỹ thuật | Hoàn thành | Device ID canonical, UI profile/tab, typed validation, optimistic version và immutable history |
 | 8 | Cây cấu tạo | Một phần đáng kể | cycle/concurrency/UX và integration repair/material |
 | 9 | Document/file management | Một phần | object storage, version/hash/link/signed URL/ACL |
 | 10 | Material master | Một phần sơ khai | canonical material/UOM/dedup review |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 7 — Hồ sơ kỹ thuật**, chuyển profile kỹ thuật sang Device ID canonical, bổ sung validation/version và giữ mapping nghiệp vụ legacy.
+Task tiếp theo đề xuất: **TASK 8 — Cây cấu tạo**, chuẩn hóa component tree theo Device ID, chống cycle/concurrency và tích hợp với sửa chữa/vật tư mà không làm mất dữ liệu legacy.
 
 ## 4. Quality gate sau mỗi Task
 

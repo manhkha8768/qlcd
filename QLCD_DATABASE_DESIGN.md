@@ -81,6 +81,10 @@ Migration `18-transfer-handover.sql` thêm `asset_transfer_workflows`, `asset_tr
 
 Migration `19-inventory-ledger-qr.sql` tạo QR identity, kỳ kiểm kê canonical, snapshot bất biến từ projection, batch sync idempotent, observation, discrepancy review và timeline. Kết quả submit không sửa snapshot. Chỉ sai lệch được reviewer chấp thuận mới sinh transaction `ADJUSTMENT`; approval và ledger post chạy nguyên tử. Asset Master/legacy không bị sửa trực tiếp.
 
+## 12. TASK 7 implementation
+
+Migration `20-technical-profile.sql` tạo định nghĩa thuộc tính theo nhóm/model, trạng thái phiên bản hồ sơ, giá trị typed và lịch sử thay đổi bất biến theo `Device ID`. Kiểu dữ liệu gồm text, number, boolean, date và enum; định nghĩa hỗ trợ đơn vị, min/max, pattern, bắt buộc và thứ tự. Dữ liệu `dinh_nghia_thong_so`/`gia_tri_thong_so` được backfill qua legacy mapping, không xóa hay sửa bảng nguồn. Profile canonical trả các tab tài sản, cấu tạo, tài liệu, bảo trì và kiểm định; các tab chưa canonical tiếp tục đọc qua mapping cho tới Task tương ứng.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

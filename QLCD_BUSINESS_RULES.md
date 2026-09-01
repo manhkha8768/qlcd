@@ -60,3 +60,5 @@
 Baseline đáp ứng một phần rules 1, 5, 9-16, 23 và 28. Các rule về tách asset/device, ledger chuẩn, multi-unit scope, object storage/version, reservation, received/discrepancy và carry-forward chưa hoàn chỉnh. Không tuyên bố rule “đạt” chỉ vì có bảng hoặc màn hình; cần acceptance test end-to-end.
 
 TASK 6 triển khai rules 10–12 trên luồng canonical: snapshot lấy từ Asset Ledger và bất biến, kết quả thực tế lưu riêng, QR chỉ nhận diện Asset, còn chênh lệch phải review/approve trước khi tạo ledger adjustment.
+
+TASK 7 triển khai rule 13 trên luồng canonical: định nghĩa thuộc tính áp dụng theo nhóm/model, giá trị được kiểm tra đúng kiểu và ràng buộc trước khi lưu, batch ghi dùng optimistic version, mỗi phiên bản tạo history bất biến. Bảng kỹ thuật legacy được giữ nguyên và chỉ dùng làm nguồn backfill/compatibility read.
