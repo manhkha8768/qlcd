@@ -4,7 +4,9 @@
 
 Legacy đã có kỳ quý, import Excel/staging, dòng nhu cầu, cấp phát nhiều lần, chống cấp vượt cơ bản, hủy cấp và test module. Trạng thái kỳ hiện là `nhap/da_nhap/dang_ap_dung/da_dong/huy`; chưa biểu diễn đầy đủ draft theo PX, submit/review/return/approve, reservation, issued-vs-received, discrepancy và carry-forward. Material được nhận diện chủ yếu bằng mã/text, chưa bắt buộc liên kết Material Master.
 
-Kết luận sau Task 15: Task 13–15 đã có luồng canonical và acceptance test; Task 16, 18–20 chưa hoàn chỉnh. Task 17 còn nghiệp vụ legacy nhưng chưa nối reservation canonical.
+Kết luận sau Task 16: Task 13–16 đã có luồng canonical và acceptance test; Task 18–20 chưa hoàn chỉnh. Task 17 còn nghiệp vụ legacy nhưng chưa consume reservation canonical.
+
+Reservation canonical chỉ được tạo từ dòng APPROVED, có thể phân bổ nhiều kho nhưng tổng không vượt nhu cầu. Mỗi allocation post RESERVED vào Stock Ledger nguyên tử; release/cancel hoàn nguyên bằng entry mới và giữ audit bất biến. Reservation không đồng nghĩa đã xuất hoặc đã nhận.
 
 ## 2. Aggregate target
 

@@ -117,6 +117,10 @@ Migration `27-ncvt-review-approval.sql` tạo assignment theo period/PX, giữ l
 
 Migration `28-ncvt-company-aggregation.sql` tạo view `v_ncvt_company_aggregate` tính trực tiếp từ `ncvt_submissions.status='APPROVED'`, nhóm theo period, Material ID và UOM; không lưu một bảng tổng dễ stale. Drill-down dùng cùng điều kiện nguồn và nhóm theo PX nên tổng chi tiết phải khớp tổng Công ty. `supply_sources` là danh mục nguồn cung canonical, có thể liên kết kho nội bộ; `material_supply_sources` ánh xạ nhiều nguồn cho một Material với priority, preferred, lead time và minimum order. Mỗi Material chỉ có tối đa một nguồn ưu tiên ACTIVE. Thay đổi mapping dùng optimistic version và ghi `material_supply_source_events` bất biến; bảng NCVT legacy không bị sửa.
 
+## 21. TASK 16 implementation
+
+Migration `29-ncvt-reservation.sql` tạo `material_reservations` liên kết trực tiếp dòng NCVT APPROVED với kho, Material ID và UOM canonical. Reserve kiểm tra cả phần nhu cầu chưa phân bổ và `AVAILABLE` hiện hành rồi tạo stock transaction/ledger `RESERVE` trong cùng database transaction; constraint projection chặn `RESERVED > ON_HAND`. Release/cancel tạo ledger `RELEASE`, tăng version và cập nhật reservation nguyên tử. `material_reservation_events` chứa idempotency key, stock transaction, actor, lý do và payload, được trigger bảo vệ khỏi update/delete. View `v_ncvt_reservation_progress` chiếu requested, active reserved, consumed và unallocated theo dòng để Task 17 consume mà không đổi approved demand.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.
