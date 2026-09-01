@@ -10,7 +10,7 @@
 | 1 | Foundation stabilization | Hoàn thành | Authorization service thống nhất, scope nhiều đơn vị, project/unit foundation, migration journal, CI/PWA foundation và regression test |
 | 2 | Asset/TSCĐ/CCDC master | Hoàn thành | `assets` tách khỏi device, legacy mapping, CRUD/import/export/pagination, RBAC và multi-unit scope |
 | 3 | Device master | Hoàn thành | `devices`, legacy mapping, asset/device history, CRUD/RBAC/scope/version và compatibility read |
-| 4 | Asset transaction ledger | Một phần | Append-only ledger, reversal, projection, idempotency |
+| 4 | Asset transaction ledger | Hoàn thành | Opening backfill, append-only posting, reversal, projection/rebuild, idempotency và reconciliation |
 | 5 | Điều chuyển + giao nhận hai đầu | Một phần | sender/receiver/approval/atomic post, attachment/timeline |
 | 6 | Kiểm kê + đối chiếu + QR | Một phần | QR/mobile/offline draft, adjustment qua ledger |
 | 7 | Hồ sơ kỹ thuật | Một phần đáng kể | UI profile/tab, version/data validation |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 4 — Asset Transaction Ledger**, tạo ledger append-only, reversal, projection và idempotency trên Asset Master; chưa thay thế workflow legacy trước khi có parity test.
+Task tiếp theo đề xuất: **TASK 5 — Điều chuyển + giao nhận hai đầu**, mở rộng Asset Ledger bằng sender/receiver confirmation, approval và atomic posting; workflow legacy chỉ chuyển đổi sau parity test.
 
 ## 4. Quality gate sau mỗi Task
 

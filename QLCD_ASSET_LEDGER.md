@@ -2,7 +2,7 @@
 
 ## 1. Baseline
 
-Legacy có `thiet_bi`, `giao_dich`, `chi_tiet_giao_dich`, `lich_su_tai_san` và `dieu_chuyen`. Các luồng đã có transaction/approval một phần nhưng `thiet_bi` vẫn giữ `so_luong` và vị trí/đơn vị hiện tại mutable; hai mô hình giao dịch cùng tồn tại. Vì vậy Task 4 chỉ **một phần**, chưa phải ledger làm nguồn sự thật.
+Legacy có `thiet_bi`, `giao_dich`, `chi_tiet_giao_dich`, `lich_su_tai_san` và `dieu_chuyen`. Các luồng đã có transaction/approval một phần nhưng `thiet_bi` vẫn giữ `so_luong` và vị trí/đơn vị hiện tại mutable; hai mô hình giao dịch cùng tồn tại. Task 4 đã bổ sung ledger canonical song song; workflow legacy chưa được retire trước parity/UAT.
 
 Sau Task 2, `assets` là Asset Master đích và `asset_legacy_map` giữ quan hệ với `thiet_bi`. CRUD Asset Master cố ý chặn đổi `don_vi_id` trực tiếp. Ledger Task 4 sẽ ghi movement và cập nhật projection thay vì mở lại direct balance/location mutation.
 
@@ -43,3 +43,7 @@ Mỗi entry tối thiểu có: transaction ID, asset ID, device ID tùy chọn, 
 ## 6. Acceptance
 
 Concurrent approvals không nhân đôi entry; transfer lỗi giữa chừng rollback; reversal rebuild đúng; data-scope ngăn PX A thao tác asset PX B; audit cho biết ai/when/why/document; import lặp không tạo giao dịch kép.
+
+## 7. TASK 4 implementation
+
+Migration `17-asset-ledger.sql` tạo `asset_transactions`, dòng nháp, `asset_ledger_entries` bất biến và `asset_balance_projection`. Opening entries được sinh một lần từ Asset Master. API yêu cầu idempotency key, post nguyên tử, kiểm tra số lượng nguồn, sinh cặp OUT/IN cho transfer, tạo reversal tham chiếu từng entry gốc, rebuild projection và báo reconciliation với `assets/thiet_bi` mà không tự sửa. Task 5 sẽ bổ sung workflow xác nhận giao/nhận/phê duyệt trước POST.

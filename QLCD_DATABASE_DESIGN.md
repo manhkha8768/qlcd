@@ -69,6 +69,10 @@ Migration `15-asset-master.sql` tạo `assets` làm Master Asset mới và `asse
 
 Migration `16-device-master.sql` tạo `devices` chỉ chứa nhận dạng và hồ sơ kỹ thuật, `device_legacy_map` giữ ID `thiet_bi`, còn `asset_device_links` biểu diễn quan hệ nhiều-nhiều có hiệu lực theo thời gian. Backfill tạo Device ID ổn định và liên kết chính tới Asset sinh từ cùng record legacy. API Device Master có CRUD, filter/pagination, RBAC, multi-unit scope, optimistic version và đóng liên kết thay vì xóa lịch sử. API `/api/thiet-bi` cũ trả thêm `device_id`/`asset_id` để các màn hình hiện hữu chuyển đổi dần.
 
+## 9. TASK 4 implementation
+
+Migration `17-asset-ledger.sql` thêm transaction header, draft lines, immutable posted entries và projection có thể rebuild. Opening balance được backfill idempotent từ `assets`; transfer tạo hai entry cân bằng theo toàn Công ty. Trigger database chặn update/delete posted entry. Reversal là transaction mới tham chiếu entry gốc. Reconciliation chỉ đọc và báo chênh lệch với Asset Master/legacy.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.
