@@ -121,6 +121,10 @@ Migration `28-ncvt-company-aggregation.sql` tạo view `v_ncvt_company_aggregate
 
 Migration `29-ncvt-reservation.sql` tạo `material_reservations` liên kết trực tiếp dòng NCVT APPROVED với kho, Material ID và UOM canonical. Reserve kiểm tra cả phần nhu cầu chưa phân bổ và `AVAILABLE` hiện hành rồi tạo stock transaction/ledger `RESERVE` trong cùng database transaction; constraint projection chặn `RESERVED > ON_HAND`. Release/cancel tạo ledger `RELEASE`, tăng version và cập nhật reservation nguyên tử. `material_reservation_events` chứa idempotency key, stock transaction, actor, lý do và payload, được trigger bảo vệ khỏi update/delete. View `v_ncvt_reservation_progress` chiếu requested, active reserved, consumed và unallocated theo dòng để Task 17 consume mà không đổi approved demand.
 
+## 22. TASK 17 implementation
+
+Migration `30-ncvt-material-issue.sql` tạo voucher cấp phát canonical và dòng bắt buộc tham chiếu reservation. Workflow `DRAFT -> SUBMITTED -> APPROVED -> POSTED`, có REJECTED/CANCELLED và REVERSED; quyết định approve/reject lưu snapshot bất biến theo version. Khi post, mỗi dòng kiểm tra lại phần reservation chưa consume, ghi stock transaction `ISSUE` với cả `on_hand_delta=-q` và `reserved_delta=-q`, cập nhật consumed/status reservation và voucher trong một database transaction. Vì vậy cấp nhiều đợt không vượt reservation và hai phiếu cạnh tranh không double-consume. Reversal tạo entry đối ứng, phục hồi cả ON_HAND/RESERVED và consumed reservation; phiếu REVERSED bị loại khỏi projection issued.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

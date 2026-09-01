@@ -59,3 +59,5 @@ Chuẩn hóa dạng `resource.action`, ví dụ: `asset.view`, `asset.create`, `
 `ncvt.aggregate.view` chỉ cấp cho `admin` và `cd_cty`, phạm vi COMPANY; PX không được đọc tổng hợp hoặc drill-down toàn Công ty. `ncvt.supply.manage` chỉ cấp cho hai vai trò này để tạo nguồn cung và thay đổi mapping Material. API kiểm tra permission ở server; việc ẩn nút trên UI không thay thế authorization.
 
 TASK 16: `ncvt.reservation.manage` và `ncvt.reservation.release` chỉ cấp `admin`/`cd_cty`; `ncvt.reservation.view` cấp thêm PX nhưng dữ liệu được lọc server-side theo đơn vị submission. PX không được tự reserve, release hoặc cancel bằng cách gọi API trực tiếp.
+
+TASK 17: `ncvt.issue.create/submit/approve/post/reverse` cấp `admin` và `cd_cty`; người lập không được tự quyết định trừ admin override. PX chỉ có `ncvt.issue.view`, kết quả lọc theo đơn vị của voucher và không thể tạo/post bằng API thủ công.

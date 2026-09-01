@@ -45,3 +45,7 @@ Test race reserve/issue, over-reserve, tồn âm, transfer lỗi giữa chừng,
 ## 7. TASK 16 reservation
 
 `material_reservations` là allocation có truy vết từ dòng NCVT APPROVED tới kho. Số đang giữ bằng `reserved_quantity - released_quantity - consumed_quantity`; tổng đang giữ làm giảm AVAILABLE qua Stock Ledger, không phải cột tồn độc lập. Reserve và release/cancel đều post ledger trong cùng transaction với thay đổi workflow. Idempotency bảo vệ retry, optimistic version bảo vệ release đồng thời, còn constraint projection là hàng rào cuối chống over-reserve. Task 17 sẽ consume reservation cùng ISSUE; TASK 16 chưa xuất kho và không giảm ON_HAND.
+
+## 8. TASK 17 issue
+
+Phiếu cấp phát canonical chỉ nhận dòng từ reservation. Post ISSUE ghi `ON_HAND -q` và `RESERVED -q` đồng thời, tăng `consumed_quantity` của reservation và khóa voucher POSTED trong cùng transaction. Nhiều phiếu có thể cấp từng đợt; phần còn lại luôn được đọc lại tại thời điểm post để chống double-consume. Reversal sinh stock entry đối ứng và phục hồi reservation. `issued` là số phiếu POSTED chưa reversal; chưa được coi là `received` cho tới TASK 18.

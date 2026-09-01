@@ -23,7 +23,7 @@
 | 14 | Review + approval NCVT | Hoàn thành | reviewer assignment/history, return-revise-resubmit, reject/approve và versioned immutable decisions |
 | 15 | Tổng hợp NCVT Công ty | Hoàn thành | aggregate động chỉ APPROVED theo Material/UOM, drill-down PX và nguồn cung canonical |
 | 16 | Reservation | Hoàn thành | approved-line allocation, atomic stock reserve/release, idempotency, concurrency và audit |
-| 17 | Phiếu xuất/cấp phát | Một phần | issue workflow nối stock ledger/reservation |
+| 17 | Phiếu xuất/cấp phát | Hoàn thành | canonical voucher, approval snapshot, partial issue, atomic reservation consume/ledger và reversal |
 | 18 | PX xác nhận nhận | Chưa làm | received/discrepancy/refusal |
 | 19 | Carry forward + lock | Chưa làm | source link/idempotency/immutable locked period |
 | 20 | NCVT dashboard | Một phần sơ khai | KPI/filter/alert đúng UOM và scope |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 17 — Phiếu xuất/cấp phát**, consume reservation và post ISSUE nguyên tử, hỗ trợ cấp nhiều đợt nhưng không vượt approved/remaining.
+Task tiếp theo đề xuất: **TASK 18 — PX xác nhận nhận**, ghi nhận received/discrepancy/refusal theo từng dòng cấp phát mà không tự coi issued là received.
 
 ## 4. Quality gate sau mỗi Task
 
