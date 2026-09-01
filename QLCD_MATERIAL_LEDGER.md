@@ -57,3 +57,7 @@ Receipt là xác nhận nghiệp vụ tại PX, không phải giao dịch kho th
 ## 10. TASK 19 carry-forward
 
 Carry-forward không post Stock Ledger và không làm thay đổi ON_HAND/RESERVED. Phần được chuyển lấy nhu cầu APPROVED trừ lượng issue còn POSTED, reservation còn hiệu lực và lượng đã carry; do đó hàng đã xuất hoặc đang giữ không bị nhân thành nhu cầu kỳ mới. Dòng đích giữ nguyên Material ID/UOM canonical và nằm trong submission DRAFT của kỳ kế tiếp để tiếp tục review. Snapshot nguồn và lineage bất biến cho phép dashboard Task 20 giải thích từng lượng carry mà không đọc hoặc sửa tồn kho legacy.
+
+## 11. TASK 20 dashboard projection
+
+Dashboard đọc reservation và issue từ cùng nguồn Stock Ledger/workflow canonical nhưng không tự tính lại ON_HAND hoặc sửa projection kho. Mỗi KPI giữ `uom_code`; received chỉ là accepted acknowledgement, còn damaged/wrong/refused được cộng vào discrepancy. Drill-down từ dòng nhu cầu tới reservation/kho, issue voucher, receipt và carry lineage cho phép giải thích số liệu mà không tạo một balance song song.

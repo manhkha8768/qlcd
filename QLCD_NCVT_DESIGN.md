@@ -4,7 +4,7 @@
 
 Legacy đã có kỳ quý, import Excel/staging, dòng nhu cầu, cấp phát nhiều lần, chống cấp vượt cơ bản, hủy cấp và test module. Trạng thái kỳ hiện là `nhap/da_nhap/dang_ap_dung/da_dong/huy`; chưa biểu diễn đầy đủ draft theo PX, submit/review/return/approve, reservation, issued-vs-received, discrepancy và carry-forward. Material được nhận diện chủ yếu bằng mã/text, chưa bắt buộc liên kết Material Master.
 
-Kết luận sau Task 19: Task 13–19 đã có luồng canonical và acceptance test; Task 20 dashboard chưa hoàn chỉnh. Cấp phát legacy vẫn được giữ để tương thích nhưng không bị canonical posting/receipt/carry-forward ghi ngược.
+Kết luận sau Task 20: toàn bộ Release C, Task 13–20, đã có luồng canonical và acceptance test. Dashboard tổng hợp đúng UOM và scope từ approved/reserved/issued/received/discrepancy/carry-forward. Cấp phát legacy vẫn được giữ để tương thích nhưng không bị canonical workflow hoặc dashboard ghi ngược.
 
 Reservation canonical chỉ được tạo từ dòng APPROVED, có thể phân bổ nhiều kho nhưng tổng không vượt nhu cầu. Mỗi allocation post RESERVED vào Stock Ledger nguyên tử; release/cancel hoàn nguyên bằng entry mới và giữ audit bất biến. Reservation không đồng nghĩa đã xuất hoặc đã nhận.
 
@@ -54,3 +54,7 @@ Multi-unit scope cho Chủ nhiệm; return-for-edit tạo version; approve bất
 ## 8. Company aggregation và supply source
 
 Tổng hợp Công ty là projection đọc, không phải số tổng nhập tay: chỉ lấy submission APPROVED và nhóm đúng `period_id + material_id + uom_code`. Drill-down theo PX phải dùng cùng predicate và tổng chi tiết bằng tổng Công ty. Nguồn cung chuẩn được quản lý độc lập với submission; một Material có thể có nhiều nguồn nhưng chỉ một nguồn preferred ACTIVE. Material chưa mapping vẫn xuất hiện trong tổng hợp với cảnh báo để người dùng xử lý, không bị loại khỏi nhu cầu đã duyệt.
+
+## 9. TASK 20 dashboard
+
+Dashboard nhận một period bắt buộc và có filter PX, Material, submission status, search và alert. API áp dụng scope trước khi tạo filter metadata, KPI và danh sách. KPI trả thành mảng theo UOM; không tồn tại trường tổng số lượng chung xuyên UOM. Alert gồm chờ review, returned, chưa phân bổ, chờ xác nhận nhận, discrepancy và có thể carry. Mỗi dòng drill-down tới reservation, issue, receipt và carry lineage; dashboard không phải write path.

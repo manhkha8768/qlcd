@@ -68,3 +68,7 @@ Giữ một monorepo và chuyển dần theo strangler pattern: legacy Express/S
 ## 8. TASK 19 architecture note
 
 Carry-forward được triển khai như một nghiệp vụ canonical riêng trên Express/SQLite, không ghi ngược bảng NCVT legacy và không tác động Stock Ledger. Route chỉ orchestration; invariant quan trọng được neo bằng view eligibility, foreign key, unique idempotency, transaction và trigger bất biến trong migration 32. Dòng kỳ mới giữ Material ID/UOM và lineage về dòng nguồn, tạo nền giải thích số liệu cho dashboard Task 20. UI hiện hữu được mở rộng tại module NCVT thay vì đổi frontend stack.
+
+## 9. TASK 20 architecture note
+
+Dashboard NCVT là read model riêng: migration 33 hợp nhất các projection Task 13–19 ở cấp submission line, route áp dụng permission/data scope rồi mới filter và tổng hợp theo UOM. API drill-down giữ liên kết tới workflow nguồn thay vì lưu bản sao KPI. Giao diện NCVT hiện hữu được mở rộng bằng KPI cards, filter, alerts và bảng chi tiết; không đổi stack và không thêm write path. Release C vì vậy có một đường đọc canonical end-to-end mà không phụ thuộc dashboard NCVT legacy.

@@ -135,6 +135,9 @@ body {
 .the .than-the { padding: 14px; }
 
 .luoi-so { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.luoi-2, .luoi-4 { display: grid; gap: 12px; align-items: end; }
+.luoi-2 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.luoi-4 { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 .o-so {
     background: var(--the); border: 1px solid var(--vien); border-radius: var(--r);
     padding: 12px 14px; border-top: 2px solid var(--vien-dam);

@@ -65,3 +65,5 @@ TASK 17: `ncvt.issue.create/submit/approve/post/reverse` cấp `admin` và `cd_c
 TASK 18: PX có `ncvt.receipt.view/create/confirm` nhưng tất cả API lọc và kiểm tra lại `don_vi_id` của issue voucher. Phòng CĐVT chỉ xem toàn Công ty qua `ncvt.receipt.view`; admin có quyền override. PX khác nhận 403 khi tạo receipt và không thấy progress ngoài scope.
 
 TASK 19: `ncvt.carry.manage` chỉ cấp `admin` và `cd_cty`, cho phép post carry-forward ở phạm vi Công ty. `ncvt.carry.view` cấp thêm PX nhưng API eligible, danh sách batch và chi tiết lineage đều kiểm tra scope đơn vị ở server. PX không thể post bằng API thủ công; batch có nhiều PX chỉ được trả khi toàn bộ dòng nằm trong scope của người đọc.
+
+TASK 20: `ncvt.dashboard.view` cấp cho `admin`, `cd_cty`, `px` và vai trò chỉ xem. Admin/CĐVT xem theo scope được gán hoặc COMPANY; PX/chỉ xem chỉ nhận các dòng thuộc đơn vị hiệu lực của mình. Tham số `don_vi_id` ngoài scope trả 403 và drill-down kiểm tra lại đơn vị của submission line. Permission chỉ cho đọc; dashboard không có endpoint mutation.
