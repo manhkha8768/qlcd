@@ -2,6 +2,7 @@
 
 const TT = {
     hoat_dong: 'Hoạt động', du_phong: 'Dự phòng', dang_sua: 'Đang sửa',
+    dang_su_dung: 'Đang sử dụng', tam_ngung: 'Tạm ngừng',
     dang_dieu_chuyen: 'Điều chuyển', cho_thanh_ly: 'Chờ thanh lý', da_thanh_ly: 'Đã thanh lý',
     nhap: 'Nháp', cho_duyet: 'Chờ duyệt', da_duyet: 'Đã duyệt', chuyen_lai: 'Chuyển lại',
     tot: 'Tốt', trung_binh: 'Trung bình', kem: 'Kém', hong: 'Hỏng',

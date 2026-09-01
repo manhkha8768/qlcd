@@ -1,6 +1,7 @@
 /** TASK 1 integration tests: migration journal, permission deny, multi-unit scope. */
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
 
 process.env.QLCD_DB = path.join(os.tmpdir(), `qlcd-foundation-${Date.now()}.db`);
@@ -32,9 +33,11 @@ const app = require('../server');
 (async () => {
     console.log('\n===== TEST TASK 1 FOUNDATION =====');
     const migrations = db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n;
-    kt('Migration journal ghi đủ 14 migration', migrations === 14);
+    const expectedMigrations = fs.readdirSync(path.join(__dirname, '..', 'db'))
+        .filter(name => name.endsWith('.sql')).length;
+    kt(`Migration journal ghi đủ ${expectedMigrations} migration`, migrations === expectedMigrations);
     kt('Migration chạy lần hai không nhân đôi journal',
-        db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n === 14);
+        db.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n === expectedMigrations);
 
     const server = app.listen(0);
     const base = `http://127.0.0.1:${server.address().port}`;

@@ -61,6 +61,10 @@ Các bảng kiểm kê, kỹ thuật, bảo dưỡng và sửa chữa liên kế
 4. Chuyển từng module qua target schema, có feature flag và rollback.
 5. Chỉ retire schema cũ sau UAT và kỳ lưu giữ; không drop trong các Task đầu.
 
+## 7. TASK 2 implementation
+
+Migration `15-asset-master.sql` tạo `assets` làm Master Asset mới và `asset_legacy_map` để truy vết về `thiet_bi`. Backfill giữ mã TSCĐ duy nhất; bản ghi thiếu/trùng mã nhận mã ổn định `QLCD-LEGACY-{id}`. Bảng legacy tiếp tục tồn tại, không dual-write và không bị drop. Asset mới có optimistic `version`, soft archive, RBAC, scope đơn vị, API phân trang/filter và import/export Excel. Việc đổi đơn vị bị chặn khỏi CRUD để buộc đi qua ledger/transfer ở Task 4–5.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

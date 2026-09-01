@@ -4,7 +4,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.join(__dirname, '..');
-const roots = ['server.js', 'db', 'lib', 'middleware', 'routes', 'scripts', 'test'];
+const roots = ['server.js', 'db', 'lib', 'middleware', 'public/js', 'routes', 'scripts', 'test'];
 const files = [];
 
 function collect(relative) {

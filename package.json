@@ -9,7 +9,7 @@
     "lint": "node scripts/kiem-tra-js.js",
     "typecheck": "node scripts/kiem-tra-js.js",
     "build": "node scripts/kiem-tra-js.js",
-    "test": "node test/test.js && node test/test-nghiep-vu.js && node test/test-giao-dich.js && node test/test-ky-thuat.js && node test/test-ncvt.js && node test/test-bao-mat.js && node test/test-dai-mang.js && node test/test-phan-quyen-dong.js && node test/test-file-mau.js && node test/test-kiem-ke.js && node test/test-doi-chieu.js && node test/test-kho-vat-tu.js && node test/test-dashboard.js && node test/test-foundation.js",
+    "test": "node test/test.js && node test/test-nghiep-vu.js && node test/test-giao-dich.js && node test/test-ky-thuat.js && node test/test-ncvt.js && node test/test-bao-mat.js && node test/test-dai-mang.js && node test/test-phan-quyen-dong.js && node test/test-file-mau.js && node test/test-kiem-ke.js && node test/test-doi-chieu.js && node test/test-kho-vat-tu.js && node test/test-dashboard.js && node test/test-foundation.js && node test/test-asset-master.js",
     "sao-luu": "node scripts/sao-luu.js"
   },
   "dependencies": {

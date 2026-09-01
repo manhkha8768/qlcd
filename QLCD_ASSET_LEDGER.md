@@ -4,6 +4,8 @@
 
 Legacy có `thiet_bi`, `giao_dich`, `chi_tiet_giao_dich`, `lich_su_tai_san` và `dieu_chuyen`. Các luồng đã có transaction/approval một phần nhưng `thiet_bi` vẫn giữ `so_luong` và vị trí/đơn vị hiện tại mutable; hai mô hình giao dịch cùng tồn tại. Vì vậy Task 4 chỉ **một phần**, chưa phải ledger làm nguồn sự thật.
 
+Sau Task 2, `assets` là Asset Master đích và `asset_legacy_map` giữ quan hệ với `thiet_bi`. CRUD Asset Master cố ý chặn đổi `don_vi_id` trực tiếp. Ledger Task 4 sẽ ghi movement và cập nhật projection thay vì mở lại direct balance/location mutation.
+
 ## 2. Ledger target
 
 ```text
