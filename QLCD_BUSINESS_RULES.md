@@ -64,3 +64,5 @@ TASK 6 triển khai rules 10–12 trên luồng canonical: snapshot lấy từ A
 TASK 7 triển khai rule 13 trên luồng canonical: định nghĩa thuộc tính áp dụng theo nhóm/model, giá trị được kiểm tra đúng kiểu và ràng buộc trước khi lưu, batch ghi dùng optimistic version, mỗi phiên bản tạo history bất biến. Bảng kỹ thuật legacy được giữ nguyên và chỉ dùng làm nguồn backfill/compatibility read.
 
 TASK 8 triển khai rule 14 trên luồng canonical: mọi node thuộc đúng một Device, parent phải cùng Device, recursive cycle check chặn chuyển node vào hậu duệ. Mutation yêu cầu version hiện hành; replace giữ node cũ, tạo node mới, chuyển node con và ghi event bất biến trong một transaction. Phiếu sửa chữa và vật tư sử dụng có liên kết trực tiếp tới component canonical.
+
+TASK 9 triển khai rules 15–16 trên luồng canonical: version file đã tạo không sửa/xóa, version mới sinh object key và SHA-256 mới; archive chỉ đổi metadata/link, không xóa file vật lý. Quyền xem/tải được tính lại từ entity link và data scope tại từng request. Backfill chỉ tạo metadata trỏ tới file legacy trong vùng upload cho phép, không di chuyển hoặc đổi nội dung file nguồn.

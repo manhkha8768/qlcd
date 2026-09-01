@@ -29,7 +29,11 @@ r.get('/devices/:id',coMaQuyenNay('technical_profile.view'),(req,res)=>{const d=
  res.json({overview:{...d,profile_version:state.version,completeness_percent:state.completeness_percent},attributes:attrs,
   assets:db.prepare(`SELECT a.id,a.ma_tai_san,a.ten,l.loai_quan_he,l.la_lien_ket_chinh FROM asset_device_links l JOIN assets a ON a.id=l.asset_id WHERE l.device_id=? AND l.den_ngay IS NULL`).all(d.id),
   components:db.prepare('SELECT * FROM device_components WHERE device_id=? AND active=1 ORDER BY sort_order,id').all(d.id),
-  documents:legacy?db.prepare('SELECT * FROM tai_lieu_ky_thuat WHERE thiet_bi_id=? AND hoat_dong=1 ORDER BY ngay_tai DESC').all(legacy):[],
+  documents:db.prepare(`SELECT doc.id,doc.title ten_tai_lieu,doc.category loai,v.original_filename ten_file,
+    v.version_number phien_ban,v.sha256,v.mime_type,v.size_bytes,v.uploaded_at ngay_tai
+    FROM entity_document_links l JOIN documents doc ON doc.id=l.document_id AND doc.status='ACTIVE'
+    JOIN document_versions v ON v.document_id=doc.id AND v.version_number=doc.current_version_number
+    WHERE l.entity_type='DEVICE' AND l.entity_id=? AND l.active=1 ORDER BY v.uploaded_at DESC`).all(String(d.id)),
   maintenance:legacy?db.prepare('SELECT id,so_phieu,loai,trang_thai,ngay_bat_dau,ngay_hoan_thanh,tong_chi_phi FROM phieu_sua_chua WHERE thiet_bi_id=? ORDER BY ngay_tao DESC LIMIT 50').all(legacy):[],
   inspections:legacy?db.prepare('SELECT * FROM kiem_dinh WHERE thiet_bi_id=? ORDER BY ngay_kiem_dinh DESC LIMIT 50').all(legacy):[],
   history:db.prepare('SELECT * FROM technical_profile_history WHERE device_id=? ORDER BY profile_version DESC LIMIT 50').all(d.id),legacy:legacy?{bang:'thiet_bi',id:legacy}:null});});

@@ -8,7 +8,7 @@ process.env.QLCD_DB = path.join(os.tmpdir(), `qlcd-device-${Date.now()}.db`);
 const db = require('../db');
 const dbDir = path.join(__dirname,'..','db');
 const migrations = fs.readdirSync(dbDir).filter(f => /^\d+.*\.sql$/.test(f)).sort();
-for (const f of migrations.filter(f => !['15-asset-master.sql','16-device-master.sql','17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql','21-component-tree.sql'].includes(f))) {
+for (const f of migrations.filter(f => !['15-asset-master.sql','16-device-master.sql','17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql','21-component-tree.sql','22-document-management.sql'].includes(f))) {
     db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
 }
 

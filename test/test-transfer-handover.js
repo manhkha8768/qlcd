@@ -3,7 +3,7 @@ const fs=require('fs');const path=require('path');const os=require('os');const b
 process.env.QLCD_DB=path.join(os.tmpdir(),`qlcd-handover-${Date.now()}.db`);
 const db=require('../db'),dbDir=path.join(__dirname,'..','db');
 const migrations=fs.readdirSync(dbDir).filter(f=>/^\d+.*\.sql$/.test(f)).sort();
-for(const f of migrations.filter(f=>!['17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql','21-component-tree.sql'].includes(f)))db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
+for(const f of migrations.filter(f=>!['17-asset-ledger.sql','18-transfer-handover.sql','19-inventory-ledger-qr.sql','20-technical-profile.sql','21-component-tree.sql','22-document-management.sql'].includes(f)))db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
 const px1=db.prepare("INSERT INTO phan_xuong(ma,ten,loai) VALUES('H1','PX Giao','san_xuat')").run().lastInsertRowid;
 const px2=db.prepare("INSERT INTO phan_xuong(ma,ten,loai) VALUES('H2','PX Nhận','san_xuat')").run().lastInsertRowid;
 const assetId=db.prepare("INSERT INTO assets(ma_tai_san,loai_tai_san,ten,dvt,so_luong,don_vi_id,trang_thai) VALUES ('HANDOVER-001','TSCD','Tài sản giao nhận','Cái',5,?,'dang_su_dung')").run(px1).lastInsertRowid;

@@ -12,7 +12,7 @@ const { canQuyen, coQuyen, donViDuocPhep } = require('../middleware/quyen-ma');
 const KT = require('../lib/ky-thuat');
 const { ghiAudit } = require('../lib/giao-dich');
 
-const THU_MUC = path.join(__dirname, '..', 'uploads', 'ky-thuat');
+const THU_MUC = path.join(process.env.QLCD_UPLOADS || path.join(__dirname, '..', 'uploads'), 'ky-thuat');
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
 
 const upload = multer({
@@ -469,8 +469,13 @@ r.post('/thiet-bi/:tbId/tai-lieu', canQuyen('TAI_LIEU_TAI_LEN'), upload.single('
 });
 
 r.get('/tai-lieu/:id/tai-ve', (req, res) => {
-    const t = db.prepare('SELECT * FROM tai_lieu_ky_thuat WHERE id=?').get(req.params.id);
+    const t = db.prepare(`SELECT t.*,COALESCE(tb.phan_xuong_id,ctb.phan_xuong_id) AS don_vi_id
+        FROM tai_lieu_ky_thuat t LEFT JOIN thiet_bi tb ON tb.id=t.thiet_bi_id
+        LEFT JOIN cum_thiet_bi c ON c.id=t.cum_id LEFT JOIN thiet_bi ctb ON ctb.id=c.thiet_bi_id
+        WHERE t.id=? AND t.hoat_dong=1`).get(req.params.id);
     if (!t || !t.duong_dan) return res.status(404).json({ loi: 'Không tìm thấy tệp' });
+    const ds = donViDuocPhep(req.session.nguoiDung);
+    if (ds !== null && !ds.includes(Number(t.don_vi_id))) return res.status(403).json({ loi: 'Không có quyền tải tài liệu' });
     res.download(path.join(THU_MUC, t.duong_dan), t.ten_file || 'tai-lieu');
 });
 

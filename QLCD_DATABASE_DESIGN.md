@@ -89,6 +89,10 @@ Migration `20-technical-profile.sql` tạo định nghĩa thuộc tính theo nh�
 
 Migration `21-component-tree.sql` tạo `device_components` theo `Device ID`, quan hệ `parent_id` không giới hạn cấp, optimistic `version`, soft removal và legacy mapping. `component_events` là lịch sử append-only được trigger bảo vệ. Backfill chạy hai pha để giữ đúng node và parent; sửa chữa, vật tư sửa chữa và phụ tùng tương thích được nối qua các bảng link canonical riêng. API kiểm tra parent cùng Device và dùng recursive descendants để chặn cycle; move, replace và chuyển node con chạy trong transaction. Bảng `cum_thiet_bi` không bị drop hay rewrite.
 
+## 14. TASK 9 implementation
+
+Migration `22-document-management.sql` tạo `documents`, version bất biến, entity links và access log append-only. Một document có nhiều version; version lưu provider/object key, SHA-256, MIME, size, uploader và change note. Link hỗ trợ Device, Component, Asset, Asset Transaction, giao dịch legacy, sửa chữa và kiểm định. Metadata tài liệu kỹ thuật, giao dịch và điều chuyển được backfill; file vật lý legacy giữ nguyên tại chỗ. Storage adapter giới hạn object key trong vùng upload được phép và dành provider `EXTERNAL` cho object storage sau khi cấu hình môi trường thực.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.
