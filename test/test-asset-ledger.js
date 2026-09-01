@@ -3,12 +3,13 @@ const fs=require('fs'); const path=require('path'); const os=require('os'); cons
 process.env.QLCD_DB=path.join(os.tmpdir(),`qlcd-ledger-${Date.now()}.db`);
 const db=require('../db'); const dbDir=path.join(__dirname,'..','db');
 const migrations=fs.readdirSync(dbDir).filter(f=>/^\d+.*\.sql$/.test(f)).sort();
-for(const f of migrations.filter(f=>f!=='17-asset-ledger.sql'))db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
+for(const f of migrations.filter(f=>!['17-asset-ledger.sql','18-transfer-handover.sql'].includes(f)))db.exec(fs.readFileSync(path.join(dbDir,f),'utf8'));
 const px1=db.prepare("INSERT INTO phan_xuong(ma,ten,loai) VALUES('L1','PX Ledger 1','san_xuat')").run().lastInsertRowid;
 const px2=db.prepare("INSERT INTO phan_xuong(ma,ten,loai) VALUES('L2','PX Ledger 2','san_xuat')").run().lastInsertRowid;
 const assetId=db.prepare(`INSERT INTO assets(ma_tai_san,loai_tai_san,ten,dvt,so_luong,don_vi_id,trang_thai)
     VALUES ('LEDGER-001','TSCD','Tài sản ledger','Cái',10,?,'dang_su_dung')`).run(px1).lastInsertRowid;
 db.exec(fs.readFileSync(path.join(dbDir,'17-asset-ledger.sql'),'utf8'));
+db.exec(fs.readFileSync(path.join(dbDir,'18-transfer-handover.sql'),'utf8'));
 db.prepare("INSERT INTO nguoi_dung(ten_dang_nhap,mat_khau_hash,ho_ten,vai_tro) VALUES ('ledger_admin',?,'Admin Ledger','admin')").run(bcrypt.hashSync('admin123',8));
 db.prepare("INSERT INTO nguoi_dung(ten_dang_nhap,mat_khau_hash,ho_ten,vai_tro,phan_xuong_id) VALUES ('ledger_px',?,'PX Ledger','px',?)").run(bcrypt.hashSync('px12345',8),px1);
 const app=require('../server'); let dat=0,truot=0;
@@ -25,7 +26,8 @@ function kt(ten,dk){if(dk){dat++;console.log(`  [ĐẠT]   ${ten}`);}else{truot+
  kt('Tạo transaction DRAFT',result.response.status===201&&result.body.trang_thai==='DRAFT'); const txId=result.body.id;
  result=await api('/api/asset-ledger',{method:'POST',headers:{'Idempotency-Key':'transfer-001'},body:payload});
  kt('Idempotency trả lại transaction cũ',result.response.status===200&&result.body.id===txId&&result.body.idempotent);
- result=await api(`/api/asset-ledger/${txId}/post`,{method:'POST'});
+ db.prepare("UPDATE asset_transfer_workflows SET trang_thai='RECEIVER_CONFIRMED' WHERE transaction_id=?").run(txId);
+ result=await api(`/api/asset-ledger/${txId}/approve`,{method:'POST'});
  kt('Post transaction thành công',result.response.status===200);
  let entries=db.prepare('SELECT * FROM asset_ledger_entries WHERE transaction_id=?').all(txId);
  kt('Transfer tạo đúng cặp OUT/IN',entries.length===2&&entries.reduce((s,x)=>s+x.so_luong_thay_doi,0)===0);

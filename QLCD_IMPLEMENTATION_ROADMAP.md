@@ -11,7 +11,7 @@
 | 2 | Asset/TSCĐ/CCDC master | Hoàn thành | `assets` tách khỏi device, legacy mapping, CRUD/import/export/pagination, RBAC và multi-unit scope |
 | 3 | Device master | Hoàn thành | `devices`, legacy mapping, asset/device history, CRUD/RBAC/scope/version và compatibility read |
 | 4 | Asset transaction ledger | Hoàn thành | Opening backfill, append-only posting, reversal, projection/rebuild, idempotency và reconciliation |
-| 5 | Điều chuyển + giao nhận hai đầu | Một phần | sender/receiver/approval/atomic post, attachment/timeline |
+| 5 | Điều chuyển + giao nhận hai đầu | Hoàn thành | sender/receiver/approval bắt buộc, evidence ACL, timeline, reject và atomic ledger post |
 | 6 | Kiểm kê + đối chiếu + QR | Một phần | QR/mobile/offline draft, adjustment qua ledger |
 | 7 | Hồ sơ kỹ thuật | Một phần đáng kể | UI profile/tab, version/data validation |
 | 8 | Cây cấu tạo | Một phần đáng kể | cycle/concurrency/UX và integration repair/material |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 5 — Điều chuyển + giao nhận hai đầu**, mở rộng Asset Ledger bằng sender/receiver confirmation, approval và atomic posting; workflow legacy chỉ chuyển đổi sau parity test.
+Task tiếp theo đề xuất: **TASK 6 — Kiểm kê + đối chiếu + QR**, nối snapshot/kết quả kiểm kê với Asset Master và chỉ tạo adjustment qua Asset Ledger sau review/approval.
 
 ## 4. Quality gate sau mỗi Task
 

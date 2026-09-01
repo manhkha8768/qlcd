@@ -47,3 +47,7 @@ Concurrent approvals không nhân đôi entry; transfer lỗi giữa chừng rol
 ## 7. TASK 4 implementation
 
 Migration `17-asset-ledger.sql` tạo `asset_transactions`, dòng nháp, `asset_ledger_entries` bất biến và `asset_balance_projection`. Opening entries được sinh một lần từ Asset Master. API yêu cầu idempotency key, post nguyên tử, kiểm tra số lượng nguồn, sinh cặp OUT/IN cho transfer, tạo reversal tham chiếu từng entry gốc, rebuild projection và báo reconciliation với `assets/thiet_bi` mà không tự sửa. Task 5 sẽ bổ sung workflow xác nhận giao/nhận/phê duyệt trước POST.
+
+## 8. TASK 5 implementation
+
+Migration `18-transfer-handover.sql` bổ sung workflow `DRAFT → SUBMITTED → SENDER_CONFIRMED → RECEIVER_CONFIRMED → APPROVED → POSTED`, timeline audit và chứng từ. Đơn vị nguồn lập/trình/xác nhận giao; đơn vị đích xác nhận nhận sau khi có chứng từ; người có quyền duyệt thực hiện approval và ledger post trong cùng database transaction. Direct post bị chặn đối với transfer/return kể cả khi actor có quyền post. Từ chối bắt buộc có lý do và không tạo entry.
