@@ -10,15 +10,16 @@
 
 const express = require('express');
 const db = require('../db');
-const { coMaQuyenNay } = require('../middleware/quyen');
+const { dangNhap, coMaQuyen } = require('../middleware/quyen');
 
 const router = express.Router();
+router.use(dangNhap);
 
 /**
  * GET /api/khovat/giao-dich — Danh sách giao dịch kho
  */
 router.get('/giao-dich', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -47,7 +48,7 @@ router.get('/giao-dich', (req, res) => {
  * GET /api/khovat/giao-dich/:id — Chi tiết giao dịch
  */
 router.get('/giao-dich/:id', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const gd = db.prepare(`
@@ -78,7 +79,7 @@ router.get('/giao-dich/:id', (req, res) => {
  * POST /api/khovat/giao-dich/:id/duyet — Duyệt giao dịch kho
  */
 router.post('/giao-dich/:id/duyet', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.duyet')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.duyet')) return res.status(403).json({ loi: 'Không có quyền' });
 
     const { phe_duyet } = req.body;
 
@@ -137,7 +138,7 @@ router.post('/giao-dich/:id/duyet', (req, res) => {
  * GET /api/khovat/lich-su — Lịch sử audit kho
  */
 router.get('/lich-su', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xem_lich_su')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xem_lich_su')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -162,7 +163,7 @@ router.get('/lich-su', (req, res) => {
  * GET /api/khovat — Danh sách vật tư với tồn kho
  */
 router.get('/', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -191,7 +192,7 @@ router.get('/', (req, res) => {
  * POST /api/khovat — Tạo vật tư mới
  */
 router.post('/', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     const { ma, ten, chi_tieu, dvt, ton_dau, muc_toi_thieu, muc_toi_da, vi_tri_kho, ghi_chu } = req.body;
 
@@ -231,7 +232,7 @@ router.post('/', (req, res) => {
  * GET /api/khovat/:id — Chi tiết vật tư
  */
 router.get('/:id', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const vt = db.prepare(`
@@ -252,7 +253,7 @@ router.get('/:id', (req, res) => {
  * PUT /api/khovat/:id — Sửa thông tin vật tư
  */
 router.put('/:id', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     const { ten, chi_tieu, muc_toi_thieu, muc_toi_da, vi_tri_kho, ghi_chu } = req.body;
 
@@ -278,7 +279,7 @@ router.put('/:id', (req, res) => {
  * POST /api/khovat/:id/nhap — Lập phiếu nhập kho
  */
 router.post('/:id/nhap', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.nhap')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.nhap')) return res.status(403).json({ loi: 'Không có quyền' });
 
     const { vat_tu_id, so_luong, ly_do } = req.body;
 
@@ -314,7 +315,7 @@ router.post('/:id/nhap', (req, res) => {
  * POST /api/khovat/:id/xuat — Lập phiếu xuất kho
  */
 router.post('/:id/xuat', (req, res) => {
-    if (!coMaQuyenNay(req, 'kho.xuat')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'kho.xuat')) return res.status(403).json({ loi: 'Không có quyền' });
 
     const { vat_tu_id, so_luong, ly_do } = req.body;
 

@@ -9,15 +9,16 @@
 
 const express = require('express');
 const db = require('../db');
-const { coMaQuyenNay } = require('../middleware/quyen');
+const { dangNhap, coMaQuyen } = require('../middleware/quyen');
 
 const router = express.Router();
+router.use(dangNhap);
 
 /**
  * GET /api/dashboard/thong-ke-cong-ty — Thống kê công ty
  */
 router.get('/thong-ke-cong-ty', (req, res) => {
-    if (!coMaQuyenNay(req, 'thietbi.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'thietbi.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         // Tổng phân xưởng
@@ -119,7 +120,7 @@ router.get('/thong-ke-cong-ty', (req, res) => {
  * GET /api/dashboard/thong-ke-phan-xuong/:px_id — Thống kê phân xưởng
  */
 router.get('/thong-ke-phan-xuong/:px_id', (req, res) => {
-    if (!coMaQuyenNay(req, 'thietbi.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'thietbi.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const px_id = req.params.px_id;
@@ -202,7 +203,7 @@ router.get('/thong-ke-phan-xuong/:px_id', (req, res) => {
  * GET /api/dashboard/baocao/danh-sach-thiet-bi — Báo cáo danh sách thiết bị
  */
 router.get('/baocao/danh-sach-thiet-bi', (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -229,7 +230,7 @@ router.get('/baocao/danh-sach-thiet-bi', (req, res) => {
  * GET /api/dashboard/baocao/kho-vat-tu — Báo cáo tồn kho
  */
 router.get('/baocao/kho-vat-tu', (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -259,7 +260,7 @@ router.get('/baocao/kho-vat-tu', (req, res) => {
  * GET /api/dashboard/baocao/kiem-ke — Báo cáo kiểm định
  */
 router.get('/baocao/kiem-ke', (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -287,7 +288,7 @@ router.get('/baocao/kiem-ke', (req, res) => {
  * GET /api/dashboard/baocao/giao-dich — Báo cáo giao dịch tăng/giảm
  */
 router.get('/baocao/giao-dich', (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -315,7 +316,7 @@ router.get('/baocao/giao-dich', (req, res) => {
  * GET /api/dashboard/baocao/su-co — Báo cáo sự cố
  */
 router.get('/baocao/su-co', (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const ds = db.prepare(`
@@ -343,7 +344,7 @@ router.get('/baocao/su-co', (req, res) => {
  * GET /api/dashboard/kpi — KPI kỹ thuật
  */
 router.get('/kpi', (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         // Tỷ lệ thiết bị tốt
@@ -380,7 +381,7 @@ router.get('/kpi', (req, res) => {
  * POST /api/dashboard/export/excel — Export báo cáo ra Excel
  */
 router.post('/export/excel', async (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const { loai_bao_cao } = req.body;
@@ -561,7 +562,7 @@ router.post('/export/excel', async (req, res) => {
  * POST /api/dashboard/export/pdf — Export báo cáo ra PDF
  */
 router.post('/export/pdf', async (req, res) => {
-    if (!coMaQuyenNay(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'baocao.xem')) return res.status(403).json({ loi: 'Không có quyền' });
 
     try {
         const { loai_bao_cao } = req.body;

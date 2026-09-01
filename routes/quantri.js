@@ -150,7 +150,8 @@ router.put('/taikhoan/:id', chiAdmin, (req, res) => {
                 UPDATE nguoi_dung
                 SET ho_ten = ?, chuc_vu = ?, phan_xuong_id = ?, hoat_dong = ?
                 WHERE id = ?
-            `).run(ho_ten, chuc_vu, phan_xuong_id || null, hoat_dong || 1, ndId);
+            `).run(ho_ten, chuc_vu, phan_xuong_id || null,
+                   hoat_dong === undefined ? 1 : (hoat_dong ? 1 : 0), ndId);
 
             // Cập nhật vai trò
             if (vai_tro_list) {
@@ -179,6 +180,66 @@ router.put('/taikhoan/:id', chiAdmin, (req, res) => {
     } catch (e) {
         res.status(500).json({ loi: e.message });
     }
+});
+
+// GET: Các đơn vị được phân công cho tài khoản
+router.get('/taikhoan/:id/donvi', chiAdmin, (req, res) => {
+    const u = db.prepare('SELECT id FROM nguoi_dung WHERE id=?').get(req.params.id);
+    if (!u) return res.status(404).json({ loi: 'Tài khoản không tồn tại' });
+    const list = db.prepare(`
+        SELECT ndv.id, ndv.don_vi_id, px.ma, px.ten, ndv.loai_phan_cong,
+               ndv.tu_ngay, ndv.den_ngay, ndv.hoat_dong, ndv.ngay_tao
+        FROM nguoi_dung_don_vi ndv
+        JOIN phan_xuong px ON px.id=ndv.don_vi_id
+        WHERE ndv.nguoi_dung_id=? ORDER BY ndv.hoat_dong DESC, px.ten
+    `).all(req.params.id);
+    res.json({ ok: true, data: list });
+});
+
+// POST: Gán thêm một đơn vị, không làm mất các phân công đang có
+router.post('/taikhoan/:id/donvi', chiAdmin, (req, res) => {
+    const { don_vi_id, loai_phan_cong, tu_ngay, den_ngay } = req.body || {};
+    if (!don_vi_id) return res.status(400).json({ loi: 'Thiếu đơn vị' });
+    if (!db.prepare('SELECT 1 FROM nguoi_dung WHERE id=?').get(req.params.id)) {
+        return res.status(404).json({ loi: 'Tài khoản không tồn tại' });
+    }
+    if (!db.prepare('SELECT 1 FROM phan_xuong WHERE id=? AND hoat_dong=1').get(don_vi_id)) {
+        return res.status(400).json({ loi: 'Đơn vị không tồn tại hoặc đã ngừng hoạt động' });
+    }
+    if (tu_ngay && den_ngay && den_ngay < tu_ngay) {
+        return res.status(400).json({ loi: 'Ngày kết thúc phải từ ngày bắt đầu trở đi' });
+    }
+    try {
+        const info = db.prepare(`INSERT INTO nguoi_dung_don_vi
+            (nguoi_dung_id, don_vi_id, loai_phan_cong, tu_ngay, den_ngay, nguoi_gan_id)
+            VALUES (?,?,?,?,?,?)`).run(req.params.id, don_vi_id,
+                loai_phan_cong || 'thanh_vien', tu_ngay || null, den_ngay || null,
+                req.session.nguoiDung.id);
+        db.prepare(`INSERT INTO audit_quyen
+            (nguoi_dung_id, hanh_dong, chi_tiet_moi, dia_chi_ip, user_agent)
+            VALUES (?, 'gan_don_vi', ?, ?, ?)`)
+            .run(req.session.nguoiDung.id,
+                JSON.stringify({ tai_khoan_id: Number(req.params.id), don_vi_id, loai_phan_cong }),
+                req.ip, req.get('user-agent'));
+        res.json({ ok: true, id: info.lastInsertRowid });
+    } catch (e) {
+        if (/UNIQUE/i.test(e.message)) return res.status(409).json({ loi: 'Phân công này đã tồn tại' });
+        res.status(400).json({ loi: e.message });
+    }
+});
+
+// DELETE mềm: ngừng hiệu lực phân công, giữ lịch sử
+router.delete('/taikhoan/:id/donvi/:phanCongId', chiAdmin, (req, res) => {
+    const pc = db.prepare(`SELECT * FROM nguoi_dung_don_vi
+        WHERE id=? AND nguoi_dung_id=?`).get(req.params.phanCongId, req.params.id);
+    if (!pc) return res.status(404).json({ loi: 'Không tìm thấy phân công' });
+    db.prepare('UPDATE nguoi_dung_don_vi SET hoat_dong=0 WHERE id=?').run(pc.id);
+    db.prepare(`INSERT INTO audit_quyen
+        (nguoi_dung_id, hanh_dong, chi_tiet_cu, chi_tiet_moi, dia_chi_ip, user_agent)
+        VALUES (?, 'ngung_phan_cong_don_vi', ?, ?, ?, ?)`)
+        .run(req.session.nguoiDung.id, JSON.stringify(pc), JSON.stringify({ hoat_dong: 0 }),
+            req.ip, req.get('user-agent'));
+    res.json({ ok: true });
 });
 
 // POST: Reset mật khẩu (tạo tạm)
@@ -394,6 +455,46 @@ router.post('/donvi', chiAdmin, (req, res) => {
         res.json({ ok: true, id: info.lastInsertRowid, message: 'Tạo đơn vị thành công' });
     } catch (e) {
         res.status(500).json({ loi: e.message });
+    }
+});
+
+// GET/POST: Danh mục công trình động
+router.get('/cong-trinh', chiAdmin, (req, res) => {
+    const list = db.prepare(`SELECT ct.*,
+        (SELECT COUNT(*) FROM don_vi_cong_trinh d WHERE d.cong_trinh_id=ct.id AND d.hoat_dong=1)
+            AS so_don_vi
+        FROM cong_trinh ct ORDER BY ct.hoat_dong DESC, ct.ten`).all();
+    res.json({ ok: true, data: list });
+});
+
+router.post('/cong-trinh', chiAdmin, (req, res) => {
+    const { ma, ten, dia_diem, tu_ngay, den_ngay } = req.body || {};
+    if (!ma || !ten) return res.status(400).json({ loi: 'Thiếu mã hoặc tên công trình' });
+    if (tu_ngay && den_ngay && den_ngay < tu_ngay) {
+        return res.status(400).json({ loi: 'Ngày kết thúc phải từ ngày bắt đầu trở đi' });
+    }
+    try {
+        const info = db.prepare(`INSERT INTO cong_trinh(ma,ten,dia_diem,tu_ngay,den_ngay)
+            VALUES (?,?,?,?,?)`).run(ma.trim(), ten.trim(), dia_diem || null,
+                tu_ngay || null, den_ngay || null);
+        res.json({ ok: true, id: info.lastInsertRowid });
+    } catch (e) {
+        if (/UNIQUE/i.test(e.message)) return res.status(409).json({ loi: 'Mã công trình đã tồn tại' });
+        res.status(400).json({ loi: e.message });
+    }
+});
+
+router.post('/cong-trinh/:id/don-vi', chiAdmin, (req, res) => {
+    const { don_vi_id, tu_ngay, den_ngay } = req.body || {};
+    if (!don_vi_id) return res.status(400).json({ loi: 'Thiếu đơn vị' });
+    try {
+        db.prepare(`INSERT INTO don_vi_cong_trinh
+            (don_vi_id,cong_trinh_id,tu_ngay,den_ngay) VALUES (?,?,?,?)`)
+            .run(don_vi_id, req.params.id, tu_ngay || null, den_ngay || null);
+        res.json({ ok: true });
+    } catch (e) {
+        if (/UNIQUE/i.test(e.message)) return res.status(409).json({ loi: 'Đơn vị đã được gán' });
+        res.status(400).json({ loi: e.message });
     }
 });
 

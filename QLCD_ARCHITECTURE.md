@@ -57,6 +57,10 @@ Giữ một monorepo và chuyển dần theo strangler pattern: legacy Express/S
 
 ## 6. Decision gates
 
-1. Task 1 phải đóng P0 authorization và chốt canonical source.
+1. Task 1 đã đóng P0 authorization trên dashboard/kho, thống nhất authorization service và thêm migration journal/CI/PWA foundation.
 2. Trước đổi database: chạy migration rehearsal trên bản sao dữ liệu, kiểm tra foreign key, transaction, backup/restore và parity test.
 3. Trước Internet: environment tách dev/staging/prod, secrets bắt buộc, CI, monitoring, backup, upload hardening và UAT.
+
+## 7. TASK 1 implementation note
+
+`task1/foundation-stabilization` giữ Express/SQLite làm canonical runtime. `middleware/quyen.js` là authorization service duy nhất; `quyen-ma.js` chỉ còn compatibility facade. Migration 14 thêm Project/Unit assignment, user-many-units, dynamic per-user permission override và migration journal checksum. Dashboard/kho dùng permission predicate thật; PWA app shell và GitHub Actions quality gate đã được bổ sung.

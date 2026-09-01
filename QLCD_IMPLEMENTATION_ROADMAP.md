@@ -7,7 +7,7 @@
 | Task | Phạm vi | Baseline | Gap chính / exit gate |
 |---:|---|---|---|
 | 0 | Audit + baseline/docs | Hoàn thành trong commit Task 0 | 8 tài liệu, test/build report, không đổi nghiệp vụ |
-| 1 | Foundation stabilization | Một phần | Sửa P0 auth, thống nhất RBAC/scope nhiều đơn vị, migration journal, CI/PWA foundation |
+| 1 | Foundation stabilization | Hoàn thành | Authorization service thống nhất, scope nhiều đơn vị, project/unit foundation, migration journal, CI/PWA foundation và regression test |
 | 2 | Asset/TSCĐ/CCDC master | Một phần | Tách Asset ID khỏi device, CRUD/import/export/pagination có scope |
 | 3 | Device master | Một phần | Device ID + mapping asset/device + profile boundary |
 | 4 | Asset transaction ledger | Một phần | Append-only ledger, reversal, projection, idempotency |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 1 — Foundation Stabilization**, ưu tiên hotfix authorization dashboard/kho, thống nhất một RBAC/data-scope service và thêm route authorization tests trước mọi migration Cloudflare.
+Task tiếp theo đề xuất: **TASK 2 — Master Asset / TSCĐ / CCDC**, bắt đầu bằng migration tách Asset khỏi Device và lập mapping ID legacy; chưa chuyển Cloudflare trong Task 2.
 
 ## 4. Quality gate sau mỗi Task
 

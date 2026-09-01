@@ -6,24 +6,45 @@
  */
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('./index');
 
 function chayMigration() {
+    db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+        ten_file TEXT PRIMARY KEY,
+        checksum_sha256 TEXT NOT NULL,
+        ngay_ap_dung TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+    )`);
     const files = fs.readdirSync(__dirname)
         .filter(f => f.endsWith('.sql'))
         .sort();
 
     for (const f of files) {
         const sql = fs.readFileSync(path.join(__dirname, f), 'utf8');
+        const checksum = crypto.createHash('sha256').update(sql).digest('hex');
+        const daChay = db.prepare(
+            'SELECT checksum_sha256 FROM schema_migrations WHERE ten_file=?'
+        ).get(f);
+        if (daChay) {
+            if (daChay.checksum_sha256 !== checksum) {
+                throw new Error(`Migration ${f} đã bị thay đổi sau khi áp dụng`);
+            }
+            console.log(`  [ĐÃ CÓ] ${f}`);
+            continue;
+        }
         try {
             db.exec(sql);
+            db.prepare('INSERT INTO schema_migrations (ten_file, checksum_sha256) VALUES (?,?)')
+                .run(f, checksum);
             console.log(`  [OK]   ${f}`);
         } catch (e) {
             // Bỏ qua các lỗi phát sinh do chạy lại trên database đã có.
             // SQLite báo mỗi kiểu một khác: bảng và chỉ mục nói "already exists",
             // còn ALTER TABLE ADD COLUMN nói "duplicate column name".
             if (/already exists|duplicate column name/i.test(e.message)) {
+                db.prepare('INSERT INTO schema_migrations (ten_file, checksum_sha256) VALUES (?,?)')
+                    .run(f, checksum);
                 console.log(`  [BỎ QUA] ${f} - đã áp dụng trước đó`);
             } else {
                 console.error(`  [LỖI]  ${f}: ${e.message}`);

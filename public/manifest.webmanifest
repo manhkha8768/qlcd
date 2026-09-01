@@ -1,0 +1,19 @@
+{
+  "name": "QLCD - Quản lý cơ điện vận tải",
+  "short_name": "QLCD",
+  "description": "Quản lý thiết bị, tài sản và vật tư cơ điện vận tải",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fb",
+  "theme_color": "#123a63",
+  "icons": [
+    {
+      "src": "/icons/qlcd.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

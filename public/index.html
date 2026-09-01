@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Quản lý thiết bị cơ điện vận tải</title>
+<meta name="theme-color" content="#123a63">
+<meta name="description" content="QLCD - Quản lý cơ điện vận tải">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/qlcd.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -19,5 +23,11 @@
 <script src="js/nhap-lieu.js"></script>
 <script src="js/bao-mat.js"></script>
 <script src="js/app.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/service-worker.js')
+        .catch(error => console.warn('Không thể bật chế độ PWA:', error)));
+}
+</script>
 </body>
 </html>
