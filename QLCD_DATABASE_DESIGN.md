@@ -97,6 +97,10 @@ Migration `22-document-management.sql` tạo `documents`, version bất biến, 
 
 Migration `23-material-master.sql` tạo `materials`, `uoms`, alias ĐVT, source mappings và duplicate candidates. Phụ tùng, kho và NCVT được backfill có truy vết; NCVT chỉ gom bản ghi tương đương trong cùng nguồn. Trùng giữa nguồn tạo candidate, không tự merge. Review xác nhận cùng vật tư mới remap nguồn và archive master thừa; giữ riêng không đổi mapping.
 
+## 16. TASK 11 implementation
+
+Migration `24-stock-ledger.sql` tạo `warehouses`, transaction header/draft lines, `stock_ledger_entries` append-only và `stock_balance_projection`. Opening balance được backfill idempotent từ `ton_kho` qua mapping Material Master vào kho `LEGACY-MAIN`; bảng legacy chỉ dùng đối chiếu và không bị canonical posting sửa. Mỗi entry giữ đúng Material ID/UOM, warehouse và ba delta `on_hand/reserved/incoming`; `AVAILABLE` là view tính `ON_HAND - RESERVED`. Post và reversal rebuild projection trong cùng database transaction; constraint chặn tồn âm, over-reserve và nhận/xuất vượt nguồn.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

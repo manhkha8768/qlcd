@@ -19,6 +19,7 @@ const CAC_MAN_HINH = {
     'kiem-dinh': { ten: 'Kiểm định',      ve: mhKiemDinh,  nhom: 'Nghiệp vụ' },
     'ncvt':      { ten: 'NCVT Quý',       ve: mhNCVT,      nhom: 'Vật tư' },
     'material-master': { ten: 'Material Master', ve: mhMaterialMaster, nhom: 'Vật tư' },
+    'stock-ledger': { ten: 'Kho & Stock Ledger', ve: mhStockLedger, nhom: 'Vật tư' },
     'su-co':     { ten: 'Sự cố thiết bị', ve: mhSuCo,      nhom: 'Kỹ thuật' },
     'phu-tung':  { ten: 'Danh mục phụ tùng', ve: mhPhuTung, nhom: 'Kỹ thuật' },
     'ho-so-ky-thuat': { ten: 'Hồ sơ kỹ thuật', ve: mhHoSoKyThuat, nhom: 'Kỹ thuật' },
