@@ -18,7 +18,7 @@
 | 9 | Document/file management | Hoàn thành | Canonical metadata/version/hash/entity link, storage adapter, download ACL và safe legacy backfill |
 | 10 | Material master | Hoàn thành | Material ID/UOM canonical, source mapping và duplicate review không auto-merge |
 | 11 | Warehouse + stock ledger | Hoàn thành | Kho canonical, opening backfill, append-only/idempotent posting, reversal, projection on-hand/reserved/available/incoming và reconciliation legacy |
-| 12 | Chuyển kho + hoàn trả | Chưa đầy đủ | in-transit, receive/return atomic, không double stock |
+| 12 | Chuyển kho + hoàn trả | Hoàn thành | workflow hai đầu, dispatch in-transit, receive/return atomic, idempotent và không double stock |
 | 13 | NCVT period + PX submission | Một phần | submission/version/state/material link |
 | 14 | Review + approval NCVT | Chưa đầy đủ | assignment review, return/reject/approve immutable |
 | 15 | Tổng hợp NCVT Công ty | Một phần | material/PX drill-down và nguồn cung chuẩn |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 12 — Chuyển kho + hoàn trả**, bổ sung in-transit, receive/return atomic và bảo đảm một số lượng không đồng thời hiện hữu ở hai kho.
+Task tiếp theo đề xuất: **TASK 13 — NCVT period + PX submission**, chuẩn hóa kỳ, version/state machine, dòng theo Material ID và luồng PX draft/submit.
 
 ## 4. Quality gate sau mỗi Task
 

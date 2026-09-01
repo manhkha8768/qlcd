@@ -70,3 +70,5 @@ TASK 9 triển khai rules 15–16 trên luồng canonical: version file đã t�
 TASK 10 triển khai rules 17 và 22 ở tầng master: mỗi nguồn giữ mapping bất biến tới Material ID; alias ĐVT chuẩn hóa về UOM canonical. Nghi trùng chỉ vào hàng đợi review, không auto-merge; xác nhận cùng vật tư bắt buộc chọn master giữ lại và ghi lý do.
 
 TASK 11 triển khai rules 18, 19 và 21 trên Stock Ledger canonical: `ON_HAND`, `RESERVED`, `AVAILABLE` và `INCOMING` chỉ được chiếu từ entry đã post; incoming không tính vào available. Post có idempotency key, ledger không sửa/xóa, sai sót dùng reversal tham chiếu entry gốc. Constraint projection và transaction rollback chặn tồn âm, over-reserve, issue vượt available hoặc receive vượt incoming; dữ liệu `ton_kho` legacy không bị ghi ngược.
+
+TASK 12 triển khai rule 20: dispatch loại số lượng khỏi ON_HAND nguồn trước khi ghi INCOMING ở đích trong cùng transaction, nên hàng in-transit không hiện hữu đồng thời ở hai kho. Chỉ receiver transition mới chuyển incoming thành on-hand; hoàn trả chỉ hợp lệ khi còn DISPATCHED, bắt buộc lý do và phục hồi kho nguồn nguyên tử. Retry dispatch/receive/return trả kết quả cũ, không nhân ledger entry.

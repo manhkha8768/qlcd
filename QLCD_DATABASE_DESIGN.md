@@ -101,6 +101,10 @@ Migration `23-material-master.sql` tạo `materials`, `uoms`, alias ĐVT, source
 
 Migration `24-stock-ledger.sql` tạo `warehouses`, transaction header/draft lines, `stock_ledger_entries` append-only và `stock_balance_projection`. Opening balance được backfill idempotent từ `ton_kho` qua mapping Material Master vào kho `LEGACY-MAIN`; bảng legacy chỉ dùng đối chiếu và không bị canonical posting sửa. Mỗi entry giữ đúng Material ID/UOM, warehouse và ba delta `on_hand/reserved/incoming`; `AVAILABLE` là view tính `ON_HAND - RESERVED`. Post và reversal rebuild projection trong cùng database transaction; constraint chặn tồn âm, over-reserve và nhận/xuất vượt nguồn.
 
+## 17. TASK 12 implementation
+
+Migration `25-warehouse-transfer-return.sql` tạo workflow `warehouse_transfers`, dòng canonical và timeline append-only. Dispatch ghi một stock transaction gồm `ON_HAND -q` tại nguồn và `INCOMING +q` tại đích; receive ghi `ON_HAND +q / INCOMING -q` tại đích; return trước khi nhận ghi `ON_HAND +q` về nguồn và `INCOMING -q` tại đích. Mỗi transition, ledger entries, projection và workflow status cùng commit hoặc cùng rollback. Transaction ID được lưu trên workflow và retry trạng thái cuối không sinh entry kép.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

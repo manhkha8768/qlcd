@@ -77,6 +77,7 @@ try {
     app.use('/api/documents', require('./routes/documents'));
     app.use('/api/materials', require('./routes/materials'));
     app.use('/api/stock-ledger', require('./routes/stock-ledger'));
+    app.use('/api/warehouse-transfers', require('./routes/warehouse-transfers'));
     app.use('/api/tai-san', require('./routes/taisan'));
     app.use('/api/giao-dich', require('./routes/giaodich'));
     app.use('/api', require('./routes/tienich'));
