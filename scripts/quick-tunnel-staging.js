@@ -128,8 +128,11 @@ function createDependencies(cwd, { environment = process.env, runProgramImpl = r
     async function quality(args, timeoutMs, label) {
         return runProgramImpl(npmCommand, [...npmPrefixArgs, ...args], cwd, baseCommandEnvironment(environment), { timeoutMs, label });
     }
+    function gitArgs(...args) {
+        return ['-c', `safe.directory=${cwd}`, ...args];
+    }
     function currentCommit() {
-        return execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+        return execFileSync('git', gitArgs('rev-parse', 'HEAD'), { cwd, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
     }
     return {
         runPreflight: async request => {
@@ -146,11 +149,11 @@ function createDependencies(cwd, { environment = process.env, runProgramImpl = r
             const contextPath = path.join(temporaryRoot, 'context');
             fs.mkdirSync(contextPath);
             try {
-                await runProgramImpl('git', ['diff', '--quiet', commit, '--'], cwd, baseCommandEnvironment(environment), {
+                await runProgramImpl('git', gitArgs('diff', '--quiet', commit, '--'), cwd, baseCommandEnvironment(environment), {
                     timeoutMs: COMMAND_TIMEOUTS.composeConfig,
                     label: 'Tracked source cleanliness check'
                 });
-                await runProgramImpl('git', ['archive', '--format=tar', '-o', archivePath, commit], cwd, baseCommandEnvironment(environment), {
+                await runProgramImpl('git', gitArgs('archive', '--format=tar', '-o', archivePath, commit), cwd, baseCommandEnvironment(environment), {
                     timeoutMs: COMMAND_TIMEOUTS.composeConfig,
                     label: 'Committed source archive'
                 });

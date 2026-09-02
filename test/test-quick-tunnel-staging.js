@@ -182,16 +182,17 @@ async function lifecycleTests() {
     });
     const immutableImage = await immutableDependencies.buildImage({ config: {} });
     assert.equal(immutableImage, `sha256:${'a'.repeat(64)}`);
-    const capturedCommit = immutableBuildCalls[0].args[2];
+    assert.deepEqual(immutableBuildCalls.slice(0, 2).map(call => call.args.slice(0, 3)), [
+        ['-c', `safe.directory=${projectRoot}`, 'diff'],
+        ['-c', `safe.directory=${projectRoot}`, 'archive']
+    ]);
+    const capturedCommit = immutableBuildCalls[0].args[4];
     assert.match(capturedCommit, /^[0-9a-f]{40}$/);
     assert.equal(immutableBuildCalls[1].args.at(-1), capturedCommit, 'archive must use the captured commit, not symbolic HEAD');
-    assert.deepEqual(immutableBuildCalls.map(call => `${call.command} ${call.args.slice(0, 3).join(' ')}`), [
-        `git diff --quiet ${capturedCommit}`,
-        'git archive --format=tar -o',
-        'tar -xf ' + immutableBuildCalls[2].args[1] + ' -C',
-        'docker build --pull --tag',
-        'docker image inspect --format'
-    ]);
+    assert.deepEqual(immutableBuildCalls.map(call => call.command), ['git', 'git', 'tar', 'docker', 'docker']);
+    assert.deepEqual(immutableBuildCalls[2].args.slice(0, 3), ['-xf', immutableBuildCalls[2].args[1], '-C']);
+    assert.deepEqual(immutableBuildCalls[3].args.slice(0, 3), ['build', '--pull', '--tag']);
+    assert.deepEqual(immutableBuildCalls[4].args.slice(0, 3), ['image', 'inspect', '--format']);
     const dockerBuildContext = immutableBuildCalls[3].args.at(-1);
     assert.notEqual(path.relative(projectRoot, dockerBuildContext).split(path.sep)[0], '', 'Docker build context must not be the checkout');
     assert.ok(path.relative(projectRoot, dockerBuildContext).startsWith('..'), 'Docker build context must be outside the checkout');
