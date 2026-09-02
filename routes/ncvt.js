@@ -14,6 +14,7 @@ const db = require('../db');
 const { dangNhap } = require('../middleware/quyen');
 const { canQuyen, coQuyen, donViDuocPhep } = require('../middleware/quyen-ma');
 const xl = require('../lib/doc-excel');
+const US = require('../lib/upload-security');
 const { ghiAudit, taoThongBao } = require('../lib/giao-dich');
 
 const THU_MUC = path.join(__dirname, '..', 'uploads', 'ncvt');
@@ -25,10 +26,7 @@ const upload = multer({
         filename: (q, f, cb) => cb(null, `ncvt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${path.extname(f.originalname)}`)
     }),
     limits: { fileSize: 30 * 1024 * 1024 },
-    fileFilter: (q, f, cb) => {
-        const ok = /\.(xlsx|xls|xlsm|csv)$/i.test(f.originalname);
-        cb(ok ? null : new Error('Chỉ nhận file Excel (.xlsx, .xls) hoặc .csv'), ok);
-    }
+    fileFilter: US.fileFilter('spreadsheets', 'Chỉ nhận file Excel (.xlsx, .xls) hoặc .csv')
 });
 
 const r = express.Router();
@@ -153,7 +151,7 @@ const TU_DIEN = {
     ghi_chu:     ['ghi chu', 'note']
 };
 
-r.post('/ky/:id/tai-len', canQuyen('NCVT_IMPORT'), upload.single('file'), (req, res) => {
+r.post('/ky/:id/tai-len', canQuyen('NCVT_IMPORT'), upload.single('file'), US.validateDisk('spreadsheets'), (req, res) => {
     const ky = layKy(req, res, true);
     if (!ky) { if (req.file) fs.unlinkSync(req.file.path); return; }
     if (!req.file) return res.status(400).json({ loi: 'Chưa chọn file' });

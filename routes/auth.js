@@ -8,7 +8,7 @@ const { catPhienCuaNguoi, danhSachPhien } = require('../lib/phien-sqlite');
 const r = express.Router();
 
 /* ---------- Đăng nhập ---------- */
-r.post('/dang-nhap', (req, res) => {
+r.post('/dang-nhap', (req, res, next) => {
     const { ten_dang_nhap, mat_khau } = req.body || {};
     if (!ten_dang_nhap || !mat_khau) {
         return res.status(400).json({ loi: 'Thiếu tên đăng nhập hoặc mật khẩu' });
@@ -54,23 +54,32 @@ r.post('/dang-nhap', (req, res) => {
     db.prepare(`UPDATE nguoi_dung SET lan_dang_nhap = datetime('now','localtime'),
                 lan_dang_nhap_ip = ? WHERE id = ?`).run(ip, u.id);
 
-    req.session.nguoiDung = {
+    const nguoiDung = {
         id: u.id, ten_dang_nhap: u.ten_dang_nhap, ho_ten: u.ho_ten,
         vai_tro: u.vai_tro, phan_xuong_id: u.phan_xuong_id,
         ten_px: u.ten_px, px_ngan: u.px_ngan
     };
-    res.json({
-        nguoi_dung: req.session.nguoiDung,
-        phai_doi_mat_khau: !!u.phai_doi_mat_khau
+    req.session.regenerate(err => {
+        if (err) return next(err);
+        req.session.nguoiDung = nguoiDung;
+        req.session.diaChiIp = ip;
+        req.session.trinhDuyet = req.get('user-agent');
+        req.session.save(saveError => {
+            if (saveError) return next(saveError);
+            res.json({ nguoi_dung: nguoiDung, phai_doi_mat_khau: !!u.phai_doi_mat_khau });
+        });
     });
 });
 
-r.post('/dang-xuat', (req, res) => {
-    req.session.destroy(() => res.json({ ok: true }));
+r.post('/dang-xuat', dangNhap, (req, res, next) => {
+    req.session.destroy(err => {
+        if (err) return next(err);
+        res.clearCookie('qlcd.sid', { httpOnly: true, sameSite: 'lax', secure: BM.LA_INTERNET });
+        res.json({ ok: true });
+    });
 });
 
-r.get('/toi', (req, res) => {
-    if (!req.session.nguoiDung) return res.status(401).json({ loi: 'Chưa đăng nhập' });
+r.get('/toi', dangNhap, (req, res) => {
     const ch = db.prepare('SELECT khoa, gia_tri FROM cau_hinh').all();
     const cauHinh = Object.fromEntries(ch.map(x => [x.khoa, x.gia_tri]));
     res.json({ nguoi_dung: req.session.nguoiDung, cau_hinh: cauHinh });
@@ -109,8 +118,10 @@ r.get('/tai-khoan', dangNhap, chiAdmin, (req, res) => {
 r.post('/tai-khoan', dangNhap, chiAdmin, (req, res) => {
     const { ten_dang_nhap, mat_khau, ho_ten, chuc_vu, vai_tro, phan_xuong_id, tam_thoi } = req.body || {};
     if (!ten_dang_nhap || !mat_khau) return res.status(400).json({ loi: 'Thiếu tên đăng nhập hoặc mật khẩu' });
-    if (mat_khau.length < 4 || mat_khau.length > 6) {
-        return res.status(400).json({ loi: 'Mật khẩu 4-6 ký tự' });
+    const toiThieu = BM.LA_INTERNET ? BM.cauHinhSo('bm_do_dai_mat_khau', 8) : 4;
+    const toiDa = BM.LA_INTERNET ? 128 : 6;
+    if (mat_khau.length < toiThieu || mat_khau.length > toiDa) {
+        return res.status(400).json({ loi: `Mật khẩu từ ${toiThieu} đến ${toiDa} ký tự` });
     }
     if (vai_tro === 'px' && !phan_xuong_id) {
         return res.status(400).json({ loi: 'Tài khoản phân xưởng phải chọn phân xưởng' });
@@ -150,6 +161,11 @@ r.put('/tai-khoan/:id', dangNhap, chiAdmin, (req, res) => {
            u.id);
 
     if (mat_khau) {
+        const toiThieu = BM.LA_INTERNET ? BM.cauHinhSo('bm_do_dai_mat_khau', 8) : 4;
+        const toiDa = BM.LA_INTERNET ? 128 : 6;
+        if (mat_khau.length < toiThieu || mat_khau.length > toiDa) {
+            return res.status(400).json({ loi: `Mật khẩu từ ${toiThieu} đến ${toiDa} ký tự` });
+        }
         db.prepare(`UPDATE nguoi_dung SET mat_khau_hash=?, phai_doi_mat_khau=1 WHERE id=?`)
           .run(bcrypt.hashSync(mat_khau, 10), u.id);
     }

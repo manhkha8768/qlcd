@@ -12,6 +12,8 @@ const { khoiTaoDatabase } = require('./db/init');
 khoiTaoDatabase();
 
 const BM = require('./middleware/bao-mat');
+const SH = require('./middleware/security-hardening');
+const { auditRoutePolicies } = require('./lib/route-policy-audit');
 const { KhoPhienSQLite } = require('./lib/phien-sqlite');
 
 const app = express();
@@ -27,12 +29,14 @@ if (BM.LA_INTERNET) app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 app.use(BM.headerBaoMat);
+app.use(SH.requestContext);
 app.use(BM.epHttps);
 app.use(BM.gioiHanTanSuat({ soLan: 300, giay: 60 }));
 app.use(BM.locDaiMang);
+app.use(SH.protectCrossSiteRequests);
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: process.env.QLCD_JSON_LIMIT || '2mb', strict: true }));
+app.use(express.urlencoded({ extended: true, limit: '1mb', parameterLimit: 1000 }));
 
 // Health check endpoint - không cần database
 app.get('/api/health', (req, res) => {
@@ -46,11 +50,13 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     rolling: true,
+    unset: 'destroy',
     store: new KhoPhienSQLite(),
     cookie: {
         maxAge: gioPhien * 60 * 60 * 1000,
         httpOnly: true,
         sameSite: 'lax',
+        priority: 'high',
         secure: BM.LA_INTERNET      // chỉ gửi cookie qua HTTPS khi chạy internet
     }
 }));
@@ -64,61 +70,54 @@ app.use((req, res, next) => {
     next();
 });
 
-// Load routes với xử lý lỗi
-try {
-    app.use('/api/auth', require('./routes/auth'));
-    app.use('/api/danh-muc', require('./routes/danhmuc'));
-    app.use('/api/thiet-bi', require('./routes/thietbi'));
-    app.use('/api/device-master', require('./routes/device-master'));
-    app.use('/api/asset-ledger', require('./routes/asset-ledger'));
-    app.use('/api/inventory', require('./routes/inventory'));
-    app.use('/api/technical-profiles', require('./routes/technical-profile'));
-    app.use('/api/component-tree', require('./routes/component-tree'));
-    app.use('/api/documents', require('./routes/documents'));
-    app.use('/api/materials', require('./routes/materials'));
-    app.use('/api/stock-ledger', require('./routes/stock-ledger'));
-    app.use('/api/warehouse-transfers', require('./routes/warehouse-transfers'));
-    app.use('/api/ncvt-canonical', require('./routes/ncvt-canonical'));
-    app.use('/api/ncvt-canonical', require('./routes/ncvt-aggregate'));
-    app.use('/api/ncvt-reservations', require('./routes/ncvt-reservations'));
-    app.use('/api/ncvt-issues', require('./routes/ncvt-issues'));
-    app.use('/api/ncvt-receipts', require('./routes/ncvt-receipts'));
-    app.use('/api/ncvt-carry-forward', require('./routes/ncvt-carry-forward'));
-    app.use('/api/ncvt-dashboard', require('./routes/ncvt-dashboard'));
-    app.use('/api/technical-operations', require('./routes/technical-operations'));
-    app.use('/api/notifications', require('./routes/notifications'));
-    app.use('/api/reports', require('./routes/reports'));
-    app.use('/api/tai-san', require('./routes/taisan'));
-    app.use('/api/giao-dich', require('./routes/giaodich'));
-    app.use('/api', require('./routes/tienich'));
-    app.use('/api/bao-duong', require('./routes/baoduong'));
-    app.use('/api/kiem-dinh', require('./routes/kiemdinh'));
-    app.use('/api/ky-thuat', require('./routes/kythuat'));
-    app.use('/api/su-co', require('./routes/suco'));
-    app.use('/api/ncvt', require('./routes/ncvt'));
-    app.use('/api/mang', require('./routes/mang'));
-    app.use('/api/import', require('./routes/import'));
-    app.use('/api/tong-hop', require('./routes/tonghop'));
-    app.use('/api/quantri', require('./routes/quantri'));
-    app.use('/api/filemau', require('./routes/filemau'));
-    app.use('/api/kiemke', require('./routes/kiemke'));
-    app.use('/api/doichieu', require('./routes/doichieu'));
-    app.use('/api/khovat', require('./routes/khovat'));
-    app.use('/api/dashboard', require('./routes/dashboard'));
-} catch (e) {
-    console.error('[!] Lỗi load routes:', e.message);
-    // Không exit - để app vẫn chạy với health check endpoint
+// Registry dùng chung cho việc mount và audit chính sách route. Nếu một route mới
+// quên xác thực, kiểm thử và startup production sẽ báo lỗi thay vì chạy thiếu bảo vệ.
+const routeRegistry = [
+    ['/api/auth', './routes/auth', [{ method: 'POST', path: '/api/auth/dang-nhap' }]],
+    ['/api/danh-muc', './routes/danhmuc'], ['/api/thiet-bi', './routes/thietbi'],
+    ['/api/device-master', './routes/device-master'], ['/api/asset-ledger', './routes/asset-ledger'],
+    ['/api/inventory', './routes/inventory'], ['/api/technical-profiles', './routes/technical-profile'],
+    ['/api/component-tree', './routes/component-tree'], ['/api/documents', './routes/documents'],
+    ['/api/materials', './routes/materials'], ['/api/stock-ledger', './routes/stock-ledger'],
+    ['/api/warehouse-transfers', './routes/warehouse-transfers'],
+    ['/api/ncvt-canonical', './routes/ncvt-canonical'], ['/api/ncvt-canonical', './routes/ncvt-aggregate'],
+    ['/api/ncvt-reservations', './routes/ncvt-reservations'], ['/api/ncvt-issues', './routes/ncvt-issues'],
+    ['/api/ncvt-receipts', './routes/ncvt-receipts'], ['/api/ncvt-carry-forward', './routes/ncvt-carry-forward'],
+    ['/api/ncvt-dashboard', './routes/ncvt-dashboard'], ['/api/technical-operations', './routes/technical-operations'],
+    ['/api/notifications', './routes/notifications'], ['/api/reports', './routes/reports'],
+    ['/api/tai-san', './routes/taisan'], ['/api/giao-dich', './routes/giaodich'],
+    ['/api', './routes/tienich'], ['/api/bao-duong', './routes/baoduong'],
+    ['/api/kiem-dinh', './routes/kiemdinh'], ['/api/ky-thuat', './routes/kythuat'],
+    ['/api/su-co', './routes/suco'], ['/api/ncvt', './routes/ncvt'], ['/api/mang', './routes/mang'],
+    ['/api/import', './routes/import'], ['/api/tong-hop', './routes/tonghop'],
+    ['/api/quantri', './routes/quantri'], ['/api/filemau', './routes/filemau'],
+    ['/api/kiemke', './routes/kiemke'], ['/api/doichieu', './routes/doichieu'],
+    ['/api/khovat', './routes/khovat'], ['/api/dashboard', './routes/dashboard']
+].map(([mount, modulePath, publicRoutes = []]) => ({ mount, router: require(modulePath), publicRoutes }));
+
+routeRegistry.forEach(x => app.use(x.mount, x.router));
+const routePolicyAudit = auditRoutePolicies(routeRegistry);
+app.locals.routePolicyAudit = routePolicyAudit;
+if (routePolicyAudit.missing.length) {
+    const details = routePolicyAudit.missing.map(x => `${x.method} ${x.path}`).join(', ');
+    if (BM.LA_INTERNET) throw new Error(`Route chưa có chính sách xác thực: ${details}`);
+    console.warn(`[BẢO MẬT] Route chưa có chính sách xác thực: ${details}`);
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Xử lý lỗi tập trung
 app.use((err, req, res, next) => {
-    console.error('[LỖI]', err.message);
+    console.error(`[LỖI ${req.requestId || 'không-rõ'}]`, err.stack || err.message);
     if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ loi: 'File quá lớn (tối đa 30MB)' });
     }
-    res.status(500).json({ loi: err.message || 'Lỗi hệ thống' });
+    if (err.code === 'INVALID_FILE_CONTENT' || /Định dạng|Chỉ nhận/.test(err.message || '')) {
+        return res.status(400).json({ loi: err.message });
+    }
+    if (err.type === 'entity.too.large') return res.status(413).json({ loi: 'Dữ liệu gửi lên quá lớn' });
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ loi: 'Dữ liệu JSON không hợp lệ' });
+    res.status(500).json({ loi: 'Lỗi hệ thống', ma_tra_cuu: req.requestId });
 });
 
 if (require.main === module) {

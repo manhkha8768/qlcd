@@ -14,6 +14,7 @@ const db = require('../db');
 const { dangNhap } = require('../middleware/quyen');
 const { canQuyen, coQuyen, donViDuocPhep, duocThaoTacDonVi, quyenCuaToi } = require('../middleware/quyen-ma');
 const G = require('../lib/giao-dich');
+const US = require('../lib/upload-security');
 
 const THU_MUC = path.join(__dirname, '..', 'uploads', 'ho-so');
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
@@ -24,10 +25,7 @@ const upload = multer({
         filename: (req, f, cb) => cb(null, `hs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${path.extname(f.originalname)}`)
     }),
     limits: { fileSize: 20 * 1024 * 1024 },
-    fileFilter: (req, f, cb) => {
-        const ok = /\.(pdf|docx?|xlsx?|png|jpe?g|gif|webp)$/i.test(f.originalname);
-        cb(ok ? null : new Error('Chỉ nhận PDF, Word, Excel hoặc ảnh'), ok);
-    }
+    fileFilter: US.fileFilter('documents', 'Chỉ nhận PDF, Word, Excel hoặc ảnh')
 });
 
 const r = express.Router();
@@ -342,7 +340,7 @@ r.delete('/:id/chi-tiet/:ctId', canQuyen('GD_SUA'), (req, res) => {
 });
 
 /* ==================== TÀI LIỆU ĐÍNH KÈM ==================== */
-r.post('/:id/tai-lieu', canQuyen('GD_SUA'), upload.single('file'), (req, res) => {
+r.post('/:id/tai-lieu', canQuyen('GD_SUA'), upload.single('file'), US.validateDisk('documents'), (req, res) => {
     const gd = layGD(req, res, true);
     if (!gd) { if (req.file) fs.unlinkSync(req.file.path); return; }
     if (!req.file) return res.status(400).json({ loi: 'Chưa chọn file' });

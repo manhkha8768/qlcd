@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const db = require('../db');
+const US = require('../lib/upload-security');
 const { dangNhap,coMaQuyenNay,donViDuocPhep,duocThaoTacDonVi } = require('../middleware/quyen');
 
 const r=express.Router(); r.use(dangNhap);
@@ -11,7 +12,7 @@ const transferDir=path.join(__dirname,'..','uploads','asset-transfer');
 if(!fs.existsSync(transferDir))fs.mkdirSync(transferDir,{recursive:true});
 const upload=multer({storage:multer.diskStorage({destination:(req,file,cb)=>cb(null,transferDir),
     filename:(req,file,cb)=>cb(null,`transfer_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${path.extname(file.originalname)}`)}),
-    limits:{fileSize:20*1024*1024},fileFilter:(req,file,cb)=>{const ok=/\.(pdf|docx?|xlsx?|png|jpe?g|webp)$/i.test(file.originalname);cb(ok?null:new Error('Định dạng chứng từ không hợp lệ'),ok);}});
+    limits:{fileSize:20*1024*1024},fileFilter:US.fileFilter('documents','Định dạng chứng từ không hợp lệ')});
 const TYPES=['RECEIPT','TRANSFER','RETURN','DISPOSAL','ADJUSTMENT'];
 const id=()=>crypto.randomUUID();
 
@@ -189,7 +190,7 @@ r.post('/:id/sender-confirm',coMaQuyenNay('asset_transfer.sender_confirm'),(req,
     })();res.json({ok:true,trang_thai:'SENDER_CONFIRMED'});}catch(e){res.status(e.status||500).json({loi:e.message});}
 });
 
-r.post('/:id/documents',coMaQuyenNay('asset_transfer.document'),transferAccess,upload.single('file'),(req,res)=>{
+r.post('/:id/documents',coMaQuyenNay('asset_transfer.document'),transferAccess,upload.single('file'),US.validateDisk('documents'),(req,res)=>{
     if(!req.file)return res.status(400).json({loi:'Thiếu file chứng từ'});
     const types=['bien_ban_giao_nhan','quyet_dinh_dieu_chuyen','anh_hien_trang','khac'];
     const type=types.includes(req.body?.loai_chung_tu)?req.body.loai_chung_tu:'khac'; const docId=id();

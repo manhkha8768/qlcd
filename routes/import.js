@@ -17,6 +17,7 @@ const db = require('../db');
 const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX } = require('../middleware/quyen');
 const xl = require('../lib/doc-excel');
 const { sinhMa, doanNhom } = require('../lib/ma-thiet-bi');
+const US = require('../lib/upload-security');
 
 const THU_MUC = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
@@ -30,10 +31,7 @@ const upload = multer({
         }
     }),
     limits: { fileSize: 30 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        const ok = /\.(xlsx|xls|xlsm|csv)$/i.test(file.originalname);
-        cb(ok ? null : new Error('Chỉ nhận file Excel (.xlsx, .xls, .xlsm) hoặc .csv'), ok);
-    }
+    fileFilter: US.fileFilter('spreadsheets', 'Chỉ nhận file Excel (.xlsx, .xls, .xlsm) hoặc .csv')
 });
 
 const r = express.Router();
@@ -57,7 +55,7 @@ r.get('/lo', (req, res) => {
 });
 
 /* ---------- BƯỚC 1: Tải file lên ---------- */
-r.post('/tai-len', duocGhi, upload.single('file'), (req, res) => {
+r.post('/tai-len', duocGhi, upload.single('file'), US.validateDisk('spreadsheets'), (req, res) => {
     if (!req.file) return res.status(400).json({ loi: 'Chưa chọn file' });
 
     const gh = gioiHanPX(req);

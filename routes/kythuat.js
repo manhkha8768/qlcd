@@ -11,6 +11,7 @@ const { dangNhap } = require('../middleware/quyen');
 const { canQuyen, coQuyen, donViDuocPhep } = require('../middleware/quyen-ma');
 const KT = require('../lib/ky-thuat');
 const { ghiAudit } = require('../lib/giao-dich');
+const US = require('../lib/upload-security');
 
 const THU_MUC = path.join(process.env.QLCD_UPLOADS || path.join(__dirname, '..', 'uploads'), 'ky-thuat');
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
@@ -20,7 +21,8 @@ const upload = multer({
         destination: (q, f, cb) => cb(null, THU_MUC),
         filename: (q, f, cb) => cb(null, `kt_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${path.extname(f.originalname)}`)
     }),
-    limits: { fileSize: 30 * 1024 * 1024 }
+    limits: { fileSize: 30 * 1024 * 1024 },
+    fileFilter: US.fileFilter('documents')
 });
 
 const r = express.Router();
@@ -446,7 +448,7 @@ r.get('/thiet-bi/:tbId/tai-lieu', (req, res) => {
     res.json({ danh_sach: ds, theo_loai: nhom });
 });
 
-r.post('/thiet-bi/:tbId/tai-lieu', canQuyen('TAI_LIEU_TAI_LEN'), upload.single('file'), (req, res) => {
+r.post('/thiet-bi/:tbId/tai-lieu', canQuyen('TAI_LIEU_TAI_LEN'), upload.single('file'), US.validateDisk('documents'), (req, res) => {
     const tb = layTB(req, res);
     if (!tb) { if (req.file) fs.unlinkSync(req.file.path); return; }
     const b = req.body || {};

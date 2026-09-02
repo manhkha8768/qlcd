@@ -40,7 +40,11 @@ function epHttps(req, res, next) {
     if (!LA_INTERNET) return next();
     const giaoThuc = req.get('x-forwarded-proto') || req.protocol;
     if (giaoThuc !== 'https') {
-        return res.redirect(308, 'https://' + req.get('host') + req.originalUrl);
+        const configuredHost = process.env.QLCD_PUBLIC_HOST;
+        const requestHost = String(req.get('host') || '');
+        const safeHost = configuredHost || (/^[A-Za-z0-9.-]+(?::\d{1,5})?$/.test(requestHost) ? requestHost : null);
+        if (!safeHost) return res.status(400).json({ loi: 'Tên máy chủ không hợp lệ' });
+        return res.redirect(308, 'https://' + safeHost + req.originalUrl);
     }
     next();
 }
@@ -164,10 +168,9 @@ function kiemTraCauHinh() {
     const bimat = process.env.QLCD_SECRET || 'qlcd-noi-bo-doi-chuoi-nay-khi-trien-khai';
 
     if (LA_INTERNET) {
-        // Cảnh báo thay vì lỗi - để app có thể chạy ở lần đầu tiên trên Railway
-        if (!process.env.QLCD_SECRET) {
-            nhac.push('QLCD_SECRET chưa được đặt - đang dùng mặc định. ' +
-                     'Hãy đặt biến môi trường QLCD_SECRET (>=32 ký tự) cho bảo mật tốt hơn.');
+        if (!process.env.QLCD_SECRET || bimat.length < 32 ||
+            bimat === 'qlcd-noi-bo-doi-chuoi-nay-khi-trien-khai') {
+            loi.push('QLCD_SECRET phải là chuỗi bí mật riêng, tối thiểu 32 ký tự.');
         }
         try {
             const bcrypt = require('bcryptjs');

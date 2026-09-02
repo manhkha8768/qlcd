@@ -5,15 +5,18 @@ function dangNhap(req, res, next) {
     if (!req.session?.nguoiDung) return res.status(401).json({ loi: 'Chưa đăng nhập' });
     next();
 }
+dangNhap.qlcdPolicy = { authenticated: true, type: 'session' };
 
 function coVaiTro(...vaiTro) {
-    return (req, res, next) => {
+    const middleware = (req, res, next) => {
         if (!req.session?.nguoiDung) return res.status(401).json({ loi: 'Chưa đăng nhập' });
         if (!vaiTro.includes(req.session.nguoiDung.vai_tro)) {
             return res.status(403).json({ loi: 'Không có quyền thực hiện thao tác này' });
         }
         next();
     };
+    middleware.qlcdPolicy = { authenticated: true, type: 'role', roles: [...vaiTro] };
+    return middleware;
 }
 
 const chiAdmin = coVaiTro('admin');
@@ -54,12 +57,14 @@ function coMaQuyen(req, maQuyen, donViId = null) {
 }
 
 function coMaQuyenNay(...maQuyenList) {
-    return (req, res, next) => {
+    const middleware = (req, res, next) => {
         const u = req.session?.nguoiDung;
         if (!u) return res.status(401).json({ loi: 'Chưa đăng nhập' });
         if (maQuyenList.some(ma => coQuyen(u.id, u.vai_tro, ma))) return next();
         return res.status(403).json({ loi: 'Không có quyền thực hiện thao tác này' });
     };
+    middleware.qlcdPolicy = { authenticated: true, type: 'permission', permissions: [...maQuyenList] };
+    return middleware;
 }
 
 function canQuyen(maQuyen) { return coMaQuyenNay(maQuyen); }

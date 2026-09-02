@@ -156,10 +156,10 @@ function kt(ten, dk, ct = '') {
     // Tạo tài khoản phân xưởng rồi cắt phiên
     await A('/api/danh-muc/phan-xuong', { method: 'POST', body: { ma: 'DL1', ten: 'Đào lò 1' } });
     rs = await A('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'px1', mat_khau: 'px123', vai_tro: 'px', phan_xuong_id: 1 } });
+        body: { ten_dang_nhap: 'px1', mat_khau: 'Px1Manh2026', vai_tro: 'px', phan_xuong_id: 1 } });
     const idPx = rs.data.id;
     const P = taoApi('px1');
-    await P('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'px1', mat_khau: 'px123' } });
+    await P('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'px1', mat_khau: 'Px1Manh2026' } });
     rs = await P('/api/auth/toi');
     kt('Tài khoản phân xưởng đăng nhập được', rs.status === 200);
 
@@ -170,7 +170,7 @@ function kt(ten, dk, ct = '') {
     kt('Phiên bị cắt thì mất quyền truy cập ngay', rs.status === 401, String(rs.status));
 
     // Khóa tài khoản cũng cắt phiên
-    await P('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'px1', mat_khau: 'px123' } });
+    await P('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'px1', mat_khau: 'Px1Manh2026' } });
     await A('/api/auth/tai-khoan/' + idPx, { method: 'PUT', body: { hoat_dong: 0 } });
     rs = await P('/api/auth/toi');
     kt('Khóa tài khoản tự cắt phiên đang mở', rs.status === 401);

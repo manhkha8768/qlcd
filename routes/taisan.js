@@ -4,10 +4,12 @@ const multer = require('multer');
 const ExcelJS = require('exceljs');
 const db = require('../db');
 const { dangNhap, coMaQuyenNay, donViDuocPhep, duocThaoTacDonVi } = require('../middleware/quyen');
+const US = require('../lib/upload-security');
 
 const r = express.Router();
 r.use(dangNhap);
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: US.fileFilter(['.xlsx'], 'Chỉ nhận file Excel .xlsx') });
 
 function whereTaiSan(req) {
     const where = ['a.hoat_dong=1'];
@@ -102,7 +104,7 @@ r.get('/mau-import.xlsx', coMaQuyenNay('asset.import'), async (req, res, next) =
     } catch (e) { next(e); }
 });
 
-r.post('/import', coMaQuyenNay('asset.import'), upload.single('file'), async (req, res, next) => {
+r.post('/import', coMaQuyenNay('asset.import'), upload.single('file'), US.validateMemory(['.xlsx']), async (req, res, next) => {
     try {
         if (!req.file) return res.status(400).json({ loi: 'Thiếu file Excel' });
         const wb = new ExcelJS.Workbook();

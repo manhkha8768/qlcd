@@ -7,13 +7,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const BM = require('../middleware/bao-mat');
-const { coMaQuyenNay, coMaQuyen } = require('../middleware/quyen');
+const { dangNhap, coMaQuyenNay, coMaQuyen } = require('../middleware/quyen');
 const multer = require('multer');
 const crypto = require('crypto');
+const US = require('../lib/upload-security');
+
+router.use(dangNhap);
 
 const uploadTam = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 50 * 1024 * 1024 } // 50MB
+    limits: { fileSize: 30 * 1024 * 1024 },
+    fileFilter: US.fileFilter('documents')
 });
 
 /**
@@ -356,7 +360,7 @@ router.get('/:id', coMaQuyenNay('filemau.xem'), (req, res) => {
  * Body: {ma, ten, mo_ta, loai_id, tro_cap}
  * File: tap_tin (multipart)
  */
-router.post('/', coMaQuyenNay('filemau.tao'), uploadTam.single('tap_tin'), (req, res) => {
+router.post('/', coMaQuyenNay('filemau.tao'), uploadTam.single('tap_tin'), US.validateMemory('documents'), (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ ok: false, loi: 'Phải upload file' });
