@@ -35,6 +35,9 @@ assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_SECRET: 'short
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_DB: valid.QLCD_STAGING_DB }, root), /production/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_UPLOAD: valid.QLCD_STAGING_UPLOAD }, root), /production/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_BACKUP_DIR: valid.QLCD_STAGING_BACKUP_DIR }, root), /production/);
+assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_BACKUP_DIR: valid.QLCD_STAGING_UPLOAD }, root), /isolated/);
+assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_UPLOAD: valid.QLCD_STAGING_DB }, root), /isolated/);
+assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_BACKUP_DIR: valid.QLCD_STAGING_DB }, root), /isolated/);
 assert.equal(resolveStagingConfig(valid, root).port, 32121);
 assert.equal(resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '4567' }, root).port, 4567);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '1023' }, root), /port/);
