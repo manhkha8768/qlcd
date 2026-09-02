@@ -132,7 +132,7 @@ TASK 23 triển khai rules 44–48: registry query duy nhất phục vụ screen
 - Mọi tài khoản nguồn phải bị vô hiệu hóa; mật khẩu UAT không ghi vào manifest, log hoặc repository.
 - Upload nguồn không tự sao chép. Tài liệu cần kiểm thử phải được chọn và khử nhạy cảm riêng.
 - Kết quả tự động chỉ là technical evidence; không thay thế sign-off của PX, CĐVT và quản trị hệ thống.
-- TASK 27 chỉ được mở khi UAT dữ liệu thật đạt và đủ ba nhóm chữ ký.
+- Phần production của TASK 27 chỉ được mở khi UAT dữ liệu thật đạt và đủ ba nhóm chữ ký; staging tạm thời phục vụ UAT được phép chuẩn bị trước nhưng không thay thế sign-off.
 
 ## TASK 27 — Quick Tunnel staging tạm thời
 

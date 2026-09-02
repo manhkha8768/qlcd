@@ -4,7 +4,20 @@ const os = require('os');
 const path = require('path');
 
 const { resolveStagingConfig, parseQuickTunnelUrl, createEvidence, createController } = require('../lib/quick-tunnel-staging');
-const { main: runCli, createDependencies } = require('../scripts/quick-tunnel-staging');
+const { main: runCli, createDependencies, runProgram } = require('../scripts/quick-tunnel-staging');
+
+function assertIgnored(dockerIgnore, entry) {
+    const escaped = entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(dockerIgnore, new RegExp(`^${escaped}$`, 'm'), `Docker context must exclude ${entry}`);
+}
+
+const dockerIgnore = fs.readFileSync(path.join(__dirname, '..', '.dockerignore'), 'utf8');
+for (const entry of [
+    '.env.staging.local', '*.db', '*.db-wal', '*.db-shm', '*.sqlite', '*.sqlite3',
+    'uploads/', 'sao-luu/', 'uat-output/', 'quick-tunnel-output/'
+]) {
+    assertIgnored(dockerIgnore, entry);
+}
 
 const composePath = path.join(__dirname, '..', 'docker-compose.staging.yml');
 const compose = fs.existsSync(composePath) ? fs.readFileSync(composePath, 'utf8') : '';
@@ -38,6 +51,15 @@ assert.throws(() => resolveStagingConfig({ ...valid, QLCD_BACKUP_DIR: valid.QLCD
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_BACKUP_DIR: valid.QLCD_STAGING_UPLOAD }, root), /isolated/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_UPLOAD: valid.QLCD_STAGING_DB }, root), /isolated/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_BACKUP_DIR: valid.QLCD_STAGING_DB }, root), /isolated/);
+for (const stagingName of ['QLCD_STAGING_DB', 'QLCD_STAGING_UPLOAD', 'QLCD_STAGING_BACKUP_DIR']) {
+    for (const productionName of ['QLCD_DB', 'QLCD_UPLOAD', 'QLCD_UPLOADS', 'QLCD_BACKUP_DIR']) {
+        assert.throws(
+            () => resolveStagingConfig({ ...valid, [productionName]: valid[stagingName] }, root),
+            /production/,
+            `${stagingName} must not collide with ${productionName}`
+        );
+    }
+}
 assert.equal(resolveStagingConfig(valid, root).port, 32121);
 assert.equal(resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '4567' }, root).port, 4567);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '1023' }, root), /port/);
@@ -54,6 +76,17 @@ assert.equal(parseQuickTunnelUrl('https://blue-tree.trycloudflare.com:443'), nul
 assert.equal(parseQuickTunnelUrl('https://user:pass@blue-tree.trycloudflare.com'), null);
 assert.equal(parseQuickTunnelUrl('https://-bad.trycloudflare.com'), null);
 assert.equal(parseQuickTunnelUrl('https://a'.concat('x'.repeat(63), '.trycloudflare.com')), null);
+assert.equal(
+    parseQuickTunnelUrl('old https://old-tree.trycloudflare.com\nnew https://new-tree.trycloudflare.com'),
+    'https://new-tree.trycloudflare.com'
+);
+for (const punctuation of ['.', ',', ';', '!', '?', ')', ']', '}']) {
+    assert.equal(
+        parseQuickTunnelUrl(`Tunnel available at https://blue-tree.trycloudflare.com${punctuation}`),
+        'https://blue-tree.trycloudflare.com',
+        `Quick Tunnel URL must tolerate trailing ${punctuation}`
+    );
+}
 
 async function lifecycleTests() {
     const url = 'https://blue-tree.trycloudflare.com';
@@ -75,6 +108,7 @@ async function lifecycleTests() {
     };
     const calls = [];
     const controller = createController({
+        runPreflight: async () => { calls.push({ action: 'preflight' }); },
         runCompose: async request => { calls.push({ action: request.action, args: request.args || [] }); return ''; },
         fetchImpl: async (requestUrl, requestOptions) => {
             calls.push({ action: requestUrl.startsWith('http://127.0.0.1') ? 'local-ready' : 'remote-ready', requestUrl, requestOptions });
@@ -88,7 +122,10 @@ async function lifecycleTests() {
     });
     const started = await controller.start(config);
     assert.equal(started.url, url);
-    assert.deepEqual(calls.map(item => item.action), ['prepare', 'app-up', 'local-ready', 'tunnel-up', 'logs', 'remote-ready', 'evidence']);
+    assert.deepEqual(calls.map(item => item.action), ['preflight', 'prepare', 'build', 'app-up', 'local-ready', 'tunnel-up', 'logs', 'remote-ready', 'evidence']);
+    assert.deepEqual(calls.find(item => item.action === 'build').args, ['build', 'qlcd-staging']);
+    assert.deepEqual(calls.find(item => item.action === 'app-up').args, ['up', '-d', '--force-recreate', 'qlcd-staging']);
+    assert.deepEqual(calls.find(item => item.action === 'tunnel-up').args, ['up', '-d', '--force-recreate', 'cloudflared-staging']);
     assert.equal(calls.at(-1).evidencePath, config.evidencePath);
     assert.equal(calls.at(-1).item.status, 'TEMPORARY_STAGING');
     assert.equal(JSON.stringify(calls.at(-1).item).includes(config.secret), false);
@@ -96,6 +133,7 @@ async function lifecycleTests() {
 
     let clock = 0;
     const missingUrl = createController({
+        runPreflight: async () => {},
         runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => 'still starting',
         writeEvidence: async () => { throw new Error('evidence must not be written'); },
         now: () => clock, commit: 'abc123', sleep: async () => { clock += 1000; }
@@ -103,6 +141,7 @@ async function lifecycleTests() {
     await assert.rejects(() => missingUrl.start(config), /Quick Tunnel URL.*logs/);
 
     const invalidUrl = createController({
+        runPreflight: async () => {},
         runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => 'https://example.com',
         writeEvidence: async () => { throw new Error('evidence must not be written'); },
         now: () => clock, commit: 'abc123', sleep: async () => { clock += 1000; }
@@ -110,6 +149,7 @@ async function lifecycleTests() {
     await assert.rejects(() => invalidUrl.start(config), /Quick Tunnel URL.*logs/);
 
     const remoteNotReady = createController({
+        runPreflight: async () => {},
         runCompose: async () => {},
         fetchImpl: async requestUrl => ({ status: requestUrl.startsWith('http://127.0.0.1') ? 200 : 503 }),
         readLogs: async () => url, writeEvidence: async () => { throw new Error('evidence must not be written'); },
@@ -124,6 +164,7 @@ async function lifecycleTests() {
         return () => {};
     };
     const hungFetch = createController({
+        runPreflight: async () => {},
         runCompose: async () => {}, fetchImpl: async () => new Promise(() => {}), readLogs: async () => url,
         writeEvidence: async () => {}, now: () => hungClock, commit: 'abc123', sleep: async () => {},
         timeoutMs: 5, scheduleTimeout: immediateTimeout
@@ -134,6 +175,7 @@ async function lifecycleTests() {
 
     hungClock = 0;
     const hungLogs = createController({
+        runPreflight: async () => {},
         runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => new Promise(() => {}),
         writeEvidence: async () => {}, now: () => hungClock, commit: 'abc123', sleep: async () => {},
         timeoutMs: 5, scheduleTimeout: immediateTimeout
@@ -144,6 +186,7 @@ async function lifecycleTests() {
 
     const composeArgs = [];
     const stopController = createController({
+        runPreflight: async () => {},
         runCompose: async request => { composeArgs.push(request.args || []); }, fetchImpl: async () => ({ status: 200 }),
         readLogs: async () => '', writeEvidence: async () => {}, now: () => Date.now(), commit: 'abc123', sleep: async () => {}
     });
@@ -154,6 +197,7 @@ async function lifecycleTests() {
     const statusCalls = [];
     let statusFetchOptions;
     const statusController = createController({
+        runPreflight: async () => {},
         runCompose: async request => { statusCalls.push(request.action); return 'running'; },
         fetchImpl: async (_requestUrl, requestOptions) => { statusFetchOptions = requestOptions; return { status: 200 }; }, readLogs: async () => url, writeEvidence: async () => {},
         now: () => Date.now(), commit: 'abc123', sleep: async () => {}
@@ -163,6 +207,24 @@ async function lifecycleTests() {
     assert.equal(status.url, url);
     assert.equal(status.readiness, 200);
     assert.equal(statusFetchOptions.redirect, 'error');
+
+    const statusOutput = [];
+    const originalStatusLog = console.log;
+    console.log = message => statusOutput.push(message);
+    try {
+        await runCli(['node', 'quick-tunnel-staging.js', 'status'], {
+            cwd: root,
+            dependencies: {
+                runPreflight: async () => {}, runCompose: async () => 'qlcd-staging running\ncloudflared-staging running',
+                fetchImpl: async () => ({ status: 200 }), readLogs: async () => url,
+                writeEvidence: async () => {}, now: Date.now, commit: 'abc123', sleep: async () => {}
+            }
+        });
+    } finally {
+        console.log = originalStatusLog;
+    }
+    assert.match(statusOutput.join('\n'), /qlcd-staging running/);
+    assert.match(statusOutput.join('\n'), /cloudflared-staging running/);
 
     const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
     for (const name of ['staging:tunnel:start', 'staging:tunnel:status', 'staging:tunnel:stop']) {
@@ -177,6 +239,7 @@ async function lifecycleTests() {
             cwd: root,
             environment: valid,
             dependencies: {
+                runPreflight: async () => {},
                 runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => url,
                 writeEvidence: async () => {}, now: () => Date.parse('2026-09-02T00:00:00.000Z'), commit: 'abc123', sleep: async () => {}
             }
@@ -190,6 +253,7 @@ async function lifecycleTests() {
     await assert.rejects(() => runCli(['node', 'quick-tunnel-staging.js', 'stop', 'extra'], {
         cwd: root,
         dependencies: {
+            runPreflight: async () => {},
             runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => '',
             writeEvidence: async () => {}, now: Date.now, commit: 'abc123'
         }
@@ -210,7 +274,7 @@ async function lifecycleTests() {
         QLCD_STAGING_BACKUP_DIR: process.env.QLCD_STAGING_BACKUP_DIR,
         QLCD_STAGING_PORT: process.env.QLCD_STAGING_PORT
     };
-    const composeCalls = [];
+    const programCalls = [];
     const originalComposeLog = console.log;
     Object.assign(process.env, {
         QLCD_STAGING_SECRET: 'parent-secret-that-must-not-be-used'.repeat(2),
@@ -226,8 +290,8 @@ async function lifecycleTests() {
             dependencyFactory: (factoryCwd, environment) => ({
                 ...createDependencies(factoryCwd, {
                     environment,
-                    runProgramImpl: async (command, args, childCwd, childEnvironment) => {
-                        composeCalls.push({ command, args, childCwd, childEnvironment });
+                    runProgramImpl: async (command, args, childCwd, childEnvironment, commandOptions) => {
+                        programCalls.push({ command, args, childCwd, childEnvironment, commandOptions });
                         return args.includes('logs') ? url : '';
                     }
                 }),
@@ -240,13 +304,46 @@ async function lifecycleTests() {
             if (previous === undefined) delete process.env[name]; else process.env[name] = previous;
         }
     }
-    assert.equal(composeCalls.length, 3);
+    const composeCalls = programCalls.filter(call => call.command === 'docker');
+    assert.equal(composeCalls.length, 5);
     for (const call of composeCalls) {
         assert.deepEqual(call.args.slice(0, 5), ['compose', '--env-file', '.env.staging.local', '-f', 'docker-compose.staging.yml']);
         assert.equal(call.childEnvironment.QLCD_STAGING_SECRET, valid.QLCD_STAGING_SECRET);
         assert.equal(call.childEnvironment.QLCD_STAGING_DB, valid.QLCD_STAGING_DB);
         assert.equal(call.childEnvironment.QLCD_STAGING_PORT, '43210');
     }
+    const qualityCalls = programCalls.filter(call => call.command !== 'docker');
+    const qualityArgsOffset = process.platform === 'win32' ? 4 : 0;
+    assert.deepEqual(qualityCalls.map(call => call.args.slice(qualityArgsOffset).join(' ')), ['run lint', 'run typecheck', 'test', 'run build']);
+    if (process.platform === 'win32') {
+        for (const call of qualityCalls) {
+            assert.equal(path.basename(call.command).toLowerCase(), 'cmd.exe');
+            assert.deepEqual(call.args.slice(0, 4), ['/d', '/s', '/c', 'npm']);
+        }
+    }
+    assert.ok(programCalls.every(call => Number.isInteger(call.commandOptions.timeoutMs)));
+    const timeoutByAction = Object.fromEntries(programCalls.map(call => [call.command === 'docker' ? call.args.slice(5).join(' ') : call.args.slice(qualityArgsOffset).join(' '), call.commandOptions.timeoutMs]));
+    assert.ok(timeoutByAction.test > timeoutByAction['run lint']);
+    assert.ok(timeoutByAction['build qlcd-staging'] > timeoutByAction['config --quiet']);
+    assert.ok(timeoutByAction['up -d --force-recreate qlcd-staging'] > timeoutByAction['logs --no-color cloudflared-staging']);
+
+    const drainSecret = 'sensitive-value-that-must-be-redacted';
+    const noisyFailure = [
+        "const chunk = 'x'.repeat(512 * 1024);",
+        "process.stderr.write(chunk, () => process.stderr.write('\\nsecret=' + process.env.QLCD_STAGING_SECRET, () => process.exit(7)));"
+    ].join('');
+    await assert.rejects(
+        () => runProgram(process.execPath, ['-e', noisyFailure], root, {
+            ...process.env,
+            QLCD_STAGING_SECRET: drainSecret
+        }, { timeoutMs: 5000, label: 'output-drain-check', maxOutputBytes: 1024 }),
+        error => {
+            assert.match(error.message, /output-drain-check failed/);
+            assert.match(error.message, /\[REDACTED\]/);
+            assert.doesNotMatch(error.message, new RegExp(drainSecret));
+            return true;
+        }
+    );
 }
 
 lifecycleTests().then(() => console.log('quick tunnel staging tests passed')).catch(error => {

@@ -6,6 +6,17 @@ README.md
 .env
 .env.local
 .env.production
+.env.staging.local
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+db/
+uploads/
+sao-luu/
+uat-output/
+quick-tunnel-output/
 .DS_Store
 *.swp
 *.swo
