@@ -1,5 +1,7 @@
 # TASK 27 Quick Tunnel Staging Implementation Plan
 
+> Security architecture amendment (approved 2026-09-02): Compose contains no `build:` section and no host-data bind mounts. The wrapper requires a clean tracked tree, captures a full commit SHA, archives that exact commit in a temporary context outside the checkout, pins Compose to the resulting content-addressed image ID, and copies validated staging sources into retained named volumes only when uninitialized. This amendment supersedes later steps that mention building directly from the checkout, direct Compose build, or binding staging paths into the app container.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Cung cấp staging QLCD tạm thời chạy bằng Docker và Cloudflare Quick Tunnel, có kiểm tra an toàn, URL/evidence cục bộ và lệnh start/status/stop, trong khi giữ TASK 27 ở trạng thái `PARTIAL`.

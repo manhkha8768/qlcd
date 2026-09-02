@@ -1,7 +1,8 @@
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { spawn, execFileSync } = require('child_process');
-const { createController, resolveStagingConfig } = require('../lib/quick-tunnel-staging');
+const { createController, resolveStagingConfig, finalizeStagingConfig } = require('../lib/quick-tunnel-staging');
 
 const ENV_FILE = '.env.staging.local';
 const COMPOSE_FILE = 'docker-compose.staging.yml';
@@ -108,6 +109,7 @@ function dockerEnvironment(environment, config) {
             QLCD_STAGING_PORT: String(config.port)
         });
     }
+    if (config && config.image) childEnvironment.QLCD_STAGING_IMAGE = config.image;
     return childEnvironment;
 }
 
@@ -126,16 +128,78 @@ function createDependencies(cwd, { environment = process.env, runProgramImpl = r
     async function quality(args, timeoutMs, label) {
         return runProgramImpl(npmCommand, [...npmPrefixArgs, ...args], cwd, baseCommandEnvironment(environment), { timeoutMs, label });
     }
+    function currentCommit() {
+        return execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    }
     return {
         runPreflight: async request => {
             await quality(['run', 'lint'], COMMAND_TIMEOUTS.lint, 'Preflight lint');
             await quality(['run', 'typecheck'], COMMAND_TIMEOUTS.typecheck, 'Preflight typecheck');
             await quality(['test'], COMMAND_TIMEOUTS.test, 'Preflight tests');
             await quality(['run', 'build'], COMMAND_TIMEOUTS.build, 'Preflight application build');
-            await compose(['config', '--quiet'], request.config, {
-                timeoutMs: COMMAND_TIMEOUTS.composeConfig,
-                label: 'Docker Compose staging config'
-            });
+        },
+        buildImage: async () => {
+            const commit = currentCommit();
+            const image = `qlcd-staging:${commit.slice(0, 12).toLowerCase()}`;
+            const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'qlcd-staging-image-'));
+            const archivePath = path.join(temporaryRoot, 'source.tar');
+            const contextPath = path.join(temporaryRoot, 'context');
+            fs.mkdirSync(contextPath);
+            try {
+                await runProgramImpl('git', ['diff', '--quiet', commit, '--'], cwd, baseCommandEnvironment(environment), {
+                    timeoutMs: COMMAND_TIMEOUTS.composeConfig,
+                    label: 'Tracked source cleanliness check'
+                });
+                await runProgramImpl('git', ['archive', '--format=tar', '-o', archivePath, commit], cwd, baseCommandEnvironment(environment), {
+                    timeoutMs: COMMAND_TIMEOUTS.composeConfig,
+                    label: 'Committed source archive'
+                });
+                await runProgramImpl('tar', ['-xf', archivePath, '-C', contextPath], temporaryRoot, baseCommandEnvironment(environment), {
+                    timeoutMs: COMMAND_TIMEOUTS.composeConfig,
+                    label: 'Committed source extraction'
+                });
+                await runProgramImpl('docker', ['build', '--pull', '--tag', image, contextPath], temporaryRoot, baseCommandEnvironment(environment), {
+                    timeoutMs: COMMAND_TIMEOUTS.composeBuild,
+                    label: 'Immutable staging image build'
+                });
+                const imageId = (await runProgramImpl('docker', ['image', 'inspect', '--format', '{{.Id}}', image], temporaryRoot, baseCommandEnvironment(environment), {
+                    timeoutMs: COMMAND_TIMEOUTS.composeConfig,
+                    label: 'Immutable staging image inspection'
+                })).trim();
+                if (!/^sha256:[0-9a-f]{64}$/i.test(imageId)) throw new Error('Docker did not return an immutable staging image ID');
+                return imageId.toLowerCase();
+            } finally {
+                fs.rmSync(temporaryRoot, { recursive: true, force: true });
+            }
+        },
+        finalizeConfig: config => finalizeStagingConfig(config, cwd),
+        seedData: async ({ config }) => {
+            const dockerBaseEnvironment = baseCommandEnvironment(environment);
+            try {
+                const volumeStateScript = 'if [ -f /data/db/.qlcd-seeded ] && [ -f /data/uploads/.qlcd-seeded ] && [ -f /data/backups/.qlcd-seeded ]; then echo READY; elif find /data/db /data/uploads /data/backups -mindepth 1 -print -quit | grep -q .; then echo DIRTY; else echo EMPTY; fi';
+                const volumeState = (await runProgramImpl('docker', [
+                    'run', '--rm', '--user', '0', '--volumes-from', 'qlcd-staging', config.image,
+                    'sh', '-c', volumeStateScript
+                ], cwd, dockerBaseEnvironment, {
+                    timeoutMs: COMMAND_TIMEOUTS.composeUp,
+                    label: 'Staging named-volume state check'
+                })).trim();
+                if (volumeState === 'READY') return;
+                if (volumeState !== 'EMPTY') throw new Error('Staging named volumes are not empty and do not have a complete seed marker; refusing to overwrite them');
+                await runProgramImpl('docker', ['cp', config.dbSnapshotPath, 'qlcd-staging:/data/db/qlcd.db'], cwd, dockerBaseEnvironment, {
+                    timeoutMs: COMMAND_TIMEOUTS.composeUp,
+                    label: 'Staging database seed'
+                });
+                await runProgramImpl('docker', [
+                    'run', '--rm', '--user', '0', '--volumes-from', 'qlcd-staging', config.image,
+                    'sh', '-c', 'chown -R node:node /data && touch /data/db/.qlcd-seeded /data/uploads/.qlcd-seeded /data/backups/.qlcd-seeded'
+                ], cwd, dockerBaseEnvironment, {
+                    timeoutMs: COMMAND_TIMEOUTS.composeUp,
+                    label: 'Staging named-volume finalization'
+                });
+            } finally {
+                fs.rmSync(config.dbSnapshotRoot, { recursive: true, force: true });
+            }
         },
         runCompose: async request => {
             if (request.action === 'prepare') {
@@ -144,8 +208,9 @@ function createDependencies(cwd, { environment = process.env, runProgramImpl = r
                 return '';
             }
             const settings = {
-                build: { timeoutMs: COMMAND_TIMEOUTS.composeBuild, label: 'Docker Compose staging image build' },
-                'app-up': { timeoutMs: COMMAND_TIMEOUTS.composeUp, label: 'Docker Compose staging application start' },
+                config: { timeoutMs: COMMAND_TIMEOUTS.composeConfig, label: 'Docker Compose staging config' },
+                'app-create': { timeoutMs: COMMAND_TIMEOUTS.composeUp, label: 'Docker Compose staging application create' },
+                'app-start': { timeoutMs: COMMAND_TIMEOUTS.composeUp, label: 'Docker Compose staging application start' },
                 'tunnel-up': { timeoutMs: COMMAND_TIMEOUTS.composeUp, label: 'Docker Compose tunnel start' },
                 status: { timeoutMs: COMMAND_TIMEOUTS.composeStatus, label: 'Docker Compose staging status' },
                 stop: { timeoutMs: COMMAND_TIMEOUTS.composeStop, label: 'Docker Compose staging stop' }
@@ -165,7 +230,7 @@ function createDependencies(cwd, { environment = process.env, runProgramImpl = r
         now: Date.now,
         commit: () => {
             try {
-                return execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+                return currentCommit();
             } catch (_) {
                 return 'unknown';
             }
@@ -177,6 +242,7 @@ function statusConfig(environment, cwd) {
     const port = Number(environment.QLCD_STAGING_PORT || 32121);
     return {
         port: Number.isInteger(port) ? port : 32121,
+        image: 'qlcd-staging:status-only',
         evidencePath: path.resolve(cwd, environment.QLCD_STAGING_EVIDENCE || path.join('quick-tunnel-output', 'evidence.json'))
     };
 }

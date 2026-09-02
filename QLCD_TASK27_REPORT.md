@@ -5,14 +5,14 @@ Status: **PARTIAL**
 
 ## Outcome
 
-The temporary Quick Tunnel staging transport is implemented. It runs the existing Express/SQLite application in an isolated Docker Compose configuration, publishes the application only on loopback, and uses an outbound `cloudflared` Quick Tunnel. The command lifecycle validates physically external staging paths and secrets, reports a temporary URL, checks local and remote readiness, and writes non-secret evidence.
+The temporary Quick Tunnel staging transport is implemented. It builds from one captured commit in a tracked-files-only temporary context outside the checkout and pins Compose to the resulting content-addressed image ID. Docker Compose has no build context and no host-data bind mounts. On first initialization, a stable file-descriptor snapshot of the validated database is copied into an empty named volume; upload/backup volumes start empty. Uncertain or partial volume state fails closed.
 
 This is not a production deployment. A Quick Tunnel URL is ephemeral, changes after restart, has no SLA, and must not be used for production traffic, DNS, a named tunnel, or high availability.
 
 ## Operator workflow
 
 1. Create Git-ignored `.env.staging.local` from `.env.example` with a unique >=32-character `QLCD_STAGING_SECRET`, an existing staging database copy outside the repository checkout, and distinct staging upload/backup paths outside the checkout. Never use production database, data, secret, upload, or backup paths. Links/junctions are evaluated by physical target.
-2. Start only with `npm run staging:tunnel:start`; record the printed `https://<label>.trycloudflare.com` URL and `quick-tunnel-output/evidence.json`. Direct `docker compose build`/`up` is unsupported because it bypasses the wrapper's path validation and preflight.
+2. Start with `npm run staging:tunnel:start`; record the printed `https://<label>.trycloudflare.com` URL and `quick-tunnel-output/evidence.json`. The tracked tree must be clean. The wrapper supplies an immutable image ID and seeds named volumes only when uninitialized; normal restart does not overwrite retained staging data.
 3. Check the current URL/readiness with `npm run staging:tunnel:status`. Re-acquire the URL after any restart.
 4. Stop with `npm run staging:tunnel:stop`. The command uses `down --remove-orphans` and deliberately never uses `down -v`, preserving staging data and evidence.
 

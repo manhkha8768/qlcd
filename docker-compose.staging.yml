@@ -1,8 +1,6 @@
 services:
   qlcd-staging:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${QLCD_STAGING_IMAGE:?Set QLCD_STAGING_IMAGE to the immutable image created by the staging wrapper}
     container_name: qlcd-staging
     init: true
     ports:
@@ -17,15 +15,9 @@ services:
       QLCD_PHIEN_GIO: 8
       QLCD_SECRET: ${QLCD_STAGING_SECRET:?Set QLCD_STAGING_SECRET to a unique value of at least 32 characters}
     volumes:
-      - type: bind
-        source: ${QLCD_STAGING_DB:?Set QLCD_STAGING_DB to the staging database file}
-        target: /data/db/qlcd.db
-      - type: bind
-        source: ${QLCD_STAGING_UPLOAD:?Set QLCD_STAGING_UPLOAD to the staging upload directory}
-        target: /data/uploads
-      - type: bind
-        source: ${QLCD_STAGING_BACKUP_DIR:?Set QLCD_STAGING_BACKUP_DIR to the staging backup directory}
-        target: /data/backups
+      - qlcd-staging-db:/data/db
+      - qlcd-staging-uploads:/data/uploads
+      - qlcd-staging-backups:/data/backups
     restart: unless-stopped
     stop_grace_period: 35s
     healthcheck:
@@ -54,3 +46,11 @@ services:
 networks:
   qlcd-staging-network:
     driver: bridge
+
+volumes:
+  qlcd-staging-db:
+    name: qlcd-staging-db
+  qlcd-staging-uploads:
+    name: qlcd-staging-uploads
+  qlcd-staging-backups:
+    name: qlcd-staging-backups

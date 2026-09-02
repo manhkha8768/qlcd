@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { resolveStagingConfig, parseQuickTunnelUrl, createEvidence, createController } = require('../lib/quick-tunnel-staging');
+const { resolveStagingConfig, finalizeStagingConfig, parseQuickTunnelUrl, createEvidence, createController } = require('../lib/quick-tunnel-staging');
 const { main: runCli, createDependencies, runProgram } = require('../scripts/quick-tunnel-staging');
 
 function assertIgnored(dockerIgnore, entry) {
@@ -61,6 +61,9 @@ assert.ok(numberedMigrations.length >= 37, 'numbered SQL migrations must remain 
 const composePath = path.join(__dirname, '..', 'docker-compose.staging.yml');
 const compose = fs.existsSync(composePath) ? fs.readFileSync(composePath, 'utf8') : '';
 assert.match(compose, /127\.0\.0\.1:\$\{QLCD_STAGING_PORT:-32121\}:3000/);
+assert.match(compose, /image:\s*\$\{QLCD_STAGING_IMAGE:\?[^}]+\}/);
+assert.doesNotMatch(compose, /^\s*build:/m, 'Compose must never build from the repository checkout');
+assert.doesNotMatch(compose, /context:\s*\./, 'Compose must not expose the repository as a Docker build context');
 assert.match(compose, /cloudflare\/cloudflared:2026\.8\.3/);
 assert.match(compose, /tunnel --no-autoupdate --url http:\/\/qlcd-staging:3000/);
 assert.doesNotMatch(compose, /0\.0\.0\.0:/);
@@ -68,9 +71,9 @@ assert.doesNotMatch(compose, /down -v/);
 assert.match(compose, /read_only:\s*true/);
 assert.match(compose, /cap_drop:\s*\[ALL\]/);
 assert.match(compose, /no-new-privileges:\s*true/);
-for (const variable of ['QLCD_STAGING_DB', 'QLCD_STAGING_UPLOAD', 'QLCD_STAGING_BACKUP_DIR']) {
-    assert.match(compose, new RegExp(`\\$\\{${variable}[^}]*\\}`));
-}
+assert.doesNotMatch(compose, /type:\s*bind/);
+assert.doesNotMatch(compose, /source:\s*\$\{QLCD_STAGING_/);
+for (const volume of ['qlcd-staging-db', 'qlcd-staging-uploads', 'qlcd-staging-backups']) assert.match(compose, new RegExp(volume));
 
 assert.throws(() => resolveStagingConfig({}, root), /QLCD_STAGING_SECRET/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_SECRET: 'short' }, root), /32/);
@@ -95,6 +98,12 @@ assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '1023' }
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '65536' }, root), /port/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_DB: path.join(externalStagingRoot, 'missing.db') }, root), /file/);
 
+const finalized = finalizeStagingConfig(resolveStagingConfig(valid, root), root);
+assert.equal(finalized.dbPath, fs.realpathSync(valid.QLCD_STAGING_DB));
+assert.equal(fs.existsSync(finalized.dbSnapshotPath), true);
+assert.equal(finalized.uploadPath, fs.realpathSync(valid.QLCD_STAGING_UPLOAD));
+assert.equal(finalized.backupPath, fs.realpathSync(valid.QLCD_STAGING_BACKUP_DIR));
+
 const insideTarget = path.join(root, 'physical-inside');
 const externalAliasToInside = path.join(externalStagingRoot, 'alias-to-checkout');
 fs.mkdirSync(insideTarget, { recursive: true });
@@ -104,6 +113,23 @@ try {
         () => resolveStagingConfig({ ...valid, QLCD_STAGING_UPLOAD: path.join(externalAliasToInside, 'uploads') }, root),
         /outside.*build context/i,
         'physical containment must reject an external alias that resolves into the build context'
+    );
+} catch (error) {
+    if (!['EPERM', 'EACCES', 'ENOSYS', 'UNKNOWN'].includes(error.code)) throw error;
+}
+
+const retargetAlias = path.join(externalStagingRoot, 'retarget-alias');
+const safeAliasTarget = path.join(externalStagingRoot, 'safe-alias-target');
+fs.mkdirSync(safeAliasTarget, { recursive: true });
+try {
+    fs.symlinkSync(safeAliasTarget, retargetAlias, process.platform === 'win32' ? 'junction' : 'dir');
+    const beforeRetarget = resolveStagingConfig({ ...valid, QLCD_STAGING_UPLOAD: path.join(retargetAlias, 'uploads') }, root);
+    fs.rmSync(retargetAlias);
+    fs.symlinkSync(insideTarget, retargetAlias, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.throws(
+        () => finalizeStagingConfig(beforeRetarget, root),
+        /outside.*build context/i,
+        'final physical resolution must catch an alias retargeted after initial validation'
     );
 } catch (error) {
     if (!['EPERM', 'EACCES', 'ENOSYS', 'UNKNOWN'].includes(error.code)) throw error;
@@ -145,6 +171,57 @@ async function lifecycleTests() {
     assert.equal(JSON.stringify(evidence).includes('secret'), false);
     assert.equal(evidence.business_signoff.status, 'PENDING');
 
+    const immutableBuildCalls = [];
+    const immutableDependencies = createDependencies(projectRoot, {
+        environment: process.env,
+        runProgramImpl: async (command, args, childCwd, childEnvironment, commandOptions) => {
+            immutableBuildCalls.push({ command, args, childCwd, childEnvironment, commandOptions });
+            if (command === 'docker' && args[0] === 'image') return `sha256:${'a'.repeat(64)}\n`;
+            return '';
+        }
+    });
+    const immutableImage = await immutableDependencies.buildImage({ config: {} });
+    assert.equal(immutableImage, `sha256:${'a'.repeat(64)}`);
+    const capturedCommit = immutableBuildCalls[0].args[2];
+    assert.match(capturedCommit, /^[0-9a-f]{40}$/);
+    assert.equal(immutableBuildCalls[1].args.at(-1), capturedCommit, 'archive must use the captured commit, not symbolic HEAD');
+    assert.deepEqual(immutableBuildCalls.map(call => `${call.command} ${call.args.slice(0, 3).join(' ')}`), [
+        `git diff --quiet ${capturedCommit}`,
+        'git archive --format=tar -o',
+        'tar -xf ' + immutableBuildCalls[2].args[1] + ' -C',
+        'docker build --pull --tag',
+        'docker image inspect --format'
+    ]);
+    const dockerBuildContext = immutableBuildCalls[3].args.at(-1);
+    assert.notEqual(path.relative(projectRoot, dockerBuildContext).split(path.sep)[0], '', 'Docker build context must not be the checkout');
+    assert.ok(path.relative(projectRoot, dockerBuildContext).startsWith('..'), 'Docker build context must be outside the checkout');
+
+    const seedCalls = [];
+    const seedDependencies = createDependencies(projectRoot, {
+        environment: process.env,
+        runProgramImpl: async (command, args) => {
+            seedCalls.push({ command, args });
+            if (args[0] === 'run' && args.some(arg => String(arg).includes('echo DIRTY; else echo EMPTY'))) return 'EMPTY\n';
+            return '';
+        }
+    });
+    await seedDependencies.seedData({ config: { ...finalized, image: `sha256:${'a'.repeat(64)}` } });
+    assert.equal(seedCalls.length, 3, 'empty named volumes require a fail-closed state check, database snapshot copy, and atomic finalization');
+    assert.ok(seedCalls.every(call => call.command === 'docker'));
+    assert.equal(seedCalls.some(call => call.args.includes('--volume') || call.args.includes('-v')), false, 'host data must never be bind-mounted');
+    assert.ok(seedCalls.some(call => call.args[0] === 'cp' && call.args[2] === 'qlcd-staging:/data/db/qlcd.db'));
+    assert.equal(seedCalls.some(call => call.args.includes(finalized.dbPath)), false, 'Docker must receive the private snapshot path, not the validated source pathname');
+
+    const dirtySeedDependencies = createDependencies(projectRoot, {
+        environment: process.env,
+        runProgramImpl: async () => 'DIRTY\n'
+    });
+    await assert.rejects(
+        () => dirtySeedDependencies.seedData({ config: { ...finalized, image: `sha256:${'b'.repeat(64)}` } }),
+        /refusing to overwrite/i,
+        'an uncertain or partially initialized volume must fail closed'
+    );
+
     let buildReached = false;
     await assert.rejects(
         () => runCli(['node', 'quick-tunnel-staging.js', 'start'], {
@@ -167,6 +244,9 @@ async function lifecycleTests() {
     const calls = [];
     const controller = createController({
         runPreflight: async () => { calls.push({ action: 'preflight' }); },
+        buildImage: async () => { calls.push({ action: 'image-build' }); return 'qlcd-staging:abc123'; },
+        finalizeConfig: async current => { calls.push({ action: 'finalize' }); return { ...current, image: 'qlcd-staging:abc123' }; },
+        seedData: async () => { calls.push({ action: 'seed-data' }); },
         runCompose: async request => { calls.push({ action: request.action, args: request.args || [] }); return ''; },
         fetchImpl: async (requestUrl, requestOptions) => {
             calls.push({ action: requestUrl.startsWith('http://127.0.0.1') ? 'local-ready' : 'remote-ready', requestUrl, requestOptions });
@@ -180,9 +260,9 @@ async function lifecycleTests() {
     });
     const started = await controller.start(config);
     assert.equal(started.url, url);
-    assert.deepEqual(calls.map(item => item.action), ['preflight', 'prepare', 'build', 'app-up', 'local-ready', 'tunnel-up', 'logs', 'remote-ready', 'evidence']);
-    assert.deepEqual(calls.find(item => item.action === 'build').args, ['build', 'qlcd-staging']);
-    assert.deepEqual(calls.find(item => item.action === 'app-up').args, ['up', '-d', '--force-recreate', 'qlcd-staging']);
+    assert.deepEqual(calls.map(item => item.action), ['preflight', 'prepare', 'image-build', 'config', 'app-create', 'finalize', 'seed-data', 'app-start', 'local-ready', 'tunnel-up', 'logs', 'remote-ready', 'evidence']);
+    assert.deepEqual(calls.find(item => item.action === 'app-create').args, ['create', '--force-recreate', 'qlcd-staging']);
+    assert.deepEqual(calls.find(item => item.action === 'app-start').args, ['start', 'qlcd-staging']);
     assert.deepEqual(calls.find(item => item.action === 'tunnel-up').args, ['up', '-d', '--force-recreate', 'cloudflared-staging']);
     assert.equal(calls.at(-1).evidencePath, config.evidencePath);
     assert.equal(calls.at(-1).item.status, 'TEMPORARY_STAGING');
@@ -353,6 +433,9 @@ async function lifecycleTests() {
                         return args.includes('logs') ? url : '';
                     }
                 }),
+                buildImage: async () => 'qlcd-staging:abc123',
+                finalizeConfig: config => finalizeStagingConfig(config, factoryCwd),
+                seedData: async ({ config }) => { fs.rmSync(config.dbSnapshotRoot, { recursive: true, force: true }); },
                 fetchImpl: async () => ({ status: 200 })
             })
         });
@@ -369,6 +452,7 @@ async function lifecycleTests() {
         assert.equal(call.childEnvironment.QLCD_STAGING_SECRET, valid.QLCD_STAGING_SECRET);
         assert.equal(call.childEnvironment.QLCD_STAGING_DB, valid.QLCD_STAGING_DB);
         assert.equal(call.childEnvironment.QLCD_STAGING_PORT, '43210');
+        assert.equal(call.childEnvironment.QLCD_STAGING_IMAGE, 'qlcd-staging:abc123');
     }
     const qualityCalls = programCalls.filter(call => call.command !== 'docker');
     const qualityArgsOffset = process.platform === 'win32' ? 4 : 0;
@@ -382,8 +466,7 @@ async function lifecycleTests() {
     assert.ok(programCalls.every(call => Number.isInteger(call.commandOptions.timeoutMs)));
     const timeoutByAction = Object.fromEntries(programCalls.map(call => [call.command === 'docker' ? call.args.slice(5).join(' ') : call.args.slice(qualityArgsOffset).join(' '), call.commandOptions.timeoutMs]));
     assert.ok(timeoutByAction.test > timeoutByAction['run lint']);
-    assert.ok(timeoutByAction['build qlcd-staging'] > timeoutByAction['config --quiet']);
-    assert.ok(timeoutByAction['up -d --force-recreate qlcd-staging'] > timeoutByAction['logs --no-color cloudflared-staging']);
+    assert.ok(timeoutByAction['create --force-recreate qlcd-staging'] > timeoutByAction['logs --no-color cloudflared-staging']);
 
     const drainSecret = 'sensitive-value-that-must-be-redacted';
     const noisyFailure = [

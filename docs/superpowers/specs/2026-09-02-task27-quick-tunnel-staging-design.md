@@ -18,12 +18,12 @@ Ngoài phạm vi:
 
 Một compose file staging riêng chạy hai service trong cùng mạng Docker:
 
-1. `qlcd-staging` chạy ứng dụng Express/SQLite hiện tại bằng image được build từ checkout đang kiểm thử.
+1. `qlcd-staging` chạy ứng dụng Express/SQLite bằng Docker image ID bất biến. Wrapper chụp một commit cụ thể, tạo build context tạm bên ngoài checkout từ chính commit đó; Compose chỉ tham chiếu image ID và không có quyền build.
 2. `cloudflared-staging` chạy Quick Tunnel và chuyển tiếp tới `http://qlcd-staging:3000` qua mạng Docker nội bộ.
 
 Ứng dụng chỉ publish cổng loopback `127.0.0.1` để kiểm tra tại máy chủ; không bind cổng ứng dụng lên mọi interface. `cloudflared` tạo kết nối outbound tới Cloudflare nên máy chủ không cần mở inbound port cho QLCD.
 
-Database, uploads và backup dùng bind mount staging riêng, không dùng chung volume production và mọi đường dẫn dữ liệu phải có đích vật lý nằm ngoài checkout đang làm Docker build context. Secret phiên staging được truyền qua file môi trường nằm ngoài Git.
+Database, uploads và backup chạy trong ba Docker named volume staging riêng, không bind mount bất kỳ đường dẫn dữ liệu host nào vào ứng dụng. Database được đọc qua file descriptor đã đối chiếu identity, sao chép vào snapshot riêng rồi seed một lần; upload/backup volume khởi tạo rỗng để không vô tình công khai file host. Ba marker chỉ được ghi sau khi seed thành công; volume đã có đủ marker được giữ nguyên khi restart. Secret phiên staging được truyền qua file môi trường nằm ngoài Git.
 
 ## 3. Luồng vận hành
 
@@ -31,7 +31,7 @@ Database, uploads và backup dùng bind mount staging riêng, không dùng chung
 
 1. Kiểm tra Docker Compose và các biến staging bắt buộc.
 2. Từ chối đường dẫn hoặc volume được nhận diện là production, hoặc có đích vật lý nằm trong checkout/build context.
-3. Chạy lint, typecheck, test, build và kiểm tra cấu hình staging trước khi dựng image.
+3. Chạy lint, typecheck, test và build; yêu cầu tracked tree sạch, xuất đúng commit đã theo dõi sang build context tạm và dựng image bất biến.
 4. Khởi động `qlcd-staging`, chờ `/api/ready` đạt.
 5. Khởi động `cloudflared-staging`, đọc URL HTTPS từ log và ghi evidence cục bộ bị Git bỏ qua.
 6. Kiểm tra readiness qua URL Quick Tunnel và hiển thị cảnh báo `TEMPORARY STAGING — NOT PRODUCTION`.
@@ -53,7 +53,7 @@ Các giá trị bắt buộc:
 - `QLCD_STAGING_UPLOAD`: thư mục uploads staging riêng có đích vật lý ngoài checkout.
 - `QLCD_STAGING_BACKUP_DIR`: thư mục backup staging riêng có đích vật lý ngoài checkout.
 
-Validator phải dùng đường dẫn vật lý: database hiện hữu được `realpath`; upload/backup có thể chưa tồn tại nên phải `realpath` ancestor hiện hữu gần nhất rồi nối các segment còn thiếu. Mọi đường dẫn bằng hoặc nằm dưới checkout/build context đều bị từ chối, kể cả đường dẫn bên ngoài qua symlink/junction trỏ ngược vào checkout. `.dockerignore` chỉ là lớp phòng thủ cho tên file runtime thường gặp và không thay thế validator đối với tên/đuôi tùy ý.
+Validator phải dùng đường dẫn vật lý và lưu identity của database (device/inode/size/mtime). Trước seed, wrapper mở database, đối chiếu identity trên file descriptor, sao chép byte qua descriptor sang snapshot riêng và kiểm tra file không đổi trong lúc đọc. Docker chỉ nhận snapshot riêng; upload/backup host không được sao chép. Compose không nhận đường dẫn host nên symlink/junction không thể làm ứng dụng mount nhầm database hoặc thư mục production.
 
 Runtime ứng dụng dùng `NODE_ENV=production` và `QLCD_INTERNET=1` để kiểm tra đúng cookie/HTTPS/security gate. `QLCD_PUBLIC_HOST` không cố định vì Quick Tunnel cấp hostname sau khi connector khởi động; request hợp lệ đi qua HTTPS và Host do Cloudflare chuyển tiếp.
 
@@ -61,7 +61,7 @@ Không ghi token Cloudflare, mật khẩu hoặc secret vào compose, log eviden
 
 ## 5. Tự động hóa
 
-Phần tự động hóa ở TASK 27 chỉ dựng và kiểm tra staging khi người vận hành chạy lệnh rõ ràng. `npm run staging:tunnel:start` là entry point build/start duy nhất được hỗ trợ vì chạy validation và preflight trước Docker; chạy trực tiếp `docker compose build` hoặc `docker compose up` là không được hỗ trợ. Không tự deploy production khi push Git.
+Phần tự động hóa ở TASK 27 chỉ dựng và kiểm tra staging khi người vận hành chạy lệnh rõ ràng. `npm run staging:tunnel:start` tạo image từ commit đã chụp, lấy content-addressed image ID, tạo container, xác nhận cả ba volume rỗng trước khi seed database snapshot và chỉ sau đó ghi đủ marker. Trạng thái không chắc chắn hoặc volume có dữ liệu nhưng thiếu marker đều fail closed. `docker-compose.staging.yml` không chứa `build:` hoặc host data bind mount.
 
 CI tiếp tục chạy quality gate trên push/pull request. Việc tự động phát hành production chỉ được thiết kế sau khi có domain ổn định, UAT TASK 26 đủ sign-off và cơ chế rollback production được duyệt.
 
@@ -77,7 +77,7 @@ CI tiếp tục chạy quality gate trên push/pull request. Việc tự động
 Implementation phải có test tự động cho:
 
 - Cấu hình từ chối secret yếu, database production, đường dẫn staging trùng nhau và mọi database/upload/backup có đích vật lý trong checkout/build context.
-- Docker build context giữ `db/index.js`, `db/init.js` và các migration SQL, đồng thời bỏ qua các mẫu database runtime và thư mục dữ liệu nhạy cảm đã biết.
+- Docker build context tạm nằm ngoài checkout, chỉ chứa file từ commit đã chụp, giữ `db/index.js`, `db/init.js` và các migration SQL; Compose không có `build:` hoặc context repository.
 - Compose không publish QLCD ra `0.0.0.0`, dùng volume riêng và chuyển tiếp đúng service nội bộ.
 - Parser chỉ chấp nhận URL HTTPS thuộc `trycloudflare.com` từ log connector.
 - Evidence không chứa secret.
