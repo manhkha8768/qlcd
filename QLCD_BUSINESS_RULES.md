@@ -125,3 +125,11 @@ TASK 23 triển khai rules 44–48: registry query duy nhất phục vụ screen
 - Load gate mặc định không chấp nhận HTTP error và yêu cầu p95 không vượt ngưỡng cấu hình; kết quả phải ghi rõ concurrency, RPS, p50/p95/p99.
 - SIGTERM ngừng nhận kết nối mới, dừng scheduler, chờ request hiện tại và checkpoint WAL trước khi đóng database.
 - Error tracking không lưu request body, cookie, password hoặc secret; resolve bắt buộc actor và ghi chú.
+
+## TASK 26 — Quy tắc UAT dữ liệu thực
+
+- Không chạy UAT trực tiếp trên database production và không dùng cùng đường dẫn nguồn/đích.
+- Mọi tài khoản nguồn phải bị vô hiệu hóa; mật khẩu UAT không ghi vào manifest, log hoặc repository.
+- Upload nguồn không tự sao chép. Tài liệu cần kiểm thử phải được chọn và khử nhạy cảm riêng.
+- Kết quả tự động chỉ là technical evidence; không thay thế sign-off của PX, CĐVT và quản trị hệ thống.
+- TASK 27 chỉ được mở khi UAT dữ liệu thật đạt và đủ ba nhóm chữ ký.

@@ -32,7 +32,7 @@
 | 23 | Reporting/Excel/PDF/print | Hoàn thành | 7 projection canonical, scope, paging/filter/sort, Excel/PDF/print chuẩn và export audit |
 | 24 | Security hardening | Hoàn thành | 394 route được audit deny-by-default, session rotation, Origin/Fetch Metadata CSRF, secret/startup gate, upload signature và security regression |
 | 25 | Performance + production readiness | Hoàn thành | 7 query-plan gates, metrics/readiness/error queue, checksum backup/restore drill, graceful shutdown và load threshold |
-| 26 | UAT dữ liệu thực | Chưa làm | staging + 1–2 PX, end-to-end sign-off |
+| 26 | UAT dữ liệu thực | Một phần | Tooling staging/ẩn danh và technical journey hoàn thành; còn chạy dữ liệu thật + sign-off 3 vai trò |
 | 27 | Production deployment | Một phần hạ tầng legacy | tách env, domain/HTTPS, prod DB/storage, pipeline/rollback |
 | 28 | Controlled go-live | Chưa làm | pilot 1–2 PX, observability/support, staged rollout |
 | 29 | AI/OCR | Chưa làm | chỉ sau dữ liệu ổn định; preview/user confirm/approval |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 26 — UAT dữ liệu thực**, dựng staging từ bản sao đã ẩn dữ liệu nhạy cảm, chọn 1–2 PX và ký xác nhận end-to-end theo vai trò.
+Task tiếp theo đề xuất: **hoàn tất TASK 26 — business UAT/sign-off**, cung cấp bản sao dữ liệu được phép sử dụng, chạy staging ẩn danh cho 1–2 PX và ký xác nhận end-to-end theo ba nhóm vai trò. Chưa chuyển TASK 27 khi chưa đủ chữ ký.
 
 ## 4. Quality gate sau mỗi Task
 

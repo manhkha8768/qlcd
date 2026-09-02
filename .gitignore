@@ -7,4 +7,5 @@ uploads/*
 !uploads/*/.gitkeep
 test/mau-*.xlsx
 sao-luu/
+uat-output/
 khoa-bi-mat.txt

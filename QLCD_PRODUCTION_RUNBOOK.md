@@ -24,3 +24,11 @@ Run `npm run profile:db` after migration/schema changes. Run `npm run loadtest -
 ## Deploy and rollback
 
 Before deploy: verified backup, production config check, migration rehearsal on a copy, full regression and readiness. During deploy: send SIGTERM and allow at least 35 seconds. After deploy: verify readiness, error queue, metrics and a role-based smoke test. Rollback application image only after confirming schema compatibility; restore data only from a verified backup under an approved incident procedure.
+
+## UAT rehearsal before deployment
+
+1. Đặt `QLCD_UAT_SOURCE_DB`, `QLCD_UAT_DB` và `QLCD_UAT_PASSWORD` trên máy staging tách biệt.
+2. Chạy `npm run uat:prepare`; lưu manifest và xác nhận `source_was_modified=false`.
+3. Chạy `npm run uat:run`; lưu evidence JSON cùng biên bản UAT.
+4. Hoàn thành UAT-A đến UAT-H trong `QLCD_UAT_PLAN.md` và lấy chữ ký PX, CĐVT, quản trị hệ thống.
+5. Không triển khai production nếu technical status khác `PASSED` hoặc business sign-off còn `PENDING`.

@@ -92,3 +92,7 @@ Server dùng route registry làm nguồn mount và security audit duy nhất. Mi
 ## 14. TASK 25 architecture note
 
 Production readiness giữ nguyên Express/SQLite single-node nhưng bổ sung ranh giới vận hành rõ ràng. `observability` đo request count/error rate, route p50/p95/p99, event-loop và memory theo bộ nhớ hữu hạn; mọi HTTP 500 được fingerprint vào hàng đợi lỗi và chỉ admin/CĐVT được xem. Liveness tách khỏi readiness; readiness kiểm tra quick-check database, đủ migration, upload và backup volume. Migration 37 thêm error queue và index đã được neo bằng 7 `EXPLAIN QUERY PLAN` assertions. Upload legacy/canonical cùng dùng một volume; Docker chạy non-root, npm lockfile bắt buộc, có health readiness và graceful SIGTERM 30 giây. Backup dùng SQLite online backup, manifest SHA-256 cho database/file, verify và restore drill hoàn toàn trong vùng tạm. Load gate read-only ghi p50/p95/p99/RPS/error-rate với ngưỡng cấu hình.
+
+## 15. TASK 26 architecture note
+
+UAT database là bản clone có nguồn bất biến: đường dẫn nguồn/đích bắt buộc khác nhau và file đích tồn tại không bao giờ bị ghi đè. Migration và mọi thao tác UAT chỉ chạy trên clone; hash nguồn được kiểm tra không đổi. Danh tính nguồn bị vô hiệu hóa/ẩn danh, uploads không tự sao chép và chỉ phát hành tài khoản UAT theo vai trò cho tối đa hai PX được chọn. Machine evidence chỉ chứng minh technical gate; business acceptance giữ PENDING đến khi PX, CĐVT và quản trị hệ thống ký.

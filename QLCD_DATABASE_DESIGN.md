@@ -158,3 +158,7 @@ Migration `36-reporting-center.sql` tạo `report_definitions` và seed bảy đ
 ## 29. TASK 25 — Operational data and indexes
 
 Migration `37-production-readiness.sql` thêm `operational_error_events` để lưu request ID, route, HTTP status, error fingerprint, actor và trạng thái xử lý. Bảng này không chứa request body/secret. Index queue theo `status, occurred_at` và fingerprint hỗ trợ triage/deduplicate. Chín read-path index bổ sung cho scope điều chuyển, chi tiết/ledger kho, transaction status, document, report job, notification job và active user. Bảy query quan trọng có `EXPLAIN QUERY PLAN` acceptance bắt buộc dùng đúng index. Backup database dùng online backup API; restore drill chạy `quick_check`, `foreign_key_check`, migration count và SHA-256 của toàn bộ manifest.
+
+## 30. TASK 26 — UAT database clone
+
+TASK 26 không thêm migration hoặc bảng production. Staging là SQLite online backup sang file mới; migration còn thiếu chỉ được áp trên clone. Manifest ngoài database ghi hash nguồn/đích, số migration, PX được chọn, kiểm tra toàn vẹn và trạng thái sign-off, tuyệt đối không ghi mật khẩu. Tài khoản nguồn được đổi định danh và vô hiệu hóa, session/security logs bị xóa, trường nhận diện/free-text bị redacted. Foreign key và ID nghiệp vụ vẫn giữ để kiểm thử quan hệ.
