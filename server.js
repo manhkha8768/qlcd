@@ -87,6 +87,7 @@ try {
     app.use('/api/ncvt-dashboard', require('./routes/ncvt-dashboard'));
     app.use('/api/technical-operations', require('./routes/technical-operations'));
     app.use('/api/notifications', require('./routes/notifications'));
+    app.use('/api/reports', require('./routes/reports'));
     app.use('/api/tai-san', require('./routes/taisan'));
     app.use('/api/giao-dich', require('./routes/giaodich'));
     app.use('/api', require('./routes/tienich'));

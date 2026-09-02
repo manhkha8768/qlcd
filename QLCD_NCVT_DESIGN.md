@@ -62,3 +62,7 @@ Dashboard nhận một period bắt buộc và có filter PX, Material, submissi
 ## 10. TASK 22 notification integration
 
 Submission ở trạng thái SUBMITTED tạo case `NCVT_REVIEW_PENDING`. Owner ưu tiên reviewer ACTIVE đúng period/PX; nếu chưa phân công thì fallback CĐVT. Case dùng unit scope, SLA cấu hình và không thay thế quyết định review. Khi submission rời SUBMITTED, job tự đóng case; nếu hồ sơ được gửi lại, cùng fingerprint được mở lại và giữ lịch sử vòng trước.
+
+## 11. TASK 23 NCVT reporting
+
+`NCVT_FULFILLMENT` lấy từng submission line canonical và nối các projection reservation/issue/receipt/carry từ TASK 13–20. Period, PX, Material ID và UOM luôn còn trong dòng để drill-down và không cộng chéo đơn vị tính. Report Center chỉ đọc theo scope, filter kỳ/trạng thái và xuất cùng một dataset; DRAFT/APPROVED/issued/received không được tự diễn giải hoặc sửa khi tạo file.

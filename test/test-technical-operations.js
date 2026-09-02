@@ -10,7 +10,7 @@ const migrationDir = path.join(__dirname, '..', 'db');
 const taskFiles = ['23-material-master.sql','24-stock-ledger.sql','25-warehouse-transfer-return.sql',
     '26-ncvt-period-submission.sql','27-ncvt-review-approval.sql','28-ncvt-company-aggregation.sql',
     '29-ncvt-reservation.sql','30-ncvt-material-issue.sql','31-ncvt-receipt-confirmation.sql',
-    '32-ncvt-carry-forward-lock.sql','33-ncvt-dashboard.sql','34-technical-operations.sql'];
+    '32-ncvt-carry-forward-lock.sql','33-ncvt-dashboard.sql','34-technical-operations.sql','35-notifications-data-quality.sql','36-reporting-center.sql'];
 const files = fs.readdirSync(migrationDir).filter(x => /^\d+.*\.sql$/.test(x)).sort();
 for (const file of files.filter(x => !taskFiles.includes(x))) {
     db.exec(fs.readFileSync(path.join(migrationDir, file), 'utf8'));

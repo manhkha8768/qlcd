@@ -69,3 +69,7 @@ Dashboard đọc reservation và issue từ cùng nguồn Stock Ledger/workflow 
 ## 13. TASK 22 material data quality
 
 Rule chất lượng dữ liệu theo dõi source mapping chưa MAPPED và duplicate candidate còn PENDING. Mỗi phát hiện tạo case có owner CĐVT, không tự remap, archive hoặc merge Material. Sau khi người có quyền hoàn tất review trong Material Master, lần job kế tiếp tự đóng case; lịch sử case vẫn giữ để truy vết.
+
+## 14. TASK 23 stock reporting
+
+`STOCK_BALANCE` đọc `stock_balance_projection` theo đúng Warehouse + Material ID + UOM, hiển thị ON_HAND, RESERVED, AVAILABLE và INCOMING mà không cộng chéo UOM. Scope lấy từ đơn vị của Warehouse và được áp dụng trước paging/export. Báo cáo không đọc `ton_kho.so_luong_ton` legacy và không tạo cột balance mutable thứ hai.

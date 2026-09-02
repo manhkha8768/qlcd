@@ -70,6 +70,14 @@
 42. Data-quality engine chỉ phát hiện và theo dõi; không tự merge Material, sửa file, duyệt NCVT hay update work order nguồn.
 43. Khi nguồn được sửa, case đang mở tự RESOLVED; nếu cùng vấn đề xuất hiện lại sau đó, case RESOLVED được REOPENED và giữ toàn bộ lịch sử.
 
+## 10. Reporting and export
+
+44. Màn hình, Excel, PDF và bản in của cùng một báo cáo phải dùng chung query, filter, sort và data scope canonical.
+45. Scope được áp dụng tại server trước phân trang/tổng số dòng; tham số đơn vị không được mở rộng quyền của người gọi.
+46. Sort chỉ nhận cột whitelist; page size và số dòng export có giới hạn để tránh query/file không kiểm soát.
+47. Mỗi lần export phải ghi actor, format, filter/scope, số dòng, thời gian và SHA-256; audit terminal không được sửa/xóa.
+48. Số lượng không được cộng xuyên UOM; số liệu ledger/stock/NCVT phải lấy từ projection canonical và không tự sửa nguồn khi xuất báo cáo.
+
 ## 8. Gap so với baseline
 
 Baseline đáp ứng một phần rules 1, 5, 9-16, 23 và 28. Các rule về tách asset/device, ledger chuẩn, multi-unit scope, object storage/version, reservation, received/discrepancy và carry-forward chưa hoàn chỉnh. Không tuyên bố rule “đạt” chỉ vì có bảng hoặc màn hình; cần acceptance test end-to-end.
@@ -107,3 +115,5 @@ TASK 20 triển khai quy tắc dashboard read-only: dashboard chỉ đọc proje
 TASK 21 triển khai rules 31–34: work order canonical dùng DRAFT → SUBMITTED → APPROVED → IN_PROGRESS → COMPLETED cùng nhánh RETURNED/REJECTED/CANCELLED, optimistic version và event append-only. Material Issue chỉ post cho REPAIR/MAINTENANCE đang thực hiện, bắt buộc Component cùng Device và kiểm tra AVAILABLE; retry không nhân stock, reversal tạo entry đối ứng. Complete mới đồng bộ kết quả sang Device/Component; inspection FAIL đánh dấu thiết bị hỏng/đang sửa. Dữ liệu legacy chỉ backfill, không bị rewrite.
 
 TASK 22 triển khai rules 39–43: năm rule chuẩn được đánh giá bằng job có journal; fingerprint unique ngăn sinh case/delivery kép. Owner lấy từ reviewer NCVT, người PX trong scope hoặc role fallback. Acknowledge/start/resolve/reassign/escalate/dismiss dùng version và event bất biến. Engine auto-resolve/reopen theo nguồn nhưng tuyệt đối không sửa aggregate nghiệp vụ để làm mất cảnh báo.
+
+TASK 23 triển khai rules 44–48: registry query duy nhất phục vụ screen/XLSX/PDF/PRINT, áp scope trước filter/paging và chỉ cho sort theo whitelist. Export quá giới hạn bị từ chối và ghi FAILED audit; export thành công lưu hash, actor, scope/filter và row count bất biến. Các báo cáo stock/NCVT luôn hiển thị UOM trong khóa dữ liệu; Report Center không update ledger hoặc aggregate nguồn.

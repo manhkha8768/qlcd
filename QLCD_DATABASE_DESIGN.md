@@ -145,6 +145,10 @@ Migration `34-technical-operations.sql` tạo `technical_work_orders` cho ba lo�
 
 Migration `35-notifications-data-quality.sql` tạo registry `notification_rules`, hàng đợi `notification_cases`, delivery theo người nhận, event triage/rule append-only và `notification_job_runs`. Fingerprint unique bảo đảm một nguồn/rule không sinh case kép. Case có category, entity reference, unit scope, severity, owner, SLA, escalation level, occurrence count và optimistic version. Rule change bắt buộc lý do và lưu before/after; job terminal và event không thể sửa/xóa. Engine chỉ auto-resolve case khi nguồn không còn vi phạm, không update Material, Document, NCVT hoặc work order nguồn.
 
+## 28. TASK 23 implementation
+
+Migration `36-reporting-center.sql` tạo `report_definitions` và seed bảy định nghĩa báo cáo canonical với page size, export limit, orientation và trạng thái kích hoạt. `report_export_runs` ghi một lần chạy XLSX/PDF/PRINT gồm filter/scope JSON, số dòng, duration, SHA-256, actor và lỗi; trigger chặn delete và chặn update sau SUCCEEDED/FAILED. Các index report-specific được bổ sung cho Asset, Device, Asset Ledger, Stock Balance, NCVT submission, Technical Work Order và Data Quality Case. Dữ liệu báo cáo tiếp tục đọc trực tiếp từ aggregate/projection nguồn, không tạo balance hay snapshot nghiệp vụ song song.
+
 ## 6. Rủi ro cần test
 
 - D1 không tương đương SQLite server về transaction/concurrency và giới hạn request; scaffold Cloudflare chưa chứng minh parity.

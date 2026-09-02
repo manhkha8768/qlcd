@@ -51,3 +51,7 @@ Migration `17-asset-ledger.sql` tạo `asset_transactions`, dòng nháp, `asset_
 ## 8. TASK 5 implementation
 
 Migration `18-transfer-handover.sql` bổ sung workflow `DRAFT → SUBMITTED → SENDER_CONFIRMED → RECEIVER_CONFIRMED → APPROVED → POSTED`, timeline audit và chứng từ. Đơn vị nguồn lập/trình/xác nhận giao; đơn vị đích xác nhận nhận sau khi có chứng từ; người có quyền duyệt thực hiện approval và ledger post trong cùng database transaction. Direct post bị chặn đối với transfer/return kể cả khi actor có quyền post. Từ chối bắt buộc có lý do và không tạo entry.
+
+## 9. TASK 23 reporting
+
+`ASSET_LEDGER` đọc trực tiếp entry POSTED canonical, giữ transaction code, Asset ID, đơn vị, delta, UOM, loại entry và thời điểm. Cùng query được dùng cho màn hình và cả ba định dạng xuất; filter ngày/scope không tạo snapshot hoặc thay đổi projection. `ASSET_REGISTER` và `DEVICE_REGISTER` là các read model riêng, không suy ngược ledger thành master data.

@@ -29,7 +29,7 @@
 | 20 | NCVT dashboard | Hoàn thành | KPI theo UOM, filter/alert scoped và drill-down reservation/issue/receipt/carry |
 | 21 | Repair/maintenance/inspection | Hoàn thành | work order lifecycle, Device/Component, atomic Material Issue/reversal và legacy compatibility |
 | 22 | Notifications + data quality | Hoàn thành | rule registry, scheduled/manual jobs, ownership, triage/escalation và data-quality cases |
-| 23 | Reporting/Excel/PDF/print | Một phần | chuẩn mẫu, scope, pagination/performance |
+| 23 | Reporting/Excel/PDF/print | Hoàn thành | 7 projection canonical, scope, paging/filter/sort, Excel/PDF/print chuẩn và export audit |
 | 24 | Security hardening | Một phần | route policy audit, upload/secrets/idempotency/concurrency tests |
 | 25 | Performance + production readiness | Chưa đầy đủ | profiling/index/monitoring/error tracking/restore drill/load test |
 | 26 | UAT dữ liệu thực | Chưa làm | staging + 1–2 PX, end-to-end sign-off |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 23 — Reporting/Excel/PDF/print**, chuẩn hóa biểu mẫu, scope dữ liệu, pagination và kiểm tra hiệu năng xuất báo cáo.
+Task tiếp theo đề xuất: **TASK 24 — Security hardening**, audit policy toàn bộ route, upload/secrets, session/CSRF và kiểm thử idempotency/concurrency có hệ thống.
 
 ## 4. Quality gate sau mỗi Task
 

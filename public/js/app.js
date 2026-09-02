@@ -8,6 +8,7 @@ const CAC_MAN_HINH = {
     'tong-quan': { ten: 'Tổng quan',      ve: mhTongQuan,  nhom: 'Theo dõi' },
     'canh-bao':  { ten: 'Cảnh báo hạn',   ve: mhCanhBao,   nhom: 'Theo dõi' },
     'notifications': { ten: 'Thông báo & chất lượng', ve: mhNotifications, nhom: 'Theo dõi' },
+    'reports': { ten: 'Trung tâm báo cáo', ve: mhReports, nhom: 'Theo dõi' },
     'thiet-bi':  { ten: 'Thiết bị',       ve: mhThietBi,   nhom: 'Dữ liệu' },
     'tai-san':   { ten: 'TSCĐ / CCDC',    ve: mhTaiSan,    nhom: 'Dữ liệu' },
     'kiem-ke-ledger': { ten: 'Kiểm kê & QR', ve: mhKiemKeLedger, nhom: 'Quản lý' },

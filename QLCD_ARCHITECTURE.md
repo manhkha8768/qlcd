@@ -80,3 +80,7 @@ Repair, maintenance và inspection dùng chung aggregate `technical_work_orders`
 ## 11. TASK 22 architecture note
 
 Thông báo và vấn đề chất lượng dữ liệu được chuẩn hóa thành `notification_cases`, tách khỏi các aggregate nguồn. Rule engine chỉ đọc projection canonical, tạo fingerprint để retry không nhân case, tự đóng khi nguồn đã đạt và mở lại nếu vấn đề tái diễn. Mỗi case có owner, scope đơn vị, optimistic version, SLA escalation, in-app delivery và timeline append-only. Job chạy định kỳ trong tiến trình Express hoặc chạy thủ công có journal riêng; không sửa dữ liệu nguồn để “chữa” cảnh báo. Năm rule đầu gồm hạn kỹ thuật, NCVT chờ review, mapping Material, duplicate Material và file thiếu SHA-256.
+
+## 12. TASK 23 architecture note
+
+Report Center là read layer canonical dùng một registry query chung cho màn hình, Excel, PDF và bản in; vì vậy file tải xuống không có đường truy vấn riêng dễ lệch số liệu. Bảy mẫu đầu phủ Asset, Device, Asset Ledger, Stock, NCVT, vận hành kỹ thuật và chất lượng dữ liệu. Data scope được áp dụng tại server trước filter/paging/export, sort chỉ nhận whitelist và export bị chặn khi vượt giới hạn cấu hình. `report_export_runs` lưu actor, scope/filter, số dòng, thời gian và SHA-256; bản ghi terminal là bất biến. API báo cáo legacy tiếp tục phục vụ vai trò toàn cục nhưng bị chặn với PX vì không có scope an toàn.

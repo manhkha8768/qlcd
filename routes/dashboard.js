@@ -199,6 +199,17 @@ router.get('/thong-ke-phan-xuong/:px_id', (req, res) => {
     }
 });
 
+// Các báo cáo legacy không có bộ lọc phạm vi dữ liệu theo đơn vị. Giữ lại cho
+// người dùng cấp Công ty/người xem toàn cục; tài khoản PX dùng Report Center mới.
+router.use(['/baocao', '/export'], (req, res, next) => {
+    if (req.session.nguoiDung?.vai_tro === 'px') {
+        return res.status(403).json({
+            loi: 'Báo cáo legacy không hỗ trợ phạm vi phân xưởng. Vui lòng dùng Trung tâm báo cáo.'
+        });
+    }
+    next();
+});
+
 /**
  * GET /api/dashboard/baocao/danh-sach-thiet-bi — Báo cáo danh sách thiết bị
  */
