@@ -13,7 +13,7 @@ const KT = require('../lib/ky-thuat');
 const { ghiAudit } = require('../lib/giao-dich');
 const US = require('../lib/upload-security');
 
-const THU_MUC = path.join(process.env.QLCD_UPLOADS || path.join(__dirname, '..', 'uploads'), 'ky-thuat');
+const THU_MUC = path.join(process.env.QLCD_UPLOADS || process.env.QLCD_UPLOAD || path.join(__dirname, '..', 'uploads'), 'ky-thuat');
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
 
 const upload = multer({

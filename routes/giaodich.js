@@ -15,8 +15,9 @@ const { dangNhap } = require('../middleware/quyen');
 const { canQuyen, coQuyen, donViDuocPhep, duocThaoTacDonVi, quyenCuaToi } = require('../middleware/quyen-ma');
 const G = require('../lib/giao-dich');
 const US = require('../lib/upload-security');
+const { uploadsRoot } = require('../lib/document-storage');
 
-const THU_MUC = path.join(__dirname, '..', 'uploads', 'ho-so');
+const THU_MUC = path.join(uploadsRoot, 'ho-so');
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
 
 const upload = multer({

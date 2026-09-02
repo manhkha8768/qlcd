@@ -31,7 +31,7 @@
 | 22 | Notifications + data quality | Hoàn thành | rule registry, scheduled/manual jobs, ownership, triage/escalation và data-quality cases |
 | 23 | Reporting/Excel/PDF/print | Hoàn thành | 7 projection canonical, scope, paging/filter/sort, Excel/PDF/print chuẩn và export audit |
 | 24 | Security hardening | Hoàn thành | 394 route được audit deny-by-default, session rotation, Origin/Fetch Metadata CSRF, secret/startup gate, upload signature và security regression |
-| 25 | Performance + production readiness | Chưa đầy đủ | profiling/index/monitoring/error tracking/restore drill/load test |
+| 25 | Performance + production readiness | Hoàn thành | 7 query-plan gates, metrics/readiness/error queue, checksum backup/restore drill, graceful shutdown và load threshold |
 | 26 | UAT dữ liệu thực | Chưa làm | staging + 1–2 PX, end-to-end sign-off |
 | 27 | Production deployment | Một phần hạ tầng legacy | tách env, domain/HTTPS, prod DB/storage, pipeline/rollback |
 | 28 | Controlled go-live | Chưa làm | pilot 1–2 PX, observability/support, staged rollout |
@@ -49,7 +49,7 @@
 
 Foundation -> Asset/Device -> Ledger -> Transfer -> Inventory -> Technical/File -> Material -> Warehouse -> NCVT -> Reservation -> Issue/Receive -> Operations -> Security/Performance -> UAT -> Production/Pilot -> AI.
 
-Task tiếp theo đề xuất: **TASK 25 — Performance + production readiness**, profiling/index, monitoring/error tracking, backup/restore drill và load test có ngưỡng chấp nhận.
+Task tiếp theo đề xuất: **TASK 26 — UAT dữ liệu thực**, dựng staging từ bản sao đã ẩn dữ liệu nhạy cảm, chọn 1–2 PX và ký xác nhận end-to-end theo vai trò.
 
 ## 4. Quality gate sau mỗi Task
 

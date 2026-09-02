@@ -18,8 +18,9 @@ const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX } = require('../m
 const xl = require('../lib/doc-excel');
 const { sinhMa, doanNhom } = require('../lib/ma-thiet-bi');
 const US = require('../lib/upload-security');
+const { uploadsRoot } = require('../lib/document-storage');
 
-const THU_MUC = path.join(__dirname, '..', 'uploads');
+const THU_MUC = uploadsRoot;
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
 
 const upload = multer({

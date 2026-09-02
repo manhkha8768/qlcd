@@ -15,6 +15,7 @@ const BM = require('./middleware/bao-mat');
 const SH = require('./middleware/security-hardening');
 const { auditRoutePolicies } = require('./lib/route-policy-audit');
 const { KhoPhienSQLite } = require('./lib/phien-sqlite');
+const OBS = require('./lib/observability');
 
 const app = express();
 const CONG = process.env.PORT || 3000;
@@ -30,6 +31,7 @@ app.disable('x-powered-by');
 
 app.use(BM.headerBaoMat);
 app.use(SH.requestContext);
+app.use(OBS.metricsMiddleware);
 app.use(BM.epHttps);
 app.use(BM.gioiHanTanSuat({ soLan: 300, giay: 60 }));
 app.use(BM.locDaiMang);
@@ -40,7 +42,11 @@ app.use(express.urlencoded({ extended: true, limit: '1mb', parameterLimit: 1000 
 
 // Health check endpoint - không cần database
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
+    res.json({ status: 'ok', time: new Date().toISOString(), uptime_seconds: Math.floor(process.uptime()) });
+});
+app.get('/api/ready', (req, res) => {
+    const result = OBS.readiness();
+    res.status(result.ready ? 200 : 503).json(result);
 });
 
 const gioPhien = Number(process.env.QLCD_PHIEN_GIO) || 8;
@@ -85,6 +91,7 @@ const routeRegistry = [
     ['/api/ncvt-receipts', './routes/ncvt-receipts'], ['/api/ncvt-carry-forward', './routes/ncvt-carry-forward'],
     ['/api/ncvt-dashboard', './routes/ncvt-dashboard'], ['/api/technical-operations', './routes/technical-operations'],
     ['/api/notifications', './routes/notifications'], ['/api/reports', './routes/reports'],
+    ['/api/operations', './routes/operations'],
     ['/api/tai-san', './routes/taisan'], ['/api/giao-dich', './routes/giaodich'],
     ['/api', './routes/tienich'], ['/api/bao-duong', './routes/baoduong'],
     ['/api/kiem-dinh', './routes/kiemdinh'], ['/api/ky-thuat', './routes/kythuat'],
@@ -104,7 +111,12 @@ if (routePolicyAudit.missing.length) {
     console.warn(`[BẢO MẬT] Route chưa có chính sách xác thực: ${details}`);
 }
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+    etag: true, lastModified: true, maxAge: BM.LA_INTERNET ? '1h' : 0,
+    setHeaders(res, filePath) {
+        if (/\.html$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+    }
+}));
 
 // Xử lý lỗi tập trung
 app.use((err, req, res, next) => {
@@ -117,11 +129,17 @@ app.use((err, req, res, next) => {
     }
     if (err.type === 'entity.too.large') return res.status(413).json({ loi: 'Dữ liệu gửi lên quá lớn' });
     if (err.type === 'entity.parse.failed') return res.status(400).json({ loi: 'Dữ liệu JSON không hợp lệ' });
+    OBS.captureError(err, req, 500);
     res.status(500).json({ loi: 'Lỗi hệ thống', ma_tra_cuu: req.requestId });
 });
 
 if (require.main === module) {
     const kt = BM.kiemTraCauHinh();
+    if (BM.LA_INTERNET) {
+        const production = require('./lib/production-readiness').auditProductionConfig();
+        kt.loi.push(...production.errors.filter(x => !kt.loi.includes(x)));
+        kt.nhac.push(...production.warnings);
+    }
     if (kt.loi.length) {
         console.error('\n  KHÔNG THỂ KHỞI ĐỘNG — cấu hình chưa an toàn để chạy trên internet:\n');
         kt.loi.forEach(x => console.error('   • ' + x + '\n'));
@@ -130,12 +148,30 @@ if (require.main === module) {
     }
     kt.nhac.forEach(x => console.log('\n  Lưu ý: ' + x));
 
-    app.listen(CONG, DIA_CHI, () => {
+    const server = app.listen(CONG, DIA_CHI, () => {
         require('./lib/notification-engine').startNotificationScheduler();
         console.log(`\n  Hệ thống QLCD đang chạy: http://localhost:${CONG}`);
         console.log(`  Database: ${duongDanDB}`);
         console.log(`  Chế độ:   ${BM.LA_INTERNET ? 'INTERNET (đã bật HTTPS, cookie bảo mật, chặn dò mật khẩu)' : 'mạng nội bộ'}\n`);
     });
+    let stopping = false;
+    const shutdown = signal => {
+        if (stopping) return;
+        stopping = true;
+        OBS.markStopping();
+        console.log(`[VẬN HÀNH] Nhận ${signal}, dừng nhận kết nối mới...`);
+        require('./lib/notification-engine').stopNotificationScheduler();
+        const timeout = setTimeout(() => process.exit(1), 30000);
+        timeout.unref();
+        server.close(() => {
+            try { require('./db').pragma('wal_checkpoint(TRUNCATE)'); } catch (_) {}
+            try { require('./db').close(); } catch (_) {}
+            clearTimeout(timeout);
+            process.exit(0);
+        });
+    };
+    process.once('SIGTERM', () => shutdown('SIGTERM'));
+    process.once('SIGINT', () => shutdown('SIGINT'));
 }
 
 module.exports = app;

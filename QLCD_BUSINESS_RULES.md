@@ -117,3 +117,11 @@ TASK 21 triển khai rules 31–34: work order canonical dùng DRAFT → SUBMITT
 TASK 22 triển khai rules 39–43: năm rule chuẩn được đánh giá bằng job có journal; fingerprint unique ngăn sinh case/delivery kép. Owner lấy từ reviewer NCVT, người PX trong scope hoặc role fallback. Acknowledge/start/resolve/reassign/escalate/dismiss dùng version và event bất biến. Engine auto-resolve/reopen theo nguồn nhưng tuyệt đối không sửa aggregate nghiệp vụ để làm mất cảnh báo.
 
 TASK 23 triển khai rules 44–48: registry query duy nhất phục vụ screen/XLSX/PDF/PRINT, áp scope trước filter/paging và chỉ cho sort theo whitelist. Export quá giới hạn bị từ chối và ghi FAILED audit; export thành công lưu hash, actor, scope/filter và row count bất biến. Các báo cáo stock/NCVT luôn hiển thị UOM trong khóa dữ liệu; Report Center không update ledger hoặc aggregate nguồn.
+## TASK 25 — Quy tắc vận hành production
+
+- Liveness chỉ chứng minh tiến trình còn phản hồi; readiness chỉ trả 200 khi database, migration, upload và backup storage sẵn sàng.
+- Production không khởi động nếu thiếu secret, database volume, upload volume, backup volume hoặc cờ môi trường production/internet.
+- Backup chỉ đạt khi manifest SHA-256, SQLite `quick_check`, foreign-key check và số migration đều hợp lệ; restore drill không được ghi đè database đang chạy.
+- Load gate mặc định không chấp nhận HTTP error và yêu cầu p95 không vượt ngưỡng cấu hình; kết quả phải ghi rõ concurrency, RPS, p50/p95/p99.
+- SIGTERM ngừng nhận kết nối mới, dừng scheduler, chờ request hiện tại và checkpoint WAL trước khi đóng database.
+- Error tracking không lưu request body, cookie, password hoặc secret; resolve bắt buộc actor và ghi chú.

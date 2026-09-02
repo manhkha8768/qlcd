@@ -15,9 +15,10 @@ const { dangNhap } = require('../middleware/quyen');
 const { canQuyen, coQuyen, donViDuocPhep } = require('../middleware/quyen-ma');
 const xl = require('../lib/doc-excel');
 const US = require('../lib/upload-security');
+const { uploadsRoot } = require('../lib/document-storage');
 const { ghiAudit, taoThongBao } = require('../lib/giao-dich');
 
-const THU_MUC = path.join(__dirname, '..', 'uploads', 'ncvt');
+const THU_MUC = path.join(uploadsRoot, 'ncvt');
 if (!fs.existsSync(THU_MUC)) fs.mkdirSync(THU_MUC, { recursive: true });
 
 const upload = multer({

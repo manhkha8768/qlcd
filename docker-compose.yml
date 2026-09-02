@@ -1,9 +1,8 @@
-version: '3.8'
-
 services:
   qlcd:
     image: manhkha8768/qlcd:latest
     container_name: qlcd-app
+    init: true
     ports:
       - "3000:3000"
     environment:
@@ -12,15 +11,19 @@ services:
       QLCD_HOST: 0.0.0.0
       QLCD_DB: /data/db/qlcd.db
       QLCD_UPLOAD: /data/uploads
+      QLCD_BACKUP_DIR: /data/backups
+      QLCD_PUBLIC_HOST: ${QLCD_PUBLIC_HOST:-}
       QLCD_INTERNET: 1
       QLCD_PHIEN_GIO: 8
-      QLCD_SECRET: ${QLCD_SECRET:-your-secure-random-secret-change-this}
+      QLCD_SECRET: ${QLCD_SECRET:?Set QLCD_SECRET to a unique value of at least 32 characters}
     volumes:
       - qlcd_db:/data/db
       - qlcd_uploads:/data/uploads
+      - qlcd_backups:/data/backups
     restart: unless-stopped
+    stop_grace_period: 35s
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "-H", "X-Forwarded-Proto: https", "http://localhost:3000/api/ready"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -32,6 +35,8 @@ volumes:
   qlcd_db:
     driver: local
   qlcd_uploads:
+    driver: local
+  qlcd_backups:
     driver: local
 
 networks:

@@ -155,3 +155,6 @@ Migration `36-reporting-center.sql` tạo `report_definitions` và seed bảy đ
 - `ALTER TABLE` lặp lại khi startup có thể che lỗi migration thật.
 - Trigger cập nhật số liệu cần được kiểm tra cùng service transaction để tránh ghi kép.
 - Backup hiện là file SQLite + uploads; khi dùng object storage phải có manifest và restore drill đồng bộ.
+## 29. TASK 25 — Operational data and indexes
+
+Migration `37-production-readiness.sql` thêm `operational_error_events` để lưu request ID, route, HTTP status, error fingerprint, actor và trạng thái xử lý. Bảng này không chứa request body/secret. Index queue theo `status, occurred_at` và fingerprint hỗ trợ triage/deduplicate. Chín read-path index bổ sung cho scope điều chuyển, chi tiết/ledger kho, transaction status, document, report job, notification job và active user. Bảy query quan trọng có `EXPLAIN QUERY PLAN` acceptance bắt buộc dùng đúng index. Backup database dùng online backup API; restore drill chạy `quick_check`, `foreign_key_check`, migration count và SHA-256 của toàn bộ manifest.

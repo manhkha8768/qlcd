@@ -5,10 +5,11 @@ const path = require('path');
 const multer = require('multer');
 const db = require('../db');
 const US = require('../lib/upload-security');
+const { uploadsRoot } = require('../lib/document-storage');
 const { dangNhap,coMaQuyenNay,donViDuocPhep,duocThaoTacDonVi } = require('../middleware/quyen');
 
 const r=express.Router(); r.use(dangNhap);
-const transferDir=path.join(__dirname,'..','uploads','asset-transfer');
+const transferDir=path.join(uploadsRoot,'asset-transfer');
 if(!fs.existsSync(transferDir))fs.mkdirSync(transferDir,{recursive:true});
 const upload=multer({storage:multer.diskStorage({destination:(req,file,cb)=>cb(null,transferDir),
     filename:(req,file,cb)=>cb(null,`transfer_${Date.now()}_${crypto.randomBytes(4).toString('hex')}${path.extname(file.originalname)}`)}),
