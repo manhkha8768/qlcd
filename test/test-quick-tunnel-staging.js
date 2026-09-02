@@ -268,6 +268,7 @@ async function lifecycleTests() {
     assert.equal(calls.at(-1).evidencePath, config.evidencePath);
     assert.equal(calls.at(-1).item.status, 'TEMPORARY_STAGING');
     assert.equal(JSON.stringify(calls.at(-1).item).includes(config.secret), false);
+    assert.equal(calls.find(item => item.action === 'local-ready').requestOptions.headers['X-Forwarded-Proto'], 'https');
     assert.equal(calls.find(item => item.action === 'remote-ready').requestOptions.redirect, 'error');
 
     let clock = 0;
