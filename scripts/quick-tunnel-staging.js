@@ -21,19 +21,50 @@ function readStagingEnvironment(filePath) {
     return values;
 }
 
-function runProgram(command, args, cwd) {
+function runProgram(command, args, cwd, environment, timeoutMs = 60000) {
     return new Promise((resolve, reject) => {
-        const child = spawn(command, args, { cwd, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+        const child = spawn(command, args, { cwd, env: environment, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
         let stdout = '';
+        let settled = false;
+        const finish = callback => value => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeout);
+            callback(value);
+        };
+        const timeout = setTimeout(() => {
+            try { child.kill(); } catch (_) {}
+            finish(reject)(new Error('Docker Compose command timed out'));
+        }, timeoutMs);
         child.stdout.on('data', chunk => { stdout += chunk; });
-        child.on('error', () => reject(new Error('Docker Compose could not be started')));
-        child.on('close', code => code === 0 ? resolve(stdout) : reject(new Error('Docker Compose command failed')));
+        child.on('error', () => finish(reject)(new Error('Docker Compose could not be started')));
+        child.on('close', code => code === 0 ? finish(resolve)(stdout) : finish(reject)(new Error('Docker Compose command failed')));
     });
 }
 
-function createDependencies(cwd) {
-    async function compose(args) {
-        return runProgram('docker', ['compose', '--env-file', ENV_FILE, '-f', COMPOSE_FILE, ...args], cwd);
+function dockerEnvironment(environment, config) {
+    const childEnvironment = {};
+    for (const [name, value] of Object.entries(environment)) {
+        if (/^(path|systemroot|windir|comspec|pathext|temp|tmp|home|userprofile|appdata|localappdata|programdata|programfiles|commonprogramfiles|docker_)/i.test(name)) {
+            childEnvironment[name] = value;
+        }
+        if (/^QLCD_STAGING_/.test(name)) childEnvironment[name] = value;
+    }
+    if (config && config.secret) {
+        Object.assign(childEnvironment, {
+            QLCD_STAGING_SECRET: config.secret,
+            QLCD_STAGING_DB: config.dbPath,
+            QLCD_STAGING_UPLOAD: config.uploadPath,
+            QLCD_STAGING_BACKUP_DIR: config.backupPath,
+            QLCD_STAGING_PORT: String(config.port)
+        });
+    }
+    return childEnvironment;
+}
+
+function createDependencies(cwd, { environment = process.env, runProgramImpl = runProgram } = {}) {
+    async function compose(args, config) {
+        return runProgramImpl('docker', ['compose', '--env-file', ENV_FILE, '-f', COMPOSE_FILE, ...args], cwd, dockerEnvironment(environment, config));
     }
     return {
         runCompose: async request => {
@@ -42,10 +73,10 @@ function createDependencies(cwd) {
                 fs.mkdirSync(request.config.backupPath, { recursive: true });
                 return '';
             }
-            return compose(request.args || []);
+            return compose(request.args || [], request.config);
         },
         fetchImpl: (...args) => global.fetch(...args),
-        readLogs: () => compose(['logs', '--no-color', 'cloudflared-staging']),
+        readLogs: request => compose(['logs', '--no-color', 'cloudflared-staging'], request.config),
         writeEvidence: async (evidencePath, evidence) => {
             fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
             fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, { mode: 0o600 });
@@ -53,7 +84,7 @@ function createDependencies(cwd) {
         now: Date.now,
         commit: () => {
             try {
-                return execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8', windowsHide: true }).trim();
+                return execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
             } catch (_) {
                 return 'unknown';
             }
@@ -71,14 +102,16 @@ function statusConfig(environment, cwd) {
 
 async function main(argv = process.argv, options = {}) {
     const command = argv[2];
-    if (!['start', 'status', 'stop'].includes(command)) throw new Error('Usage: node scripts/quick-tunnel-staging.js <start|status|stop>');
+    if (argv.length !== 3 || !['start', 'status', 'stop'].includes(command)) throw new Error('Usage: node scripts/quick-tunnel-staging.js <start|status|stop>');
     const cwd = options.cwd || process.cwd();
     const environment = { ...process.env, ...readStagingEnvironment(path.join(cwd, ENV_FILE)), ...(options.environment || {}) };
-    const dependencies = options.dependencies || createDependencies(cwd);
-    const controller = createController(dependencies);
     const config = command === 'start'
         ? resolveStagingConfig(environment, cwd)
         : statusConfig(environment, cwd);
+    const dependencies = options.dependencies || (options.dependencyFactory
+        ? options.dependencyFactory(cwd, environment)
+        : createDependencies(cwd, { environment }));
+    const controller = createController(dependencies);
     const result = await controller[command](config);
     if (command === 'start') {
         console.log('TEMPORARY STAGING — NOT PRODUCTION');
@@ -100,4 +133,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { readStagingEnvironment, createDependencies, main };
+module.exports = { readStagingEnvironment, runProgram, createDependencies, main };

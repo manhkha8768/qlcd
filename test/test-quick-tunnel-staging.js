@@ -4,7 +4,7 @@ const os = require('os');
 const path = require('path');
 
 const { resolveStagingConfig, parseQuickTunnelUrl, createEvidence, createController } = require('../lib/quick-tunnel-staging');
-const { main: runCli } = require('../scripts/quick-tunnel-staging');
+const { main: runCli, createDependencies } = require('../scripts/quick-tunnel-staging');
 
 const composePath = path.join(__dirname, '..', 'docker-compose.staging.yml');
 const compose = fs.existsSync(composePath) ? fs.readFileSync(composePath, 'utf8') : '';
@@ -73,8 +73,8 @@ async function lifecycleTests() {
     const calls = [];
     const controller = createController({
         runCompose: async request => { calls.push({ action: request.action, args: request.args || [] }); return ''; },
-        fetchImpl: async requestUrl => {
-            calls.push({ action: requestUrl.startsWith('http://127.0.0.1') ? 'local-ready' : 'remote-ready', requestUrl });
+        fetchImpl: async (requestUrl, requestOptions) => {
+            calls.push({ action: requestUrl.startsWith('http://127.0.0.1') ? 'local-ready' : 'remote-ready', requestUrl, requestOptions });
             return { status: 200 };
         },
         readLogs: async () => { calls.push({ action: 'logs' }); return `INF Your quick Tunnel has been created! Visit it at ${url}`; },
@@ -89,6 +89,7 @@ async function lifecycleTests() {
     assert.equal(calls.at(-1).evidencePath, config.evidencePath);
     assert.equal(calls.at(-1).item.status, 'TEMPORARY_STAGING');
     assert.equal(JSON.stringify(calls.at(-1).item).includes(config.secret), false);
+    assert.equal(calls.find(item => item.action === 'remote-ready').requestOptions.redirect, 'error');
 
     let clock = 0;
     const missingUrl = createController({
@@ -113,6 +114,31 @@ async function lifecycleTests() {
     });
     await assert.rejects(() => remoteNotReady.start(config), /remote readiness/);
 
+    let hungClock = 0;
+    const immediateTimeout = (callback, milliseconds) => {
+        hungClock += milliseconds;
+        queueMicrotask(callback);
+        return () => {};
+    };
+    const hungFetch = createController({
+        runCompose: async () => {}, fetchImpl: async () => new Promise(() => {}), readLogs: async () => url,
+        writeEvidence: async () => {}, now: () => hungClock, commit: 'abc123', sleep: async () => {},
+        timeoutMs: 5, scheduleTimeout: immediateTimeout
+    });
+    await assert.rejects(() => Promise.race([
+        hungFetch.start(config), new Promise((_, reject) => setTimeout(() => reject(new Error('test timeout')), 50))
+    ]), /local readiness/);
+
+    hungClock = 0;
+    const hungLogs = createController({
+        runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => new Promise(() => {}),
+        writeEvidence: async () => {}, now: () => hungClock, commit: 'abc123', sleep: async () => {},
+        timeoutMs: 5, scheduleTimeout: immediateTimeout
+    });
+    await assert.rejects(() => Promise.race([
+        hungLogs.start(config), new Promise((_, reject) => setTimeout(() => reject(new Error('test timeout')), 50))
+    ]), /Quick Tunnel URL.*logs/);
+
     const composeArgs = [];
     const stopController = createController({
         runCompose: async request => { composeArgs.push(request.args || []); }, fetchImpl: async () => ({ status: 200 }),
@@ -123,15 +149,17 @@ async function lifecycleTests() {
     assert.equal(composeArgs.flat().includes('-v'), false);
 
     const statusCalls = [];
+    let statusFetchOptions;
     const statusController = createController({
         runCompose: async request => { statusCalls.push(request.action); return 'running'; },
-        fetchImpl: async () => ({ status: 200 }), readLogs: async () => url, writeEvidence: async () => {},
+        fetchImpl: async (_requestUrl, requestOptions) => { statusFetchOptions = requestOptions; return { status: 200 }; }, readLogs: async () => url, writeEvidence: async () => {},
         now: () => Date.now(), commit: 'abc123', sleep: async () => {}
     });
     const status = await statusController.status(config);
     assert.deepEqual(statusCalls, ['status']);
     assert.equal(status.url, url);
     assert.equal(status.readiness, 200);
+    assert.equal(statusFetchOptions.redirect, 'error');
 
     const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
     for (const name of ['staging:tunnel:start', 'staging:tunnel:status', 'staging:tunnel:stop']) {
@@ -156,6 +184,66 @@ async function lifecycleTests() {
     assert.deepEqual(output, ['TEMPORARY STAGING — NOT PRODUCTION', url]);
     assert.equal(output.join('\n').includes(valid.QLCD_STAGING_SECRET), false);
     await assert.rejects(() => runCli(['node', 'quick-tunnel-staging.js', 'deploy']), /start\|status\|stop/);
+    await assert.rejects(() => runCli(['node', 'quick-tunnel-staging.js', 'stop', 'extra'], {
+        cwd: root,
+        dependencies: {
+            runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => '',
+            writeEvidence: async () => {}, now: Date.now, commit: 'abc123'
+        }
+    }), /start\|status\|stop/);
+
+    const envFile = path.join(root, '.env.staging.local');
+    fs.writeFileSync(envFile, [
+        `QLCD_STAGING_SECRET=${valid.QLCD_STAGING_SECRET}`,
+        `QLCD_STAGING_DB=${valid.QLCD_STAGING_DB}`,
+        `QLCD_STAGING_UPLOAD=${valid.QLCD_STAGING_UPLOAD}`,
+        `QLCD_STAGING_BACKUP_DIR=${valid.QLCD_STAGING_BACKUP_DIR}`,
+        'QLCD_STAGING_PORT=43210'
+    ].join('\n'));
+    const staleParent = {
+        QLCD_STAGING_SECRET: process.env.QLCD_STAGING_SECRET,
+        QLCD_STAGING_DB: process.env.QLCD_STAGING_DB,
+        QLCD_STAGING_UPLOAD: process.env.QLCD_STAGING_UPLOAD,
+        QLCD_STAGING_BACKUP_DIR: process.env.QLCD_STAGING_BACKUP_DIR,
+        QLCD_STAGING_PORT: process.env.QLCD_STAGING_PORT
+    };
+    const composeCalls = [];
+    const originalComposeLog = console.log;
+    Object.assign(process.env, {
+        QLCD_STAGING_SECRET: 'parent-secret-that-must-not-be-used'.repeat(2),
+        QLCD_STAGING_DB: path.join(root, 'parent', 'wrong.db'),
+        QLCD_STAGING_UPLOAD: path.join(root, 'parent', 'uploads'),
+        QLCD_STAGING_BACKUP_DIR: path.join(root, 'parent', 'backups'),
+        QLCD_STAGING_PORT: '49999'
+    });
+    console.log = () => {};
+    try {
+        await runCli(['node', 'quick-tunnel-staging.js', 'start'], {
+            cwd: root,
+            dependencyFactory: (factoryCwd, environment) => ({
+                ...createDependencies(factoryCwd, {
+                    environment,
+                    runProgramImpl: async (command, args, childCwd, childEnvironment) => {
+                        composeCalls.push({ command, args, childCwd, childEnvironment });
+                        return args.includes('logs') ? url : '';
+                    }
+                }),
+                fetchImpl: async () => ({ status: 200 })
+            })
+        });
+    } finally {
+        console.log = originalComposeLog;
+        for (const [name, previous] of Object.entries(staleParent)) {
+            if (previous === undefined) delete process.env[name]; else process.env[name] = previous;
+        }
+    }
+    assert.equal(composeCalls.length, 3);
+    for (const call of composeCalls) {
+        assert.deepEqual(call.args.slice(0, 5), ['compose', '--env-file', '.env.staging.local', '-f', 'docker-compose.staging.yml']);
+        assert.equal(call.childEnvironment.QLCD_STAGING_SECRET, valid.QLCD_STAGING_SECRET);
+        assert.equal(call.childEnvironment.QLCD_STAGING_DB, valid.QLCD_STAGING_DB);
+        assert.equal(call.childEnvironment.QLCD_STAGING_PORT, '43210');
+    }
 }
 
 lifecycleTests().then(() => console.log('quick tunnel staging tests passed')).catch(error => {
