@@ -8,11 +8,11 @@ README.md
 .env.production
 .env.staging.local
 *.db
-*.db-wal
-*.db-shm
+*.db-*
 *.sqlite
+*.sqlite-*
 *.sqlite3
-db/
+*.sqlite3-*
 uploads/
 sao-luu/
 uat-output/

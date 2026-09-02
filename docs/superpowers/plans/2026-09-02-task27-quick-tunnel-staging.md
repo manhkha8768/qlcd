@@ -15,6 +15,7 @@
 - TASK 27 phải giữ trạng thái `PARTIAL`; Quick Tunnel không được mô tả là production hoặc hoàn tất go-live.
 - Không deploy Cloudflare Workers/D1/R2, không đổi DNS, không sửa Worker `cdvtxlm.manhkha8768.workers.dev` và không merge `origin/feature/cloudflare-foundation`.
 - Không dùng database production; database, uploads và backup staging phải khác đường dẫn production.
+- Database, uploads và backup staging phải có đích vật lý nằm ngoài checkout dùng làm Docker build context; symlink/junction không được dùng để trỏ ngược vào checkout.
 - Ứng dụng chỉ publish trên loopback `127.0.0.1`; chỉ connector tạo kết nối outbound.
 - URL phải khớp chính xác `https://<label>.trycloudflare.com` và được xem là tạm thời.
 - Không ghi secret, cookie, password hoặc token vào source, compose, evidence hay log do công cụ tạo.
@@ -33,7 +34,7 @@
 - Produces: `resolveStagingConfig(env, cwd) -> { secret, dbPath, uploadPath, backupPath, port, evidencePath }`.
 - Produces: `parseQuickTunnelUrl(text) -> string | null`.
 - Produces: `createEvidence({ url, commit, readiness, createdAt }) -> object` với format `QLCD_QUICK_TUNNEL_STAGING_V1`.
-- Consumes: `QLCD_STAGING_SECRET`, `QLCD_STAGING_DB`, `QLCD_STAGING_UPLOAD`, `QLCD_STAGING_BACKUP_DIR`, tùy chọn `QLCD_STAGING_PORT`, `QLCD_STAGING_EVIDENCE`; so sánh với `QLCD_DB`, `QLCD_UPLOAD`/`QLCD_UPLOADS`, `QLCD_BACKUP_DIR` nếu được đặt.
+- Consumes: `QLCD_STAGING_SECRET`, `QLCD_STAGING_DB`, `QLCD_STAGING_UPLOAD`, `QLCD_STAGING_BACKUP_DIR`, tùy chọn `QLCD_STAGING_PORT`, `QLCD_STAGING_EVIDENCE`; so sánh với `QLCD_DB`, `QLCD_UPLOAD`/`QLCD_UPLOADS`, `QLCD_BACKUP_DIR` nếu được đặt và từ chối mọi đích vật lý trong checkout/build context.
 
 - [ ] **Step 1: Viết test thất bại cho validation**
 
@@ -63,7 +64,7 @@ const REQUIRED_SECRET_LENGTH = 32;
 const DEFAULT_PORT = 32121;
 ```
 
-Chuẩn hóa đường dẫn bằng `path.resolve(cwd, value)`, yêu cầu database là file tồn tại, tạo upload/backup parent chỉ ở bước start chứ không trong validator, từ chối port ngoài `1024..65535`, và từ chối mọi đường dẫn staging trùng đường dẫn production sau chuẩn hóa/case-fold trên Windows.
+Chuẩn hóa đường dẫn bằng `path.resolve(cwd, value)`, yêu cầu database là file tồn tại, tạo upload/backup parent chỉ ở bước start chứ không trong validator, từ chối port ngoài `1024..65535`, và từ chối mọi đường dẫn staging trùng đường dẫn production sau chuẩn hóa/case-fold trên Windows. Database phải dùng `realpath`; upload/backup chưa tồn tại phải resolve ancestor hiện hữu gần nhất rồi nối phần còn thiếu. Cả ba đích vật lý phải nằm ngoài checkout/build context.
 
 - [ ] **Step 4: Viết test thất bại cho URL/evidence**
 
@@ -145,6 +146,8 @@ Connector không có port, volume hay secret ứng dụng.
 
 Thêm vào `.env.example` các tên biến staging với giá trị rỗng; không thêm secret mẫu có thể dùng nhầm. Thêm `quick-tunnel-output/` và `.env.staging.local` vào `.gitignore`.
 
+`.dockerignore` phải giữ `db/index.js`, `db/init.js` và migration SQL trong build context; chỉ loại các mẫu runtime `*.db`, `*.db-*`, `*.sqlite`, `*.sqlite-*`, `*.sqlite3`, `*.sqlite3-*` cùng các thư mục dữ liệu nhạy cảm đã biết. Static ignore không thay thế path validator vì tên/đuôi staging có thể tùy ý.
+
 - [ ] **Step 5: Kiểm tra compose và test**
 
 Run: `node test/test-quick-tunnel-staging.js`
@@ -220,6 +223,8 @@ docker compose --env-file .env.staging.local -f docker-compose.staging.yml down 
 
 CLI chỉ nhận ba command cố định, gọi validator trước `start`, không echo env, ghi evidence mặc định vào `quick-tunnel-output/evidence.json`, và in rõ `TEMPORARY STAGING — NOT PRODUCTION` cùng URL khi thành công.
 
+`npm run staging:tunnel:start` là wrapper build/start duy nhất được hỗ trợ. Không hướng dẫn operator chạy trực tiếp `docker compose build` hoặc `docker compose up` vì các lệnh đó bỏ qua validation/preflight.
+
 Thêm `node test/test-quick-tunnel-staging.js` vào cuối `npm test` và ba npm scripts tương ứng.
 
 - [ ] **Step 5: Chạy tests Task 3**
@@ -230,7 +235,7 @@ Expected: tất cả validation, compose contract, controller và CLI tests PASS
 
 - [ ] **Step 6: Chạy smoke test thực nếu Docker/network có sẵn**
 
-Tạo `.env.staging.local` ngoài Git, dùng `uat-output/task26-local.db` hoặc database tổng hợp khác, secret ngẫu nhiên tối thiểu 32 ký tự và thư mục staging riêng. Chạy:
+Tạo `.env.staging.local` ngoài Git, sao chép database UAT đã khử nhạy cảm sang một thư mục staging bên ngoài checkout/build context, dùng secret ngẫu nhiên tối thiểu 32 ký tự và đặt upload/backup staging ở các đường dẫn riêng cũng bên ngoài checkout. Chạy:
 
 ```bash
 npm run staging:tunnel:start

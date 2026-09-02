@@ -11,13 +11,52 @@ function assertIgnored(dockerIgnore, entry) {
     assert.match(dockerIgnore, new RegExp(`^${escaped}$`, 'm'), `Docker context must exclude ${entry}`);
 }
 
-const dockerIgnore = fs.readFileSync(path.join(__dirname, '..', '.dockerignore'), 'utf8');
+const projectRoot = path.resolve(__dirname, '..');
+const sandboxRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'qlcd-quick-tunnel-'));
+const root = path.join(sandboxRoot, 'checkout');
+const externalStagingRoot = path.join(sandboxRoot, 'staging-data');
+fs.mkdirSync(root, { recursive: true });
+fs.mkdirSync(externalStagingRoot, { recursive: true });
+
+const valid = {
+    QLCD_STAGING_SECRET: 's'.repeat(32),
+    QLCD_STAGING_DB: path.join(externalStagingRoot, 'database', 'qlcd.db'),
+    QLCD_STAGING_UPLOAD: path.join(externalStagingRoot, 'uploads'),
+    QLCD_STAGING_BACKUP_DIR: path.join(externalStagingRoot, 'backups')
+};
+fs.mkdirSync(path.dirname(valid.QLCD_STAGING_DB), { recursive: true });
+fs.writeFileSync(valid.QLCD_STAGING_DB, '');
+
+const contextLocalPaths = {
+    QLCD_STAGING_DB: path.join(root, 'arbitrary-data', 'live.records'),
+    QLCD_STAGING_UPLOAD: path.join(root, 'anything', 'incoming-files'),
+    QLCD_STAGING_BACKUP_DIR: path.join(root, 'custom-name', 'snapshots')
+};
+fs.mkdirSync(path.dirname(contextLocalPaths.QLCD_STAGING_DB), { recursive: true });
+fs.writeFileSync(contextLocalPaths.QLCD_STAGING_DB, '');
+for (const [name, contextLocalPath] of Object.entries(contextLocalPaths)) {
+    assert.throws(
+        () => resolveStagingConfig({ ...valid, [name]: contextLocalPath }, root),
+        /outside.*build context/i,
+        `${name} must reject arbitrary paths inside the Docker build context`
+    );
+}
+assert.equal(resolveStagingConfig(valid, root).dbPath, valid.QLCD_STAGING_DB);
+
+const dockerIgnore = fs.readFileSync(path.join(projectRoot, '.dockerignore'), 'utf8');
+const dockerIgnoreEntries = dockerIgnore.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+assert.equal(dockerIgnoreEntries.includes('db/'), false, 'Docker context must retain the required db/ application source');
 for (const entry of [
-    '.env.staging.local', '*.db', '*.db-wal', '*.db-shm', '*.sqlite', '*.sqlite3',
+    '.env.staging.local', '*.db', '*.db-*', '*.sqlite', '*.sqlite-*', '*.sqlite3', '*.sqlite3-*',
     'uploads/', 'sao-luu/', 'uat-output/', 'quick-tunnel-output/'
 ]) {
     assertIgnored(dockerIgnore, entry);
 }
+for (const requiredSource of ['db/index.js', 'db/init.js', 'db/01-schema.sql', 'db/37-production-readiness.sql']) {
+    assert.equal(fs.existsSync(path.join(projectRoot, requiredSource)), true, `${requiredSource} must remain in the application source contract`);
+}
+const numberedMigrations = fs.readdirSync(path.join(projectRoot, 'db')).filter(name => /^\d{2}-.+\.sql$/.test(name));
+assert.ok(numberedMigrations.length >= 37, 'numbered SQL migrations must remain in the application source contract');
 
 const composePath = path.join(__dirname, '..', 'docker-compose.staging.yml');
 const compose = fs.existsSync(composePath) ? fs.readFileSync(composePath, 'utf8') : '';
@@ -32,16 +71,6 @@ assert.match(compose, /no-new-privileges:\s*true/);
 for (const variable of ['QLCD_STAGING_DB', 'QLCD_STAGING_UPLOAD', 'QLCD_STAGING_BACKUP_DIR']) {
     assert.match(compose, new RegExp(`\\$\\{${variable}[^}]*\\}`));
 }
-
-const root = fs.mkdtempSync(path.join(os.tmpdir(), 'qlcd-quick-tunnel-'));
-const valid = {
-    QLCD_STAGING_SECRET: 's'.repeat(32),
-    QLCD_STAGING_DB: path.join(root, 'staging', 'qlcd.db'),
-    QLCD_STAGING_UPLOAD: path.join(root, 'staging', 'uploads'),
-    QLCD_STAGING_BACKUP_DIR: path.join(root, 'staging', 'backups')
-};
-fs.mkdirSync(path.dirname(valid.QLCD_STAGING_DB), { recursive: true });
-fs.writeFileSync(valid.QLCD_STAGING_DB, '');
 
 assert.throws(() => resolveStagingConfig({}, root), /QLCD_STAGING_SECRET/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_SECRET: 'short' }, root), /32/);
@@ -64,7 +93,21 @@ assert.equal(resolveStagingConfig(valid, root).port, 32121);
 assert.equal(resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '4567' }, root).port, 4567);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '1023' }, root), /port/);
 assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_PORT: '65536' }, root), /port/);
-assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_DB: path.join(root, 'missing.db') }, root), /file/);
+assert.throws(() => resolveStagingConfig({ ...valid, QLCD_STAGING_DB: path.join(externalStagingRoot, 'missing.db') }, root), /file/);
+
+const insideTarget = path.join(root, 'physical-inside');
+const externalAliasToInside = path.join(externalStagingRoot, 'alias-to-checkout');
+fs.mkdirSync(insideTarget, { recursive: true });
+try {
+    fs.symlinkSync(insideTarget, externalAliasToInside, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.throws(
+        () => resolveStagingConfig({ ...valid, QLCD_STAGING_UPLOAD: path.join(externalAliasToInside, 'uploads') }, root),
+        /outside.*build context/i,
+        'physical containment must reject an external alias that resolves into the build context'
+    );
+} catch (error) {
+    if (!['EPERM', 'EACCES', 'ENOSYS', 'UNKNOWN'].includes(error.code)) throw error;
+}
 
 assert.equal(parseQuickTunnelUrl('Visit https://blue-tree.trycloudflare.com now'), 'https://blue-tree.trycloudflare.com');
 assert.equal(parseQuickTunnelUrl('https://example.com'), null);
@@ -101,6 +144,21 @@ async function lifecycleTests() {
     assert.equal(evidence.task_status, 'PARTIAL');
     assert.equal(JSON.stringify(evidence).includes('secret'), false);
     assert.equal(evidence.business_signoff.status, 'PENDING');
+
+    let buildReached = false;
+    await assert.rejects(
+        () => runCli(['node', 'quick-tunnel-staging.js', 'start'], {
+            cwd: root,
+            environment: { ...valid, QLCD_STAGING_DB: contextLocalPaths.QLCD_STAGING_DB },
+            dependencies: {
+                runPreflight: async () => {},
+                runCompose: async request => { if (request.action === 'build') buildReached = true; },
+                fetchImpl: async () => ({ status: 200 }), readLogs: async () => '', writeEvidence: async () => {}
+            }
+        }),
+        /outside.*build context/i
+    );
+    assert.equal(buildReached, false, 'unsafe context-local data must be rejected before Docker build');
 
     const config = {
         secret: 's'.repeat(32), port: 32121, uploadPath: path.join(root, 'run', 'uploads'),

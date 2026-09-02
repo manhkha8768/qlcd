@@ -23,14 +23,14 @@ Một compose file staging riêng chạy hai service trong cùng mạng Docker:
 
 Ứng dụng chỉ publish cổng loopback `127.0.0.1` để kiểm tra tại máy chủ; không bind cổng ứng dụng lên mọi interface. `cloudflared` tạo kết nối outbound tới Cloudflare nên máy chủ không cần mở inbound port cho QLCD.
 
-Database, uploads và backup dùng volume staging có tên riêng, không dùng chung volume production. Secret phiên staging được truyền qua file môi trường nằm ngoài Git.
+Database, uploads và backup dùng bind mount staging riêng, không dùng chung volume production và mọi đường dẫn dữ liệu phải có đích vật lý nằm ngoài checkout đang làm Docker build context. Secret phiên staging được truyền qua file môi trường nằm ngoài Git.
 
 ## 3. Luồng vận hành
 
 ### Khởi động
 
 1. Kiểm tra Docker Compose và các biến staging bắt buộc.
-2. Từ chối đường dẫn hoặc volume được nhận diện là production.
+2. Từ chối đường dẫn hoặc volume được nhận diện là production, hoặc có đích vật lý nằm trong checkout/build context.
 3. Chạy lint, typecheck, test, build và kiểm tra cấu hình staging trước khi dựng image.
 4. Khởi động `qlcd-staging`, chờ `/api/ready` đạt.
 5. Khởi động `cloudflared-staging`, đọc URL HTTPS từ log và ghi evidence cục bộ bị Git bỏ qua.
@@ -49,9 +49,11 @@ Lệnh dừng chỉ dừng và gỡ container/network của staging. Volume stag
 Các giá trị bắt buộc:
 
 - `QLCD_STAGING_SECRET`: secret riêng tối thiểu 32 ký tự.
-- `QLCD_STAGING_DB`: database staging hoặc database tổng hợp; không được trỏ tới database nguồn/production.
-- `QLCD_STAGING_UPLOAD`: thư mục uploads staging riêng.
-- `QLCD_STAGING_BACKUP_DIR`: thư mục backup staging riêng.
+- `QLCD_STAGING_DB`: database staging hoặc database tổng hợp đã sao chép ra ngoài checkout; không được trỏ tới database nguồn/production.
+- `QLCD_STAGING_UPLOAD`: thư mục uploads staging riêng có đích vật lý ngoài checkout.
+- `QLCD_STAGING_BACKUP_DIR`: thư mục backup staging riêng có đích vật lý ngoài checkout.
+
+Validator phải dùng đường dẫn vật lý: database hiện hữu được `realpath`; upload/backup có thể chưa tồn tại nên phải `realpath` ancestor hiện hữu gần nhất rồi nối các segment còn thiếu. Mọi đường dẫn bằng hoặc nằm dưới checkout/build context đều bị từ chối, kể cả đường dẫn bên ngoài qua symlink/junction trỏ ngược vào checkout. `.dockerignore` chỉ là lớp phòng thủ cho tên file runtime thường gặp và không thay thế validator đối với tên/đuôi tùy ý.
 
 Runtime ứng dụng dùng `NODE_ENV=production` và `QLCD_INTERNET=1` để kiểm tra đúng cookie/HTTPS/security gate. `QLCD_PUBLIC_HOST` không cố định vì Quick Tunnel cấp hostname sau khi connector khởi động; request hợp lệ đi qua HTTPS và Host do Cloudflare chuyển tiếp.
 
@@ -59,7 +61,7 @@ Không ghi token Cloudflare, mật khẩu hoặc secret vào compose, log eviden
 
 ## 5. Tự động hóa
 
-Phần tự động hóa ở TASK 27 chỉ dựng và kiểm tra staging khi người vận hành chạy lệnh rõ ràng. Không tự deploy production khi push Git.
+Phần tự động hóa ở TASK 27 chỉ dựng và kiểm tra staging khi người vận hành chạy lệnh rõ ràng. `npm run staging:tunnel:start` là entry point build/start duy nhất được hỗ trợ vì chạy validation và preflight trước Docker; chạy trực tiếp `docker compose build` hoặc `docker compose up` là không được hỗ trợ. Không tự deploy production khi push Git.
 
 CI tiếp tục chạy quality gate trên push/pull request. Việc tự động phát hành production chỉ được thiết kế sau khi có domain ổn định, UAT TASK 26 đủ sign-off và cơ chế rollback production được duyệt.
 
@@ -74,7 +76,8 @@ CI tiếp tục chạy quality gate trên push/pull request. Việc tự động
 
 Implementation phải có test tự động cho:
 
-- Cấu hình từ chối secret yếu, database production và đường dẫn staging trùng nhau.
+- Cấu hình từ chối secret yếu, database production, đường dẫn staging trùng nhau và mọi database/upload/backup có đích vật lý trong checkout/build context.
+- Docker build context giữ `db/index.js`, `db/init.js` và các migration SQL, đồng thời bỏ qua các mẫu database runtime và thư mục dữ liệu nhạy cảm đã biết.
 - Compose không publish QLCD ra `0.0.0.0`, dùng volume riêng và chuyển tiếp đúng service nội bộ.
 - Parser chỉ chấp nhận URL HTTPS thuộc `trycloudflare.com` từ log connector.
 - Evidence không chứa secret.
@@ -89,4 +92,3 @@ Cập nhật runbook với cách khởi động, lấy URL, kiểm tra và dừn
 - TASK 26: vẫn `PARTIAL`, chờ dữ liệu thực và ba sign-off.
 - TASK 27: `PARTIAL`, có Quick Tunnel staging tạm nhưng chưa có domain/HA/pipeline/rollback production.
 - NEXT RECOMMENDED TASK: hoàn tất TASK 26 và chuẩn bị tên miền ổn định trước production rollout.
-
