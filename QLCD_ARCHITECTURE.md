@@ -96,3 +96,7 @@ Production readiness giữ nguyên Express/SQLite single-node nhưng bổ sung r
 ## 15. TASK 26 architecture note
 
 UAT database là bản clone có nguồn bất biến: đường dẫn nguồn/đích bắt buộc khác nhau và file đích tồn tại không bao giờ bị ghi đè. Migration và mọi thao tác UAT chỉ chạy trên clone; hash nguồn được kiểm tra không đổi. Danh tính nguồn bị vô hiệu hóa/ẩn danh, uploads không tự sao chép và chỉ phát hành tài khoản UAT theo vai trò cho tối đa hai PX được chọn. Machine evidence chỉ chứng minh technical gate; business acceptance giữ PENDING đến khi PX, CĐVT và quản trị hệ thống ký.
+
+## 16. TASK 27 temporary staging transport note
+
+Quick Tunnel adds only a temporary staging transport: Docker publishes Express solely on loopback and `cloudflared` opens an outbound `trycloudflare.com` URL. It does not alter the schema, migration set, storage model, canonical ledger, RBAC model, or business rules. Express remains the policy enforcement point: anonymous requests are denied by its existing authentication middleware and authenticated role/data-scope checks remain server-side. The generated URL is ephemeral, has no SLA, and is never a production domain, DNS change, named tunnel, or HA topology. TASK 27 therefore remains `PARTIAL` pending production domain/HTTPS design, named tunnel/HA, production secrets/storage, UAT sign-off and approved rollout.

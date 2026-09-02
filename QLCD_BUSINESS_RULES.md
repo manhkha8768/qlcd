@@ -133,3 +133,11 @@ TASK 23 triển khai rules 44–48: registry query duy nhất phục vụ screen
 - Upload nguồn không tự sao chép. Tài liệu cần kiểm thử phải được chọn và khử nhạy cảm riêng.
 - Kết quả tự động chỉ là technical evidence; không thay thế sign-off của PX, CĐVT và quản trị hệ thống.
 - TASK 27 chỉ được mở khi UAT dữ liệu thật đạt và đủ ba nhóm chữ ký.
+
+## TASK 27 — Quick Tunnel staging tạm thời
+
+- Quick Tunnel chỉ thêm đường truyền staging tạm thời; không thay đổi schema, storage model, canonical ledger, RBAC hoặc bất kỳ business rule nào.
+- URL `trycloudflare.com` thay đổi sau restart, không có SLA và không được dùng làm production endpoint hoặc cam kết go-live.
+- Quyền anonymous deny, permission và data scope tiếp tục được Express kiểm tra ở server; tunnel không cấp quyền hoặc bypass policy.
+- Dữ liệu, secret, uploads và backups dùng cho tunnel phải là staging/UAT tách biệt; tuyệt đối không dùng dữ liệu production.
+- Evidence tunnel chỉ xác nhận readiness kỹ thuật tạm thời. TASK 27 vẫn `PARTIAL` và sign-off UAT vẫn `PENDING` đến khi ba nhóm vai trò ký.

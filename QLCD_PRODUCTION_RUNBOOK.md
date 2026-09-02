@@ -32,3 +32,16 @@ Before deploy: verified backup, production config check, migration rehearsal on 
 3. Chạy `npm run uat:run`; lưu evidence JSON cùng biên bản UAT.
 4. Hoàn thành UAT-A đến UAT-H trong `QLCD_UAT_PLAN.md` và lấy chữ ký PX, CĐVT, quản trị hệ thống.
 5. Không triển khai production nếu technical status khác `PASSED` hoặc business sign-off còn `PENDING`.
+
+## Temporary Quick Tunnel staging (TASK 27)
+
+Quick Tunnel is a temporary staging transport for a review or UAT rehearsal. It is **not** a production endpoint, has no SLA, and its `https://<label>.trycloudflare.com` URL can change every time the connector restarts. Do not use it for production traffic, production DNS, a named tunnel, or an availability commitment.
+
+Prerequisites: Docker Engine and Docker Compose must be available to the operator; a staging database file must already exist; staging upload and backup directories must be distinct; and none of the staging paths may be a production database, upload, or backup path. Use only approved, anonymized staging/UAT data. Never use production data with this compose file.
+
+1. Copy `.env.example` to `.env.staging.local` (this local file is ignored by Git). Set a unique `QLCD_STAGING_SECRET` of at least 32 characters, `QLCD_STAGING_DB` to the existing staging database file, and separate `QLCD_STAGING_UPLOAD` and `QLCD_STAGING_BACKUP_DIR` directories. Optionally set `QLCD_STAGING_PORT`; it defaults to `32121`.
+2. Run `npm run staging:tunnel:start`. The application listens only on `127.0.0.1`; the connector makes the outbound tunnel connection. A successful command prints `TEMPORARY STAGING — NOT PRODUCTION` and the temporary URL.
+3. Find the current URL in the start output or `quick-tunnel-output/evidence.json`; use `npm run staging:tunnel:status` to check the containers and remote readiness. Treat the URL as stale after any tunnel restart and obtain it again from status/log output.
+4. When the rehearsal ends, run `npm run staging:tunnel:stop`. This calls Compose `down --remove-orphans` only. Do **not** run `down -v`: the staging database, uploads, and backups must be retained for evidence and recovery.
+
+The operational smoke check is only successful when local and remote `/api/ready` both return HTTP 200 and the evidence reports `TEMPORARY_STAGING`. It never substitutes for UAT sign-off, production secrets/storage, a production domain, a named/HA tunnel, or an approved production rollout.

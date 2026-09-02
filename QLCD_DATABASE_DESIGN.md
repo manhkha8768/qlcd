@@ -162,3 +162,7 @@ Migration `37-production-readiness.sql` thêm `operational_error_events` để l
 ## 30. TASK 26 — UAT database clone
 
 TASK 26 không thêm migration hoặc bảng production. Staging là SQLite online backup sang file mới; migration còn thiếu chỉ được áp trên clone. Manifest ngoài database ghi hash nguồn/đích, số migration, PX được chọn, kiểm tra toàn vẹn và trạng thái sign-off, tuyệt đối không ghi mật khẩu. Tài khoản nguồn được đổi định danh và vô hiệu hóa, session/security logs bị xóa, trường nhận diện/free-text bị redacted. Foreign key và ID nghiệp vụ vẫn giữ để kiểm thử quan hệ.
+
+## 31. TASK 27 — Quick Tunnel staging transport
+
+TASK 27 Quick Tunnel không thêm migration, bảng, view, trigger, index hoặc write path. Compose chỉ mount SQLite database, uploads và backups staging đã có vào runtime Express tạm thời; không thay đổi storage model và không ghi vào canonical Asset/Stock ledger ngoài các thao tác người dùng hợp lệ trong môi trường staging. Database, upload và backup paths bắt buộc khác production. Evidence tunnel được lưu ngoài database, không chứa secret/token/password, và không phải audit hay sign-off production.
