@@ -30,6 +30,10 @@ assert.equal(parseQuickTunnelUrl('Visit https://blue-tree.trycloudflare.com now'
 assert.equal(parseQuickTunnelUrl('https://example.com'), null);
 assert.equal(parseQuickTunnelUrl('http://blue-tree.trycloudflare.com'), null);
 assert.equal(parseQuickTunnelUrl('https://blue-tree.trycloudflare.com.evil'), null);
+assert.equal(parseQuickTunnelUrl('https://blue-tree.trycloudflare.com@evil'), null);
+assert.equal(parseQuickTunnelUrl('https://blue-tree.trycloudflare.com%40evil'), null);
+assert.equal(parseQuickTunnelUrl('https://blue-tree.trycloudflare.com:443'), null);
+assert.equal(parseQuickTunnelUrl('https://user:pass@blue-tree.trycloudflare.com'), null);
 assert.equal(parseQuickTunnelUrl('https://-bad.trycloudflare.com'), null);
 assert.equal(parseQuickTunnelUrl('https://a'.concat('x'.repeat(63), '.trycloudflare.com')), null);
 
