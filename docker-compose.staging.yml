@@ -1,0 +1,56 @@
+services:
+  qlcd-staging:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: qlcd-staging
+    init: true
+    ports:
+      - "127.0.0.1:${QLCD_STAGING_PORT:-32121}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      QLCD_DB: /data/db/qlcd.db
+      QLCD_UPLOAD: /data/uploads
+      QLCD_BACKUP_DIR: /data/backups
+      QLCD_INTERNET: 1
+      QLCD_PHIEN_GIO: 8
+      QLCD_SECRET: ${QLCD_STAGING_SECRET:?Set QLCD_STAGING_SECRET to a unique value of at least 32 characters}
+    volumes:
+      - type: bind
+        source: ${QLCD_STAGING_DB:?Set QLCD_STAGING_DB to the staging database file}
+        target: /data/db/qlcd.db
+      - type: bind
+        source: ${QLCD_STAGING_UPLOAD:?Set QLCD_STAGING_UPLOAD to the staging upload directory}
+        target: /data/uploads
+      - type: bind
+        source: ${QLCD_STAGING_BACKUP_DIR:?Set QLCD_STAGING_BACKUP_DIR to the staging backup directory}
+        target: /data/backups
+    restart: unless-stopped
+    stop_grace_period: 35s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-H", "X-Forwarded-Proto: https", "http://localhost:3000/api/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - qlcd-staging-network
+
+  cloudflared-staging:
+    image: cloudflare/cloudflared:2026.8.3
+    container_name: cloudflared-staging
+    command: tunnel --no-autoupdate --url http://qlcd-staging:3000
+    depends_on:
+      qlcd-staging:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - qlcd-staging-network
+
+networks:
+  qlcd-staging-network:
+    driver: bridge

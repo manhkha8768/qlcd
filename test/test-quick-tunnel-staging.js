@@ -5,6 +5,20 @@ const path = require('path');
 
 const { resolveStagingConfig, parseQuickTunnelUrl, createEvidence } = require('../lib/quick-tunnel-staging');
 
+const composePath = path.join(__dirname, '..', 'docker-compose.staging.yml');
+const compose = fs.existsSync(composePath) ? fs.readFileSync(composePath, 'utf8') : '';
+assert.match(compose, /127\.0\.0\.1:\$\{QLCD_STAGING_PORT:-32121\}:3000/);
+assert.match(compose, /cloudflare\/cloudflared:2026\.8\.3/);
+assert.match(compose, /tunnel --no-autoupdate --url http:\/\/qlcd-staging:3000/);
+assert.doesNotMatch(compose, /0\.0\.0\.0:/);
+assert.doesNotMatch(compose, /down -v/);
+assert.match(compose, /read_only:\s*true/);
+assert.match(compose, /cap_drop:\s*\[ALL\]/);
+assert.match(compose, /no-new-privileges:\s*true/);
+for (const variable of ['QLCD_STAGING_DB', 'QLCD_STAGING_UPLOAD', 'QLCD_STAGING_BACKUP_DIR']) {
+    assert.match(compose, new RegExp(`\\$\\{${variable}[^}]*\\}`));
+}
+
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'qlcd-quick-tunnel-'));
 const valid = {
     QLCD_STAGING_SECRET: 's'.repeat(32),

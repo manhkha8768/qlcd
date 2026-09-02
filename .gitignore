@@ -8,4 +8,6 @@ uploads/*
 test/mau-*.xlsx
 sao-luu/
 uat-output/
+quick-tunnel-output/
+.env.staging.local
 khoa-bi-mat.txt
