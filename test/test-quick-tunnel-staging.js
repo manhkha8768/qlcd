@@ -3,7 +3,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { resolveStagingConfig, parseQuickTunnelUrl, createEvidence } = require('../lib/quick-tunnel-staging');
+const { resolveStagingConfig, parseQuickTunnelUrl, createEvidence, createController } = require('../lib/quick-tunnel-staging');
+const { main: runCli } = require('../scripts/quick-tunnel-staging');
 
 const composePath = path.join(__dirname, '..', 'docker-compose.staging.yml');
 const compose = fs.existsSync(composePath) ? fs.readFileSync(composePath, 'utf8') : '';
@@ -51,17 +52,113 @@ assert.equal(parseQuickTunnelUrl('https://user:pass@blue-tree.trycloudflare.com'
 assert.equal(parseQuickTunnelUrl('https://-bad.trycloudflare.com'), null);
 assert.equal(parseQuickTunnelUrl('https://a'.concat('x'.repeat(63), '.trycloudflare.com')), null);
 
-const url = 'https://blue-tree.trycloudflare.com';
-const evidence = createEvidence({ url, commit: 'abc123', readiness: 200, createdAt: '2026-09-02T00:00:00.000Z' });
-assert.equal(evidence.format, 'QLCD_QUICK_TUNNEL_STAGING_V1');
-assert.equal(evidence.status, 'TEMPORARY_STAGING');
-assert.equal(evidence.temporary, true);
-assert.equal(evidence.url, url);
-assert.equal(evidence.commit, 'abc123');
-assert.equal(evidence.readiness, 200);
-assert.equal(evidence.created_at, '2026-09-02T00:00:00.000Z');
-assert.equal(evidence.task_status, 'PARTIAL');
-assert.equal(JSON.stringify(evidence).includes('secret'), false);
-assert.equal(evidence.business_signoff.status, 'PENDING');
+async function lifecycleTests() {
+    const url = 'https://blue-tree.trycloudflare.com';
+    const evidence = createEvidence({ url, commit: 'abc123', readiness: 200, createdAt: '2026-09-02T00:00:00.000Z' });
+    assert.equal(evidence.format, 'QLCD_QUICK_TUNNEL_STAGING_V1');
+    assert.equal(evidence.status, 'TEMPORARY_STAGING');
+    assert.equal(evidence.temporary, true);
+    assert.equal(evidence.url, url);
+    assert.equal(evidence.commit, 'abc123');
+    assert.equal(evidence.readiness, 200);
+    assert.equal(evidence.created_at, '2026-09-02T00:00:00.000Z');
+    assert.equal(evidence.task_status, 'PARTIAL');
+    assert.equal(JSON.stringify(evidence).includes('secret'), false);
+    assert.equal(evidence.business_signoff.status, 'PENDING');
 
-console.log('quick tunnel staging tests passed');
+    const config = {
+        secret: 's'.repeat(32), port: 32121, uploadPath: path.join(root, 'run', 'uploads'),
+        backupPath: path.join(root, 'run', 'backups'), evidencePath: path.join(root, 'run', 'evidence.json')
+    };
+    const calls = [];
+    const controller = createController({
+        runCompose: async request => { calls.push({ action: request.action, args: request.args || [] }); return ''; },
+        fetchImpl: async requestUrl => {
+            calls.push({ action: requestUrl.startsWith('http://127.0.0.1') ? 'local-ready' : 'remote-ready', requestUrl });
+            return { status: 200 };
+        },
+        readLogs: async () => { calls.push({ action: 'logs' }); return `INF Your quick Tunnel has been created! Visit it at ${url}`; },
+        writeEvidence: async (evidencePath, item) => { calls.push({ action: 'evidence', evidencePath, item }); },
+        now: () => Date.parse('2026-09-02T00:00:00.000Z'),
+        commit: 'abc123',
+        sleep: async () => {}
+    });
+    const started = await controller.start(config);
+    assert.equal(started.url, url);
+    assert.deepEqual(calls.map(item => item.action), ['prepare', 'app-up', 'local-ready', 'tunnel-up', 'logs', 'remote-ready', 'evidence']);
+    assert.equal(calls.at(-1).evidencePath, config.evidencePath);
+    assert.equal(calls.at(-1).item.status, 'TEMPORARY_STAGING');
+    assert.equal(JSON.stringify(calls.at(-1).item).includes(config.secret), false);
+
+    let clock = 0;
+    const missingUrl = createController({
+        runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => 'still starting',
+        writeEvidence: async () => { throw new Error('evidence must not be written'); },
+        now: () => clock, commit: 'abc123', sleep: async () => { clock += 1000; }
+    });
+    await assert.rejects(() => missingUrl.start(config), /Quick Tunnel URL.*logs/);
+
+    const invalidUrl = createController({
+        runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => 'https://example.com',
+        writeEvidence: async () => { throw new Error('evidence must not be written'); },
+        now: () => clock, commit: 'abc123', sleep: async () => { clock += 1000; }
+    });
+    await assert.rejects(() => invalidUrl.start(config), /Quick Tunnel URL.*logs/);
+
+    const remoteNotReady = createController({
+        runCompose: async () => {},
+        fetchImpl: async requestUrl => ({ status: requestUrl.startsWith('http://127.0.0.1') ? 200 : 503 }),
+        readLogs: async () => url, writeEvidence: async () => { throw new Error('evidence must not be written'); },
+        now: () => clock, commit: 'abc123', sleep: async () => { clock += 1000; }
+    });
+    await assert.rejects(() => remoteNotReady.start(config), /remote readiness/);
+
+    const composeArgs = [];
+    const stopController = createController({
+        runCompose: async request => { composeArgs.push(request.args || []); }, fetchImpl: async () => ({ status: 200 }),
+        readLogs: async () => '', writeEvidence: async () => {}, now: () => Date.now(), commit: 'abc123', sleep: async () => {}
+    });
+    await stopController.stop(config);
+    assert.deepEqual(composeArgs, [['down', '--remove-orphans']]);
+    assert.equal(composeArgs.flat().includes('-v'), false);
+
+    const statusCalls = [];
+    const statusController = createController({
+        runCompose: async request => { statusCalls.push(request.action); return 'running'; },
+        fetchImpl: async () => ({ status: 200 }), readLogs: async () => url, writeEvidence: async () => {},
+        now: () => Date.now(), commit: 'abc123', sleep: async () => {}
+    });
+    const status = await statusController.status(config);
+    assert.deepEqual(statusCalls, ['status']);
+    assert.equal(status.url, url);
+    assert.equal(status.readiness, 200);
+
+    const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+    for (const name of ['staging:tunnel:start', 'staging:tunnel:status', 'staging:tunnel:stop']) {
+        assert.equal(packageJson.scripts[name], `node scripts/quick-tunnel-staging.js ${name.split(':').at(-1)}`);
+    }
+
+    const output = [];
+    const originalLog = console.log;
+    console.log = message => output.push(message);
+    try {
+        await runCli(['node', 'quick-tunnel-staging.js', 'start'], {
+            cwd: root,
+            environment: valid,
+            dependencies: {
+                runCompose: async () => {}, fetchImpl: async () => ({ status: 200 }), readLogs: async () => url,
+                writeEvidence: async () => {}, now: () => Date.parse('2026-09-02T00:00:00.000Z'), commit: 'abc123', sleep: async () => {}
+            }
+        });
+    } finally {
+        console.log = originalLog;
+    }
+    assert.deepEqual(output, ['TEMPORARY STAGING — NOT PRODUCTION', url]);
+    assert.equal(output.join('\n').includes(valid.QLCD_STAGING_SECRET), false);
+    await assert.rejects(() => runCli(['node', 'quick-tunnel-staging.js', 'deploy']), /start\|status\|stop/);
+}
+
+lifecycleTests().then(() => console.log('quick tunnel staging tests passed')).catch(error => {
+    console.error(error.stack || error.message);
+    process.exitCode = 1;
+});
