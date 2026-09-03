@@ -6,9 +6,9 @@
  */
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const db = require('./index');
+const { migrationChecksum, matchesMigrationChecksum } = require('../lib/migration-checksum');
 
 function chayMigration() {
     db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -22,12 +22,12 @@ function chayMigration() {
 
     for (const f of files) {
         const sql = fs.readFileSync(path.join(__dirname, f), 'utf8');
-        const checksum = crypto.createHash('sha256').update(sql).digest('hex');
+        const checksum = migrationChecksum(sql);
         const daChay = db.prepare(
             'SELECT checksum_sha256 FROM schema_migrations WHERE ten_file=?'
         ).get(f);
         if (daChay) {
-            if (daChay.checksum_sha256 !== checksum) {
+            if (!matchesMigrationChecksum(daChay.checksum_sha256, sql)) {
                 throw new Error(`Migration ${f} đã bị thay đổi sau khi áp dụng`);
             }
             console.log(`  [ĐÃ CÓ] ${f}`);

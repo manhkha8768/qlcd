@@ -2,9 +2,12 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
+const { spawnSync } = require('child_process');
 const bcrypt = require('bcryptjs');
 const Database = require('better-sqlite3');
 const { applyMigrations, createUatStaging, sha256File } = require('../lib/uat-staging');
+const { matchesMigrationChecksum } = require('../lib/migration-checksum');
 
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'qlcd-uat-'));
 const sourceDb = path.join(temp, 'source.db');
@@ -18,6 +21,26 @@ function check(name, condition, detail = '') {
 
 (async () => {
     console.log('\n===== TEST TASK 26 UAT DỮ LIỆU THỰC =====');
+    const compatibilityDbPath = path.join(temp, 'migration-eol-compatibility.db');
+    const compatibilityDb = new Database(compatibilityDbPath);
+    applyMigrations(compatibilityDb);
+    const firstMigrationLf = fs.readFileSync(path.join(__dirname, '..', 'db', '01-schema.sql'), 'utf8').replace(/\r\n/g, '\n');
+    const firstMigrationLfChecksum = crypto.createHash('sha256').update(firstMigrationLf).digest('hex');
+    compatibilityDb.prepare("UPDATE schema_migrations SET checksum_sha256=? WHERE ten_file='01-schema.sql'").run(firstMigrationLfChecksum);
+    compatibilityDb.close();
+    const compatibilityRun = spawnSync(process.execPath, ['-e', "const db=require('./db/init').khoiTaoDatabase(); db.close();"], {
+        cwd: path.join(__dirname, '..'),
+        env: { ...process.env, NODE_ENV: 'test', QLCD_DB: compatibilityDbPath, QLCD_ADMIN_PASS: password },
+        encoding: 'utf8'
+    });
+    check('Migration checksum tương thích LF/CRLF giữa Windows và Linux', compatibilityRun.status === 0, compatibilityRun.stderr);
+    const compatibilityUatDb = new Database(compatibilityDbPath);
+    let compatibilityUatPassed = true;
+    try { applyMigrations(compatibilityUatDb); } catch (_) { compatibilityUatPassed = false; }
+    compatibilityUatDb.close();
+    check('UAT migration dùng cùng quy tắc checksum đa nền tảng', compatibilityUatPassed);
+    check('Checksum vẫn chặn thay đổi nội dung migration', !matchesMigrationChecksum(firstMigrationLfChecksum, `${firstMigrationLf}\nSELECT 1;`));
+
     const source = new Database(sourceDb);
     applyMigrations(source);
     const unit1 = Number(source.prepare("INSERT INTO phan_xuong(ma,ten,ten_ngan,loai,quan_doc) VALUES('REAL-A','PX Nguồn A','A','san_xuat','Nguyễn Văn Nhạy')").run().lastInsertRowid);
