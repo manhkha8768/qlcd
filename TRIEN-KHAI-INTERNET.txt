@@ -269,7 +269,7 @@ Hệ thống không khởi động, báo cấu hình chưa an toàn
 
 Mất mật khẩu admin
     → Trên máy chủ chạy:
-      cd /opt/qlcd && node -e "const b=require('bcryptjs'),d=require('./db');d.prepare('UPDATE nguoi_dung SET mat_khau_hash=?, phai_doi_mat_khau=1 WHERE ten_dang_nhap=?').run(b.hashSync('DatLaiTamThoi2026',10),'admin');console.log('Xong')"
+      cd /opt/qlcd && node scripts/dat-lai-mat-khau.js "MAT_KHAU_MOI_8_DEN_128_KY_TU"
       Rồi đăng nhập và đổi ngay.
 
 Nghi ngờ bị xâm nhập

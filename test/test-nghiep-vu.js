@@ -69,9 +69,9 @@ const congNgay = (n) => {
     const vt2 = rs.data.id;
 
     await api('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'cddl1', mat_khau: 'dl123', vai_tro: 'px', phan_xuong_id: px1 } });
+        body: { ten_dang_nhap: 'cddl1', mat_khau: 'dl123456', vai_tro: 'px', phan_xuong_id: px1 } });
     await api('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223', vai_tro: 'px', phan_xuong_id: px2 } });
+        body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223456', vai_tro: 'px', phan_xuong_id: px2 } });
 
     const nhom = (ma) => db.prepare('SELECT id FROM nhom_thiet_bi WHERE ma=?').get(ma).id;
 
@@ -90,7 +90,7 @@ const congNgay = (n) => {
        Đã chuyển sang kiến trúc giao dịch thống nhất ở Giai đoạn 3,
        kiểm thử nằm trong test/test-giao-dich.js                    */
     await api('/api/auth/dang-xuat', { method: 'POST' });
-    await api('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'cddl1', mat_khau: 'dl123' } });
+    await api('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'cddl1', mat_khau: 'dl123456' } });
 
     /* =============== BẢO DƯỠNG - SỬA CHỮA =============== */
     ds.push('\n  --- Bảo dưỡng - sửa chữa ---');
@@ -252,7 +252,7 @@ const congNgay = (n) => {
     /* ---------- Phân quyền chéo ---------- */
     ds.push('\n  --- Phân quyền ---');
     await api('/api/auth/dang-xuat', { method: 'POST' });
-    await api('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223' } });
+    await api('/api/auth/dang-nhap', { method: 'POST', body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223456' } });
 
     rs = await api('/api/bao-duong/phieu');
     kt('PX DL2 không thấy phiếu sửa chữa của DL1', rs.data.length === 0, `thấy ${rs.data.length}`);

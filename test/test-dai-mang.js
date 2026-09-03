@@ -192,10 +192,10 @@ function kt(ten, dk, ct = '') {
 
     await api('/api/danh-muc/phan-xuong', null, { method: 'POST', body: { ma: 'DL1', ten: 'Đào lò 1' } });
     await api('/api/auth/tai-khoan', null, { method: 'POST',
-        body: { ten_dang_nhap: 'px1', mat_khau: 'px123', vai_tro: 'px', phan_xuong_id: 1 } });
+        body: { ten_dang_nhap: 'px1', mat_khau: 'px123456', vai_tro: 'px', phan_xuong_id: 1 } });
     cookie = '';
     await api('/api/auth/dang-nhap', null, { method: 'POST',
-        body: { ten_dang_nhap: 'px1', mat_khau: 'px123' } });
+        body: { ten_dang_nhap: 'px1', mat_khau: 'px123456' } });
 
     rs = await api('/api/mang/dai', null);
     kt('Người không phải quản trị không xem được danh sách dải', rs.status === 403);

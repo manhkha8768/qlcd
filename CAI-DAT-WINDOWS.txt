@@ -83,7 +83,7 @@ Cài pm2 để hệ thống tự chạy lại khi máy chủ khởi động:
 3. Vẫn ở QUẢN TRỊ, bấm "Thêm tài khoản" cho từng phân xưởng
    - Vai trò "Cơ điện phân xưởng": chỉ thao tác dữ liệu phân xưởng mình
    - Vai trò "Cơ điện công ty": xem toàn công ty và duyệt dữ liệu
-   - Mật khẩu 4-6 ký tự
+   - Mật khẩu từ 8 đến 128 ký tự
 
 4. Mỗi phân xưởng đăng nhập, vào mục TẢI DỮ LIỆU, tải file Excel
    danh sách TSCĐ/CCDC của phân xưởng mình lên.
@@ -223,7 +223,7 @@ Phục hồi = chép file qlcd.db trở lại thư mục db\ rồi chạy lại 
 
 Quên mật khẩu admin
     -> chạy lệnh sau tại thư mục qlcd:
-       node -e "const b=require('bcryptjs'),d=require('./db');d.prepare('UPDATE nguoi_dung SET mat_khau_hash=? WHERE ten_dang_nhap=?').run(b.hashSync('admin123',10),'admin');console.log('Da dat lai mat khau admin ve admin123')"
+       node scripts\dat-lai-mat-khau.js "MAT_KHAU_MOI_8_DEN_128_KY_TU"
 
 Máy khác không vào được
     -> kiểm tra Windows Firewall, cho phép Node.js qua cổng 3000

@@ -71,7 +71,7 @@ VIEC PHAI LAM SAU KHI CAI
    Ma dat ngan, viet hoa, khong dau: DL1, DL2, KT1
 
 3. Van o QUAN TRI -> Them tai khoan cho tung phan xuong
-   Vai tro "Co dien phan xuong", mat khau 4-6 ky tu
+   Vai tro "Co dien phan xuong", mat khau tu 8 den 128 ky tu
 
 4. Moi phan xuong dang nhap, vao TAI DU LIEU, dua file Excel
    TSCD/CCDC len. Khong can sua file theo mau.

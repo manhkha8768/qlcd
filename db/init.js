@@ -9,6 +9,7 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const db = require('./index');
 const { migrationChecksum, matchesMigrationChecksum } = require('../lib/migration-checksum');
+const { passwordLengthError } = require('../lib/password-policy');
 
 function chayMigration() {
     db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -61,12 +62,14 @@ function taoAdmin() {
         return;
     }
     const matKhau = process.env.QLCD_ADMIN_PASS || 'admin123';
+    const loiDoDai = passwordLengthError(matKhau);
+    if (loiDoDai) throw new Error(loiDoDai);
     // Dùng mật khẩu khởi tạo thì bắt đổi ngay ở lần đăng nhập đầu tiên
     const laMacDinh = !process.env.QLCD_ADMIN_PASS ? 1 : 0;
     db.prepare(`INSERT INTO nguoi_dung (ten_dang_nhap, mat_khau_hash, ho_ten, chuc_vu, vai_tro,
                 phai_doi_mat_khau) VALUES (?,?,?,?,'admin',?)`)
       .run('admin', bcrypt.hashSync(matKhau, 10), 'Quản trị hệ thống', 'Admin', laMacDinh);
-    console.log(`  Đã tạo tài khoản admin / ${matKhau}  <-- ĐỔI MẬT KHẨU NGAY SAU KHI ĐĂNG NHẬP`);
+    console.log('  Đã tạo tài khoản admin. Đổi mật khẩu ngay sau khi đăng nhập.');
 }
 
 function khoiTaoDatabase() {

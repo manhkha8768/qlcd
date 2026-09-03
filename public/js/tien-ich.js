@@ -14,6 +14,24 @@ const TT = {
 
 const tt = k => TT[k] || k || '';
 
+const MAT_KHAU_LOI_DO_DAI = 'Mật khẩu phải có độ dài từ 8 đến 128 ký tự';
+
+function loiDoDaiMatKhau(matKhau) {
+    return typeof matKhau === 'string' && matKhau.length >= 8 && matKhau.length <= 128
+        ? ''
+        : MAT_KHAU_LOI_DO_DAI;
+}
+
+function capNhatLoiMatKhau(inputId, errorId) {
+    const input = document.getElementById(inputId);
+    const error = document.getElementById(errorId);
+    if (!input) return MAT_KHAU_LOI_DO_DAI;
+    const message = loiDoDaiMatKhau(input.value);
+    input.setCustomValidity(message);
+    if (error) error.textContent = message;
+    return message;
+}
+
 function nhanTT(k) {
     return `<span class="nhan-tt tt-${k || 'nhap'}">${tt(k)}</span>`;
 }

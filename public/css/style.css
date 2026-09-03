@@ -290,6 +290,7 @@ label { display: block; font-size: 11.5px; font-weight: 600; color: var(--chu-nh
 .bang-xem-truoc td { max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .ghi-nho { font-size: 12px; color: var(--chu-nhat); margin-top: 6px; }
+.loi-truong { color: var(--nguy-hiem, #b42318); font-size: 12px; min-height: 16px; margin-top: 4px; }
 .canh-bao-o { color: #8A5C00; font-size: 11.5px; }
 .loi-o { color: var(--do); font-size: 11.5px; }
 

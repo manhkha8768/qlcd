@@ -4,6 +4,7 @@ const db = require('../db');
 const { dangNhap, chiAdmin } = require('../middleware/quyen');
 const BM = require('../middleware/bao-mat');
 const { catPhienCuaNguoi, danhSachPhien } = require('../lib/phien-sqlite');
+const { passwordLengthError } = require('../lib/password-policy');
 
 const r = express.Router();
 
@@ -87,10 +88,8 @@ r.get('/toi', dangNhap, (req, res) => {
 
 r.post('/doi-mat-khau', dangNhap, (req, res) => {
     const { mat_khau_cu, mat_khau_moi } = req.body || {};
-    const toiThieu = BM.LA_INTERNET ? BM.cauHinhSo('bm_do_dai_mat_khau', 8) : 4;
-    if (!mat_khau_moi || mat_khau_moi.length < toiThieu) {
-        return res.status(400).json({ loi: `Mật khẩu mới tối thiểu ${toiThieu} ký tự` });
-    }
+    const loiDoDai = passwordLengthError(mat_khau_moi);
+    if (loiDoDai) return res.status(400).json({ loi: loiDoDai });
     if (BM.LA_INTERNET && /^(admin|123456|password|qlcd)/i.test(mat_khau_moi)) {
         return res.status(400).json({ loi: 'Mật khẩu quá dễ đoán, chọn chuỗi khác' });
     }
@@ -117,12 +116,9 @@ r.get('/tai-khoan', dangNhap, chiAdmin, (req, res) => {
 
 r.post('/tai-khoan', dangNhap, chiAdmin, (req, res) => {
     const { ten_dang_nhap, mat_khau, ho_ten, chuc_vu, vai_tro, phan_xuong_id, tam_thoi } = req.body || {};
-    if (!ten_dang_nhap || !mat_khau) return res.status(400).json({ loi: 'Thiếu tên đăng nhập hoặc mật khẩu' });
-    const toiThieu = BM.LA_INTERNET ? BM.cauHinhSo('bm_do_dai_mat_khau', 8) : 4;
-    const toiDa = BM.LA_INTERNET ? 128 : 6;
-    if (mat_khau.length < toiThieu || mat_khau.length > toiDa) {
-        return res.status(400).json({ loi: `Mật khẩu từ ${toiThieu} đến ${toiDa} ký tự` });
-    }
+    if (!ten_dang_nhap) return res.status(400).json({ loi: 'Thiếu tên đăng nhập' });
+    const loiDoDai = passwordLengthError(mat_khau);
+    if (loiDoDai) return res.status(400).json({ loi: loiDoDai });
     if (vai_tro === 'px' && !phan_xuong_id) {
         return res.status(400).json({ loi: 'Tài khoản phân xưởng phải chọn phân xưởng' });
     }
@@ -154,6 +150,11 @@ r.put('/tai-khoan/:id', dangNhap, chiAdmin, (req, res) => {
     const u = db.prepare('SELECT * FROM nguoi_dung WHERE id = ?').get(req.params.id);
     if (!u) return res.status(404).json({ loi: 'Không tìm thấy tài khoản' });
 
+    if (mat_khau) {
+        const loiDoDai = passwordLengthError(mat_khau);
+        if (loiDoDai) return res.status(400).json({ loi: loiDoDai });
+    }
+
     db.prepare(`UPDATE nguoi_dung SET ho_ten=?, chuc_vu=?, vai_tro=?, phan_xuong_id=?, hoat_dong=?
                 WHERE id=?`)
       .run(ho_ten ?? u.ho_ten, chuc_vu ?? u.chuc_vu, vai_tro ?? u.vai_tro,
@@ -161,11 +162,6 @@ r.put('/tai-khoan/:id', dangNhap, chiAdmin, (req, res) => {
            u.id);
 
     if (mat_khau) {
-        const toiThieu = BM.LA_INTERNET ? BM.cauHinhSo('bm_do_dai_mat_khau', 8) : 4;
-        const toiDa = BM.LA_INTERNET ? 128 : 6;
-        if (mat_khau.length < toiThieu || mat_khau.length > toiDa) {
-            return res.status(400).json({ loi: `Mật khẩu từ ${toiThieu} đến ${toiDa} ký tự` });
-        }
         db.prepare(`UPDATE nguoi_dung SET mat_khau_hash=?, phai_doi_mat_khau=1 WHERE id=?`)
           .run(bcrypt.hashSync(mat_khau, 10), u.id);
     }

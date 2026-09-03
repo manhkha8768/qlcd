@@ -67,12 +67,12 @@ const pxCua = (id) => db.prepare('SELECT phan_xuong_id FROM thiet_bi WHERE id=?'
     const vtDich = rs.data.id;
 
     await A('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'cdcty', mat_khau: 'cd123', ho_ten: 'Cơ điện công ty', vai_tro: 'cd_cty' } });
+        body: { ten_dang_nhap: 'cdcty', mat_khau: 'cd123456', ho_ten: 'Cơ điện công ty', vai_tro: 'cd_cty' } });
     await A('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'px1', mat_khau: 'px123', ho_ten: 'CĐ Đào lò 1', vai_tro: 'px', phan_xuong_id: px1 } });
+        body: { ten_dang_nhap: 'px1', mat_khau: 'px123456', ho_ten: 'CĐ Đào lò 1', vai_tro: 'px', phan_xuong_id: px1 } });
     await A('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'px14', mat_khau: 'px143', ho_ten: 'CĐ Đào lò 14', vai_tro: 'px', phan_xuong_id: px14 } });
-    await dn(B, 'cdcty', 'cd123'); await dn(C, 'px1', 'px123'); await dn(D, 'px14', 'px143');
+        body: { ten_dang_nhap: 'px14', mat_khau: 'px143456', ho_ten: 'CĐ Đào lò 14', vai_tro: 'px', phan_xuong_id: px14 } });
+    await dn(B, 'cdcty', 'cd123456'); await dn(C, 'px1', 'px123456'); await dn(D, 'px14', 'px143456');
 
     const nhom = (m) => db.prepare('SELECT id FROM nhom_thiet_bi WHERE ma=?').get(m).id;
     const taoTB = (ten, ma, nm, px, sl, ng) => db.prepare(`

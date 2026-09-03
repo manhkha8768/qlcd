@@ -61,10 +61,10 @@ const homNay = () => new Date().toISOString().slice(0, 10);
     const px14 = rs.data.id;
 
     await A('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'px1', mat_khau: 'px123', vai_tro: 'px', phan_xuong_id: px1 } });
+        body: { ten_dang_nhap: 'px1', mat_khau: 'px123456', vai_tro: 'px', phan_xuong_id: px1 } });
     await A('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'px14', mat_khau: 'px143', vai_tro: 'px', phan_xuong_id: px14 } });
-    await dn(P1, 'px1', 'px123'); await dn(P2, 'px14', 'px143');
+        body: { ten_dang_nhap: 'px14', mat_khau: 'px143456', vai_tro: 'px', phan_xuong_id: px14 } });
+    await dn(P1, 'px1', 'px123456'); await dn(P2, 'px14', 'px143456');
 
     const nhom = (m) => db.prepare('SELECT id FROM nhom_thiet_bi WHERE ma=?').get(m).id;
     rs = await A('/api/thiet-bi', { method: 'POST', body: {

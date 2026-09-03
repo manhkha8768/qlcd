@@ -15,6 +15,8 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { chiAdmin, dangNhap } = require('../middleware/quyen');
+const { catPhienCuaNguoi } = require('../lib/phien-sqlite');
+const { passwordLengthError } = require('../lib/password-policy');
 const router = express.Router();
 
 // =====================================================================
@@ -76,11 +78,13 @@ router.get('/taikhoan/:id', chiAdmin, (req, res) => {
 // POST: Thêm tài khoản
 router.post('/taikhoan', chiAdmin, (req, res) => {
     try {
-        const { ten_dang_nhap, ho_ten, chuc_vu, phan_xuong_id, vai_tro_list } = req.body;
+        const { ten_dang_nhap, mat_khau, ho_ten, chuc_vu, phan_xuong_id, vai_tro_list } = req.body || {};
 
         if (!ten_dang_nhap || !ho_ten) {
             return res.status(400).json({ loi: 'Thiếu tên đăng nhập hoặc họ tên' });
         }
+        const loiDoDai = passwordLengthError(mat_khau);
+        if (loiDoDai) return res.status(400).json({ loi: loiDoDai });
 
         // Kiểm tra tên đăng nhập trùng
         const co = db.prepare('SELECT COUNT(*) n FROM nguoi_dung WHERE ten_dang_nhap = ?').get(ten_dang_nhap);
@@ -88,9 +92,8 @@ router.post('/taikhoan', chiAdmin, (req, res) => {
             return res.status(400).json({ loi: 'Tên đăng nhập đã tồn tại' });
         }
 
-        // Mật khẩu tạm: 4-6 ký tự, hết hạn 24h
-        const matKhauTam = Math.random().toString(36).substring(2, 8);
-        const hash = bcrypt.hashSync(matKhauTam, 10);
+        // Mật khẩu tạm do quản trị viên nhập, hết hạn 24h và bắt buộc đổi sau đăng nhập.
+        const hash = bcrypt.hashSync(mat_khau, 10);
         const hetHan = new Date(Date.now() + 24*60*60*1000).toISOString();
 
         const chay = db.transaction(() => {
@@ -127,8 +130,8 @@ router.post('/taikhoan', chiAdmin, (req, res) => {
         res.json({
             ok: true,
             id: ndId,
-            mat_khau_tam: matKhauTam,
-            message: `Tài khoản tạm với mật khẩu: ${matKhauTam}, hết hạn: ${hetHan}`
+            het_han: hetHan,
+            message: `Tài khoản tạm đã được tạo, hết hạn: ${hetHan}`
         });
     } catch (e) {
         res.status(500).json({ loi: e.message });
@@ -249,8 +252,10 @@ router.post('/taikhoan/:id/reset-matkhau', chiAdmin, (req, res) => {
         const u = db.prepare('SELECT id FROM nguoi_dung WHERE id = ?').get(ndId);
         if (!u) return res.status(404).json({ loi: 'Tài khoản không tồn tại' });
 
-        const matKhauTam = Math.random().toString(36).substring(2, 8);
-        const hash = bcrypt.hashSync(matKhauTam, 10);
+        const matKhau = req.body?.mat_khau;
+        const loiDoDai = passwordLengthError(matKhau);
+        if (loiDoDai) return res.status(400).json({ loi: loiDoDai });
+        const hash = bcrypt.hashSync(matKhau, 10);
         const hetHan = new Date(Date.now() + 24*60*60*1000).toISOString();
 
         db.prepare(`
@@ -258,11 +263,12 @@ router.post('/taikhoan/:id/reset-matkhau', chiAdmin, (req, res) => {
             SET mat_khau_hash = ?, tam_thoi = 1, het_han = ?, phai_doi_mat_khau = 1
             WHERE id = ?
         `).run(hash, hetHan, ndId);
+        catPhienCuaNguoi(ndId);
 
         res.json({
             ok: true,
-            mat_khau_tam: matKhauTam,
-            message: `Mật khẩu tạm: ${matKhauTam}, hết hạn: ${hetHan}`
+            het_han: hetHan,
+            message: `Đã đặt lại mật khẩu tạm, hết hạn: ${hetHan}`
         });
     } catch (e) {
         res.status(500).json({ loi: e.message });

@@ -98,7 +98,7 @@ function kt(ten, dk, ct = '') {
     rs = await A('/api/auth/doi-mat-khau', { method: 'POST',
         body: { mat_khau_cu: 'MatKhauManh2026', mat_khau_moi: 'abc12' } });
     kt('Chặn mật khẩu ngắn khi chạy internet',
-       rs.status === 400 && /tối thiểu 8/.test(rs.data.loi), rs.data.loi);
+       rs.status === 400 && rs.data.loi === 'Mật khẩu phải có độ dài từ 8 đến 128 ký tự', rs.data.loi);
 
     rs = await A('/api/auth/doi-mat-khau', { method: 'POST',
         body: { mat_khau_cu: 'MatKhauManh2026', mat_khau_moi: 'admin12345' } });

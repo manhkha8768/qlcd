@@ -39,6 +39,7 @@
         .hidden { display: none; }
         .success { color: #27ae60; background: #d5f4e6; padding: 10px; border-radius: 4px; margin: 10px 0; }
         .error { color: #e74c3c; background: #fadbd8; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .field-error { color: #c0392b; font-size: 12px; min-height: 16px; margin-top: 4px; }
 
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid #ddd; }
         .tab { padding: 10px 15px; cursor: pointer; border: none; background: none; color: #7f8c8d; }
@@ -105,6 +106,12 @@
                 <input type="text" id="ndHoTen" placeholder="Ngân Kỹ Thuật">
             </div>
             <div class="form-group">
+                <label>Mật khẩu tạm (8–128 ký tự):</label>
+                <input type="password" id="ndMatKhau" minlength="8" maxlength="128"
+                    autocomplete="new-password" oninput="validatePasswordField('ndMatKhau','ndMatKhauError')">
+                <div id="ndMatKhauError" class="field-error" aria-live="polite"></div>
+            </div>
+            <div class="form-group">
                 <label>Chức vụ:</label>
                 <input type="text" id="ndChucVu" placeholder="Kỹ sư">
             </div>
@@ -120,6 +127,18 @@
             </div>
             <button class="btn" onclick="luuTaiKhoanMoi()">Lưu</button>
             <button class="btn" onclick="document.getElementById('formThemTaiKhoan').classList.add('hidden')">Hủy</button>
+        </div>
+
+        <div id="formResetMatKhau" class="hidden" style="margin-top: 15px; padding: 15px; background: #ecf0f1; border-radius: 4px;">
+            <h3>Đặt lại mật khẩu</h3>
+            <div class="form-group">
+                <label>Mật khẩu tạm mới (8–128 ký tự):</label>
+                <input type="password" id="resetMatKhau" minlength="8" maxlength="128"
+                    autocomplete="new-password" oninput="validatePasswordField('resetMatKhau','resetMatKhauError')">
+                <div id="resetMatKhauError" class="field-error" aria-live="polite"></div>
+            </div>
+            <button class="btn" onclick="submitResetTaiKhoan()">Đặt lại mật khẩu</button>
+            <button class="btn" onclick="closeResetTaiKhoan()">Hủy</button>
         </div>
 
         <table class="table" id="taikhoanTable">
@@ -303,6 +322,18 @@
 <script>
 const API = '/api/quantri';
 let currentTab = 'taikhoan';
+let resetTaiKhoanId = null;
+const PASSWORD_LENGTH_ERROR = 'Mật khẩu phải có độ dài từ 8 đến 128 ký tự';
+
+function validatePasswordField(inputId, errorId) {
+    const input = document.getElementById(inputId);
+    const error = document.getElementById(errorId);
+    const message = input && input.value.length >= 8 && input.value.length <= 128
+        ? '' : PASSWORD_LENGTH_ERROR;
+    if (input) input.setCustomValidity(message);
+    if (error) error.textContent = message;
+    return message;
+}
 
 function switchTab(tab) {
     // Ẩn tất cả tab
@@ -364,30 +395,51 @@ async function luuTaiKhoanMoi() {
     const tenDangNhap = document.getElementById('ndTenDangNhap').value;
     const hoTen = document.getElementById('ndHoTen').value;
     const chucVu = document.getElementById('ndChucVu').value;
+    const matKhau = document.getElementById('ndMatKhau').value;
     const vaiTroList = Array.from(document.getElementById('ndVaiTroList').selectedOptions).map(o => o.value);
 
     if (!tenDangNhap || !hoTen) {
         showThongBao('Nhập đầy đủ tên đăng nhập và họ tên', 'error');
         return;
     }
+    if (validatePasswordField('ndMatKhau', 'ndMatKhauError')) return;
 
     const result = await api('/taikhoan', {
         method: 'POST',
-        body: JSON.stringify({ ten_dang_nhap: tenDangNhap, ho_ten: hoTen, chuc_vu: chucVu, vai_tro_list: vaiTroList })
+        body: JSON.stringify({ ten_dang_nhap: tenDangNhap, mat_khau: matKhau,
+            ho_ten: hoTen, chuc_vu: chucVu, vai_tro_list: vaiTroList })
     });
 
     if (result.ok) {
-        showThongBao(`Tài khoản tạo thành công! Mật khẩu tạm: ${result.mat_khau_tam}`, 'success');
+        showThongBao('Tài khoản tạm đã được tạo thành công.', 'success');
         document.getElementById('formThemTaiKhoan').classList.add('hidden');
         taiDanhSachTaiKhoan();
     }
 }
 
 async function resetTaiKhoan(id) {
-    if (!confirm('Reset mật khẩu tài khoản này?')) return;
-    const result = await api(`/taikhoan/${id}/reset-matkhau`, { method: 'POST' });
+    resetTaiKhoanId = id;
+    document.getElementById('resetMatKhau').value = '';
+    document.getElementById('resetMatKhauError').textContent = '';
+    document.getElementById('formResetMatKhau').classList.remove('hidden');
+    document.getElementById('resetMatKhau').focus();
+}
+
+function closeResetTaiKhoan() {
+    resetTaiKhoanId = null;
+    document.getElementById('formResetMatKhau').classList.add('hidden');
+}
+
+async function submitResetTaiKhoan() {
+    if (resetTaiKhoanId === null || validatePasswordField('resetMatKhau', 'resetMatKhauError')) return;
+    if (!confirm('Đặt lại mật khẩu tài khoản này?')) return;
+    const matKhau = document.getElementById('resetMatKhau').value;
+    const result = await api(`/taikhoan/${resetTaiKhoanId}/reset-matkhau`, {
+        method: 'POST', body: JSON.stringify({ mat_khau: matKhau })
+    });
     if (result.ok) {
-        showThongBao(`Mật khẩu tạm: ${result.mat_khau_tam}`, 'success');
+        closeResetTaiKhoan();
+        showThongBao('Đã đặt lại mật khẩu tạm. Người dùng phải đổi mật khẩu sau khi đăng nhập.', 'success');
     }
 }
 

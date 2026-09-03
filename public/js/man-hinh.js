@@ -487,7 +487,10 @@ function formTaiKhoan() {
     moHopThoai('Thêm tài khoản', `
         <div class="hang">
             <div class="o-nhap"><label>Tên đăng nhập *</label><input id="tk-ten" placeholder="cddl1"></div>
-            <div class="o-nhap"><label>Mật khẩu * (4–6 ký tự)</label><input id="tk-mk" maxlength="6"></div>
+            <div class="o-nhap"><label>Mật khẩu * (8–128 ký tự)</label>
+                <input id="tk-mk" type="password" minlength="8" maxlength="128"
+                    autocomplete="new-password" oninput="capNhatLoiMatKhau('tk-mk','tk-mk-loi')">
+                <div id="tk-mk-loi" class="loi-truong" aria-live="polite"></div></div>
         </div>
         <div class="o-nhap"><label>Họ tên</label><input id="tk-hoten"></div>
         <div class="hang">
@@ -505,12 +508,15 @@ function formTaiKhoan() {
             Tài khoản tạm, tự hết hạn sau 24 giờ</label></div>`,
         [{ ten: 'Huỷ', chay: dongHopThoai },
          { ten: 'Thêm tài khoản', lop: 'chinh-nut', chay: async () => {
+            const matKhau = document.getElementById('tk-mk').value;
             const body = {
-                ten_dang_nhap: gt('tk-ten'), mat_khau: gt('tk-mk'), ho_ten: gt('tk-hoten'),
+                ten_dang_nhap: gt('tk-ten'), mat_khau: matKhau, ho_ten: gt('tk-hoten'),
                 vai_tro: gt('tk-vt'), phan_xuong_id: gt('tk-px') || null,
                 tam_thoi: document.getElementById('tk-tam').checked ? 1 : 0
             };
             if (!body.ten_dang_nhap || !body.mat_khau) return baoTrongHopThoai('Nhập tên đăng nhập và mật khẩu');
+            const loiMatKhau = capNhatLoiMatKhau('tk-mk', 'tk-mk-loi');
+            if (loiMatKhau) return baoTrongHopThoai(loiMatKhau);
             try {
                 await api('/auth/tai-khoan', { method: 'POST', body });
                 dongHopThoai(); veManHinh(); bao('Đã tạo tài khoản');

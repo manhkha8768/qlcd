@@ -101,6 +101,7 @@ function kt(ten, dk, ct = '') {
     rs = await api('/api/quantri/taikhoan', { method: 'POST', body: {
         ten_dang_nhap: 'ngankythuat',
         ho_ten: 'Ngân kỹ thuật',
+        mat_khau: 'NganKyThuat-2026!',
         chuc_vu: 'Kỹ sư',
         vai_tro_list: ['quanly_px']
     }});
@@ -119,8 +120,10 @@ function kt(ten, dk, ct = '') {
     kt('Sửa tài khoản', rs.status === 200);
 
     /* --- Reset mật khẩu --- */
-    rs = await api(`/api/quantri/taikhoan/${tk_id}/reset-matkhau`, { method: 'POST' });
-    kt('Reset mật khẩu tạm', rs.status === 200 && rs.data.mat_khau_tam);
+    rs = await api(`/api/quantri/taikhoan/${tk_id}/reset-matkhau`, { method: 'POST',
+        body: { mat_khau: 'Reset-2026!' } });
+    kt('Reset mật khẩu tạm không trả mật khẩu rõ',
+       rs.status === 200 && !rs.data.mat_khau_tam && !JSON.stringify(rs.data).includes('Reset-2026!'));
 
     /* --- Audit --- */
     const soAudit = db.prepare('SELECT COUNT(*) n FROM audit_quyen').get().n;

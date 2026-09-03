@@ -99,20 +99,20 @@ function kt(ten, dieuKien, chiTiet = '') {
 
     /* ---------- 3. Tài khoản phân xưởng ---------- */
     rs = await api('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'cddl1', mat_khau: 'dl123', ho_ten: 'Cơ điện DL1',
+        body: { ten_dang_nhap: 'cddl1', mat_khau: 'dl123456', ho_ten: 'Cơ điện DL1',
                 vai_tro: 'px', phan_xuong_id: px1 } });
-    kt('Tạo tài khoản phân xưởng (mật khẩu 5 ký tự)', rs.status === 200);
+    kt('Tạo tài khoản phân xưởng (mật khẩu 8 ký tự)', rs.status === 200);
 
     rs = await api('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'dai', mat_khau: 'matkhauquadai', vai_tro: 'xem' } });
-    kt('Chặn mật khẩu ngoài khoảng 4-6 ký tự', rs.status === 400);
+        body: { ten_dang_nhap: 'dai', mat_khau: 'X'.repeat(129), vai_tro: 'xem' } });
+    kt('Chặn mật khẩu dài hơn 128 ký tự', rs.status === 400);
 
     rs = await api('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'tam1', mat_khau: 'tam12', vai_tro: 'xem', tam_thoi: 1 } });
+        body: { ten_dang_nhap: 'tam1', mat_khau: 'tam12345', vai_tro: 'xem', tam_thoi: 1 } });
     kt('Tạo tài khoản tạm có hạn 24h', rs.status === 200 && !!rs.data.het_han);
 
     rs = await api('/api/auth/tai-khoan', { method: 'POST',
-        body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223', ho_ten: 'Cơ điện DL2',
+        body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223456', ho_ten: 'Cơ điện DL2',
                 vai_tro: 'px', phan_xuong_id: px2 } });
     kt('Tạo tài khoản phân xưởng DL2', rs.status === 200);
 
@@ -216,7 +216,7 @@ function kt(ten, dieuKien, chiTiet = '') {
     /* ---------- 6. Phân quyền phân xưởng ---------- */
     await api('/api/auth/dang-xuat', { method: 'POST' });
     rs = await api('/api/auth/dang-nhap', { method: 'POST',
-        body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223' } });
+        body: { ten_dang_nhap: 'cddl2', mat_khau: 'dl223456' } });
     kt('Đăng nhập tài khoản phân xưởng DL2', rs.status === 200);
 
     rs = await api('/api/thiet-bi?moi_trang=100');

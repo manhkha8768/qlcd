@@ -109,12 +109,12 @@ const conLai = (id) => {
     const px14 = rs.data.id;
 
     await A('/api/auth/tai-khoan', { method: 'POST', body: { ten_dang_nhap: 'cn1',
-        mat_khau: 'cn123', ho_ten: 'Chủ nhiệm CT Đào lò 1', vai_tro: 'px', phan_xuong_id: px1 } });
+        mat_khau: 'cn123456', ho_ten: 'Chủ nhiệm CT Đào lò 1', vai_tro: 'px', phan_xuong_id: px1 } });
     await A('/api/auth/tai-khoan', { method: 'POST', body: { ten_dang_nhap: 'cn14',
-        mat_khau: 'cn143', ho_ten: 'Chủ nhiệm CT Đào lò 14', vai_tro: 'px', phan_xuong_id: px14 } });
+        mat_khau: 'cn143456', ho_ten: 'Chủ nhiệm CT Đào lò 14', vai_tro: 'px', phan_xuong_id: px14 } });
     await A('/api/auth/tai-khoan', { method: 'POST', body: { ten_dang_nhap: 'xemtt',
-        mat_khau: 'xem12', ho_ten: 'Người xem', vai_tro: 'xem' } });
-    await dn(CN1, 'cn1', 'cn123'); await dn(CN2, 'cn14', 'cn143'); await dn(X, 'xemtt', 'xem12');
+        mat_khau: 'xem12345', ho_ten: 'Người xem', vai_tro: 'xem' } });
+    await dn(CN1, 'cn1', 'cn123456'); await dn(CN2, 'cn14', 'cn143456'); await dn(X, 'xemtt', 'xem12345');
 
     rs = await CN1('/api/quyen-cua-toi');
     kt('Chủ nhiệm công trình có quyền lấy vật tư', rs.data.quyen.includes('NCVT_CAP'));

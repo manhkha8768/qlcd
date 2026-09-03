@@ -281,18 +281,24 @@ function formDoiMatKhau(batBuoc = false) {
         <div class="o-nhap"><label>Mật khẩu hiện tại *</label>
             <input id="mk-cu" type="password" autocomplete="current-password"></div>
         <div class="o-nhap"><label>Mật khẩu mới *</label>
-            <input id="mk-moi" type="password" autocomplete="new-password"></div>
+            <input id="mk-moi" type="password" minlength="8" maxlength="128"
+                autocomplete="new-password" oninput="capNhatLoiMatKhau('mk-moi','mk-moi-loi')">
+            <div id="mk-moi-loi" class="loi-truong" aria-live="polite"></div></div>
         <div class="o-nhap"><label>Nhập lại mật khẩu mới *</label>
-            <input id="mk-lai" type="password" autocomplete="new-password"></div>
-        <div class="ghi-nho">Nên dùng mật khẩu dài, dễ nhớ với mình nhưng khó đoán với người khác.
+            <input id="mk-lai" type="password" minlength="8" maxlength="128" autocomplete="new-password"></div>
+        <div class="ghi-nho">Mật khẩu phải có độ dài từ 8 đến 128 ký tự. Nên dùng mật khẩu dài, dễ nhớ với mình nhưng khó đoán với người khác.
             Không dùng lại mật khẩu của email hay tài khoản khác.</div>`,
         [...(batBuoc ? [] : [{ ten: 'Hủy', chay: dongHopThoai }]),
          { ten: 'Đổi mật khẩu', lop: 'chinh-nut', chay: async () => {
             if (!gt('mk-cu')) return baoTrongHopThoai('Nhập mật khẩu hiện tại');
-            if (gt('mk-moi') !== gt('mk-lai')) return baoTrongHopThoai('Hai lần nhập mật khẩu mới không khớp');
+            const matKhauMoi = document.getElementById('mk-moi').value;
+            const matKhauLai = document.getElementById('mk-lai').value;
+            const loiMatKhau = capNhatLoiMatKhau('mk-moi', 'mk-moi-loi');
+            if (loiMatKhau) return baoTrongHopThoai(loiMatKhau);
+            if (matKhauMoi !== matKhauLai) return baoTrongHopThoai('Hai lần nhập mật khẩu mới không khớp');
             try {
                 await api('/auth/doi-mat-khau', { method: 'POST',
-                    body: { mat_khau_cu: gt('mk-cu'), mat_khau_moi: gt('mk-moi') } });
+                    body: { mat_khau_cu: document.getElementById('mk-cu').value, mat_khau_moi: matKhauMoi } });
                 dongHopThoai(); bao('Đã đổi mật khẩu');
             } catch (e) { baoTrongHopThoai(e.message); }
          } }]);

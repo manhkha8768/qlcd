@@ -266,7 +266,7 @@ Hàm `api()` bắt mọi 401. Đã loại trừ `/auth/toi` và `/auth/dang-nhap
 - Không dùng từ "bác bỏ" đơn thuần
 
 **Tài khoản tạm**
-- Mật khẩu 4–6 ký tự, hết hạn 24 giờ, không bắt đổi mật khẩu
+- Mật khẩu 8–128 ký tự, hết hạn 24 giờ và bắt đổi mật khẩu sau khi đăng nhập
 
 **Bảo mật**
 - Backend luôn kiểm tra lại quyền, không dựa vào việc frontend đã ẩn nút
