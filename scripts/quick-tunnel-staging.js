@@ -153,7 +153,7 @@ function createDependencies(cwd, { environment = process.env, runProgramImpl = r
                     timeoutMs: COMMAND_TIMEOUTS.composeConfig,
                     label: 'Tracked source cleanliness check'
                 });
-                await runProgramImpl('git', gitArgs('archive', '--format=tar', '-o', archivePath, commit), cwd, baseCommandEnvironment(environment), {
+                await runProgramImpl('git', gitArgs('-c', 'core.autocrlf=false', 'archive', '--format=tar', '-o', archivePath, commit), cwd, baseCommandEnvironment(environment), {
                     timeoutMs: COMMAND_TIMEOUTS.composeConfig,
                     label: 'Committed source archive'
                 });

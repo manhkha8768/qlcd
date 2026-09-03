@@ -182,9 +182,9 @@ async function lifecycleTests() {
     });
     const immutableImage = await immutableDependencies.buildImage({ config: {} });
     assert.equal(immutableImage, `sha256:${'a'.repeat(64)}`);
-    assert.deepEqual(immutableBuildCalls.slice(0, 2).map(call => call.args.slice(0, 3)), [
-        ['-c', `safe.directory=${projectRoot}`, 'diff'],
-        ['-c', `safe.directory=${projectRoot}`, 'archive']
+    assert.deepEqual(immutableBuildCalls[0].args.slice(0, 3), ['-c', `safe.directory=${projectRoot}`, 'diff']);
+    assert.deepEqual(immutableBuildCalls[1].args.slice(0, 5), [
+        '-c', `safe.directory=${projectRoot}`, '-c', 'core.autocrlf=false', 'archive'
     ]);
     const capturedCommit = immutableBuildCalls[0].args[4];
     assert.match(capturedCommit, /^[0-9a-f]{40}$/);
