@@ -3,7 +3,7 @@ FROM node:22-slim
 
 # better-sqlite3 cần trình biên dịch để dựng phần gốc
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ ca-certificates curl \
+    python3 make g++ ca-certificates curl gosu \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -24,5 +24,6 @@ ENV PORT=3000
 
 EXPOSE 3000
 
-USER node
-CMD ["node", "server.js"]
+# Railway gắn volume lúc container khởi động nên quyền sở hữu trong image bị che.
+# Chỉ dùng root để chuẩn bị thư mục dữ liệu, sau đó hạ quyền ngay về user node.
+CMD ["sh", "-c", "mkdir -p /data/db /data/uploads /data/backups && chown -R node:node /data && exec gosu node node server.js"]
