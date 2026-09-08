@@ -91,6 +91,9 @@ const routeRegistry = [
     ['/api/ncvt-receipts', './routes/ncvt-receipts'], ['/api/ncvt-carry-forward', './routes/ncvt-carry-forward'],
     ['/api/ncvt-dashboard', './routes/ncvt-dashboard'], ['/api/technical-operations', './routes/technical-operations'],
     ['/api/notifications', './routes/notifications'], ['/api/reports', './routes/reports'],
+    ['/api/search', './routes/search'], ['/api/work-inbox', './routes/work-inbox'],
+    ['/api/interaction-audit', './routes/interaction-audit'],
+    ['/api/sheet-sync', './routes/sheet-sync'],
     ['/api/operations', './routes/operations'],
     ['/api/tai-san', './routes/taisan'], ['/api/giao-dich', './routes/giaodich'],
     ['/api', './routes/tienich'], ['/api/bao-duong', './routes/baoduong'],
@@ -110,6 +113,13 @@ if (routePolicyAudit.missing.length) {
     if (BM.LA_INTERNET) throw new Error(`Route chưa có chính sách xác thực: ${details}`);
     console.warn(`[BẢO MẬT] Route chưa có chính sách xác thực: ${details}`);
 }
+
+// Tem QR chỉ mang mã Asset. Quyền và dữ liệu vẫn được kiểm tra bởi API sau đăng nhập.
+app.get('/a/:assetCode', (req, res) => {
+    const code = String(req.params.assetCode || '').trim();
+    if (!code || code.length > 120) return res.status(400).send('Mã thiết bị không hợp lệ');
+    res.redirect(302, `/#tai-san?asset_code=${encodeURIComponent(code)}`);
+});
 
 app.use(express.static(path.join(__dirname, 'public'), {
     etag: true, lastModified: true, maxAge: BM.LA_INTERNET ? '1h' : 0,

@@ -1,5 +1,6 @@
 const express=require('express');const db=require('../db');
 const {dangNhap,coMaQuyenNay,duocThaoTacDonVi}=require('../middleware/quyen');
+const {interactionAudit}=require('../lib/interaction-audit');
 const r=express.Router();r.use(dangNhap);
 function device(id){return db.prepare(`SELECT d.*,n.ma ma_nhom,n.ten ten_nhom,m.ma_model,m.ten ten_model,px.ten ten_don_vi
  FROM devices d JOIN nhom_thiet_bi n ON n.id=d.nhom_id JOIN phan_xuong px ON px.id=d.don_vi_id
@@ -25,7 +26,7 @@ r.post('/definitions',coMaQuyenNay('technical_profile.define'),(req,res)=>{const
  VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(b.nhom_id,b.model_id||null,b.ma_thuoc_tinh.trim().toUpperCase(),b.ten.trim(),b.kieu_du_lieu||'TEXT',b.don_vi||null,b.options?JSON.stringify(b.options):null,b.min_value??null,b.max_value??null,b.pattern||null,b.bat_buoc?1:0,Number(b.thu_tu)||0,req.session.nguoiDung.id);res.status(201).json({id:info.lastInsertRowid,version:1});}catch(e){res.status(/UNIQUE/.test(e.message)?409:500).json({loi:/UNIQUE/.test(e.message)?'Mã thuộc tính đã tồn tại':e.message});}});
 r.put('/definitions/:id',coMaQuyenNay('technical_profile.define'),(req,res)=>{const old=db.prepare('SELECT * FROM technical_attribute_definitions WHERE id=? AND hoat_dong=1').get(req.params.id);if(!old)return res.status(404).json({loi:'Không tìm thấy định nghĩa'});const b={...old,...(req.body||{})};if(b.min_value!==null&&b.max_value!==null&&Number(b.min_value)>Number(b.max_value))return res.status(400).json({loi:'Min không được lớn hơn max'});if(b.pattern){try{new RegExp(b.pattern);}catch(_){return res.status(400).json({loi:'Pattern không hợp lệ'});}}const expected=Number(req.body?.version??old.version);const result=db.prepare(`UPDATE technical_attribute_definitions SET ten=?,don_vi=?,options_json=?,min_value=?,max_value=?,pattern=?,bat_buoc=?,thu_tu=?,version=version+1,nguoi_sua_id=?,ngay_sua=datetime('now','localtime') WHERE id=? AND version=?`).run(b.ten,b.don_vi||null,b.options?JSON.stringify(b.options):b.options_json,b.min_value??null,b.max_value??null,b.pattern||null,b.bat_buoc?1:0,Number(b.thu_tu)||0,req.session.nguoiDung.id,old.id,expected);if(!result.changes)return res.status(409).json({loi:'Định nghĩa đã thay đổi'});res.json({ok:true,version:expected+1});});
 
-r.get('/devices/:id',coMaQuyenNay('technical_profile.view'),(req,res)=>{const d=device(req.params.id);if(!d||!d.hoat_dong)return res.status(404).json({loi:'Không tìm thấy Device'});if(!allowed(req,d))return res.status(403).json({loi:'Không có quyền'});const state=db.prepare('SELECT * FROM technical_profile_state WHERE device_id=?').get(d.id)||{device_id:d.id,version:1,completeness_percent:0};const defs=definitions(d),vals=db.prepare('SELECT * FROM technical_attribute_values WHERE device_id=?').all(d.id),map=new Map(vals.map(x=>[x.definition_id,x]));const attrs=defs.map(x=>({...x,gia_tri:map.get(x.id)?.value_number??map.get(x.id)?.value_boolean??map.get(x.id)?.value_date??map.get(x.id)?.value_text??null,value_version:map.get(x.id)?.version||0,note:map.get(x.id)?.note||null}));const legacy=d.legacy_thiet_bi_id;
+r.get('/devices/:id',coMaQuyenNay('technical_profile.view'),(req,res)=>{const d=device(req.params.id);if(!d||!d.hoat_dong)return res.status(404).json({loi:'Không tìm thấy Device'});if(!allowed(req,d))return res.status(403).json({loi:'Không có quyền'});interactionAudit(req,'DEVICE_PROFILE_VIEW','devices',d.id,{asset_context:req.query.asset_id||null});const state=db.prepare('SELECT * FROM technical_profile_state WHERE device_id=?').get(d.id)||{device_id:d.id,version:1,completeness_percent:0};const defs=definitions(d),vals=db.prepare('SELECT * FROM technical_attribute_values WHERE device_id=?').all(d.id),map=new Map(vals.map(x=>[x.definition_id,x]));const attrs=defs.map(x=>({...x,gia_tri:map.get(x.id)?.value_number??map.get(x.id)?.value_boolean??map.get(x.id)?.value_date??map.get(x.id)?.value_text??null,value_version:map.get(x.id)?.version||0,note:map.get(x.id)?.note||null}));const legacy=d.legacy_thiet_bi_id;
  res.json({overview:{...d,profile_version:state.version,completeness_percent:state.completeness_percent},attributes:attrs,
   assets:db.prepare(`SELECT a.id,a.ma_tai_san,a.ten,l.loai_quan_he,l.la_lien_ket_chinh FROM asset_device_links l JOIN assets a ON a.id=l.asset_id WHERE l.device_id=? AND l.den_ngay IS NULL`).all(d.id),
   components:db.prepare('SELECT * FROM device_components WHERE device_id=? AND active=1 ORDER BY sort_order,id').all(d.id),
@@ -36,9 +37,22 @@ r.get('/devices/:id',coMaQuyenNay('technical_profile.view'),(req,res)=>{const d=
     WHERE l.entity_type='DEVICE' AND l.entity_id=? AND l.active=1 ORDER BY v.uploaded_at DESC`).all(String(d.id)),
   maintenance:legacy?db.prepare('SELECT id,so_phieu,loai,trang_thai,ngay_bat_dau,ngay_hoan_thanh,tong_chi_phi FROM phieu_sua_chua WHERE thiet_bi_id=? ORDER BY ngay_tao DESC LIMIT 50').all(legacy):[],
   inspections:legacy?db.prepare('SELECT * FROM kiem_dinh WHERE thiet_bi_id=? ORDER BY ngay_kiem_dinh DESC LIMIT 50').all(legacy):[],
+  operating_logs:legacy?db.prepare(`SELECT n.id,n.ngay,n.ca,n.gio_chay,n.san_luong,n.tinh_trang,
+    u.ho_ten nguoi_ghi FROM nhat_ky_van_hanh n LEFT JOIN nguoi_dung u ON u.id=n.nguoi_ghi_id
+    WHERE n.thiet_bi_id=? ORDER BY n.ngay DESC,n.ca DESC LIMIT 100`).all(legacy):[],
   operations:db.prepare(`SELECT id,work_order_code,operation_type,status,description,result,
     scheduled_date,started_at,completed_at,next_due_date,primary_component_id
     FROM technical_work_orders WHERE device_id=? ORDER BY created_at DESC LIMIT 100`).all(d.id),
+  material_issues:db.prepare(`SELECT i.id,i.work_order_id,w.work_order_code,i.quantity,i.uom_code,i.status,
+    i.reason,i.issued_at,m.material_code,m.name material_name,wh.warehouse_code
+    FROM technical_material_issues i JOIN technical_work_orders w ON w.id=i.work_order_id
+    JOIN materials m ON m.id=i.material_id JOIN warehouses wh ON wh.id=i.warehouse_id
+    WHERE w.device_id=? ORDER BY i.issued_at DESC LIMIT 100`).all(d.id),
+  timeline:db.prepare(`SELECT e.id,e.event_type,e.from_status,e.to_status,e.reason,e.event_time,
+    e.work_order_id,w.work_order_code,w.operation_type,u.ho_ten actor_name
+    FROM technical_work_order_events e JOIN technical_work_orders w ON w.id=e.work_order_id
+    LEFT JOIN nguoi_dung u ON u.id=e.actor_id WHERE w.device_id=?
+    ORDER BY e.event_time DESC,e.id DESC LIMIT 200`).all(d.id),
   history:db.prepare('SELECT * FROM technical_profile_history WHERE device_id=? ORDER BY profile_version DESC LIMIT 50').all(d.id),legacy:legacy?{bang:'thiet_bi',id:legacy}:null});});
 
 r.put('/devices/:id/attributes',coMaQuyenNay('technical_profile.edit'),(req,res)=>{const d=device(req.params.id);if(!d||!d.hoat_dong)return res.status(404).json({loi:'Không tìm thấy Device'});if(!allowed(req,d))return res.status(403).json({loi:'Không có quyền'});const b=req.body||{},items=Array.isArray(b.values)?b.values:[],defs=definitions(d),byId=new Map(defs.map(x=>[Number(x.id),x])),errors=[];items.forEach((x,i)=>{const def=byId.get(Number(x.definition_id));if(!def)errors.push(`Dòng ${i+1}: thuộc tính không áp dụng`);else validateValue(def,x.value).forEach(e=>errors.push(`${def.ten}: ${e}`));});if(b.complete){const supplied=new Map(items.map(x=>[Number(x.definition_id),x.value]));defs.filter(x=>x.bat_buoc).forEach(def=>{const old=db.prepare('SELECT COALESCE(value_text,value_number,value_boolean,value_date) value FROM technical_attribute_values WHERE device_id=? AND definition_id=?').get(d.id,def.id);if(!supplied.has(def.id)&&old?.value==null)errors.push(`${def.ten}: Giá trị bắt buộc`);});}if(errors.length)return res.status(422).json({loi:'Dữ liệu kỹ thuật chưa hợp lệ',chi_tiet:errors});

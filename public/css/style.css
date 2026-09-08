@@ -6,6 +6,8 @@
    ===================================================================== */
 
 :root {
+    --primary: #0F4C81;
+    --primary-dark: #0B365D;
     --than:      #1B2430;   /* nền thanh điều hướng */
     --than-nhat: #2A3543;
     --nen:       #F4F5F7;   /* mặt bàn làm việc */
@@ -26,7 +28,7 @@
     --lam:       #1A5B8A;   /* thông tin */
     --lam-nhat:  #E8F1F7;
 
-    --r: 3px;
+    --r: 10px;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --mono: "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
 }
@@ -68,11 +70,12 @@ body {
 .khung { display: flex; min-height: 100vh; }
 
 .canh-trai {
-    width: 208px; flex-shrink: 0; background: var(--than);
+    width: 252px; flex-shrink: 0; background: var(--primary-dark);
     color: #C7CFD9; display: flex; flex-direction: column;
     position: sticky; top: 0; height: 100vh;
 }
-.canh-trai .dau { padding: 16px 16px 14px; border-bottom: 1px solid #2E3947; }
+.canh-trai .dau { min-height:64px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.12); display:flex; align-items:center; gap:10px; }
+.logo-qlcd { font-size:18px; line-height:1; font-weight:800; letter-spacing:.8px; color:#fff; padding:9px 8px; border:1px solid rgba(255,255,255,.35); border-radius:8px; }
 .canh-trai .dau .ten-ht {
     font-size: 12.5px; font-weight: 700; color: #fff; line-height: 1.35;
     text-transform: uppercase; letter-spacing: .3px;
@@ -83,17 +86,18 @@ body {
 .canh-trai nav a {
     display: flex; align-items: center; justify-content: space-between;
     gap: 8px; padding: 8px 16px; color: #C7CFD9; text-decoration: none;
-    font-size: 13.5px; border-left: 3px solid transparent;
+    font-size: 13px; border-left: 3px solid transparent; padding-left:42px;
 }
 .canh-trai nav a:hover { background: var(--than-nhat); color: #fff; }
 .canh-trai nav a.chon {
-    background: var(--than-nhat); color: #fff;
-    border-left-color: var(--ho-phach); font-weight: 600;
+    background: rgba(255,255,255,.12); color: #fff;
+    border-left-color: #7CC4FF; font-weight: 600;
 }
 .canh-trai nav .nhom-nav {
-    padding: 14px 16px 5px; font-size: 10px; font-weight: 700;
-    letter-spacing: 1.2px; text-transform: uppercase; color: #616E7D;
+    padding: 12px 16px 4px; font-size: 12px; font-weight: 700;
+    letter-spacing: .2px; text-transform: none; color: #DCEBFA; display:flex; gap:10px;
 }
+.canh-trai nav .nhom-nav span { color:#fff; }
 .chip-so {
     min-width: 20px; text-align: center; font-size: 11px; font-weight: 700;
     padding: 1px 5px; border-radius: 9px; background: var(--do); color: #fff;
@@ -109,7 +113,34 @@ body {
 }
 .canh-trai .chan button:hover { background: var(--than-nhat); color: #fff; }
 
-.chinh { flex: 1; min-width: 0; padding: 22px 26px 60px; }
+.workspace { flex:1; min-width:0; }
+.app-header { height:64px; position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:18px; padding:0 24px; background:#fff; border-bottom:1px solid var(--vien); }
+.global-search { width:min(620px,55vw); margin-right:auto; display:flex; align-items:center; gap:10px; color:var(--chu-nhat); text-align:left; background:#F8FAFC; border-color:var(--vien); }
+.global-search span:nth-child(2) { overflow:hidden; text-overflow:ellipsis; }
+.global-search kbd { margin-left:auto; font:11px var(--mono); border:1px solid var(--vien); border-radius:5px; padding:2px 5px; background:#fff; }
+.header-actions { display:flex; align-items:center; gap:8px; }
+.header-actions button { border:0; background:transparent; }
+.user-pill { width:34px; height:34px; padding:0; border-radius:50%!important; background:var(--primary)!important; color:#fff!important; }
+.nut-menu-mobile { display:none; }
+.chinh { min-width: 0; padding: 24px 24px 84px; }
+.mobile-bottom-nav { display:none; }
+.ket-qua-lenh { width:100%; display:flex; align-items:center; justify-content:space-between; margin-top:7px; padding:10px 12px; text-align:left; }
+.ket-qua-lenh small { color:var(--chu-mo); }
+.goi-y-search > strong { display:block; font-size:11px; color:var(--chu-nhat); text-transform:uppercase; letter-spacing:.7px; }
+.search-group { margin-top:12px; }
+.search-group > strong { display:block; padding:5px 2px; color:var(--primary); font-size:11px; text-transform:uppercase; letter-spacing:.7px; }
+.ket-qua-lenh span small { display:block; margin-top:2px; }
+.asset-kpi { grid-template-columns:repeat(6,minmax(120px,1fr)); }
+.asset-kpi .o-so { text-align:left; cursor:pointer; display:flex; flex-direction:column; }
+.asset-kpi .o-so:hover { border-color:var(--primary); background:#F8FBFE; }
+.asset-card-list { display:none; }
+.quick-asset-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; padding-bottom:14px; border-bottom:1px solid var(--vien); }
+.quick-asset-head strong { font-size:20px; }
+.quick-asset-stats { padding:16px 0; }
+.quick-asset-stats div { padding:10px; border:1px solid var(--vien); border-radius:8px; }
+.quick-asset-stats span { display:block; color:var(--chu-nhat); font-size:11px; }
+.advanced-filter { flex:1 0 100%; display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:8px; padding-top:10px; border-top:1px solid var(--vien); }
+.advanced-filter.an { display:none; }
 
 /* ---------- Tiêu đề trang ---------- */
 .dau-trang {
@@ -162,6 +193,9 @@ thead th {
 tbody td { padding: 7px 10px; border-bottom: 1px solid #EDEFF2; vertical-align: top; }
 tbody tr:hover { background: #F8F9FB; }
 tbody tr.bam { cursor: pointer; }
+tbody tr.bam:focus { outline: 2px solid var(--ho-phach); outline-offset: -2px; background: var(--ho-phach-nhat); }
+tbody tr.bam a { color: inherit; text-decoration: none; }
+tbody tr.bam a:hover, tbody tr.bam a:focus { color: var(--lam); text-decoration: underline; }
 td.phai, th.phai { text-align: right; }
 td.giua, th.giua { text-align: center; }
 .trong { padding: 30px 14px; text-align: center; color: var(--chu-mo); font-size: 13px; }
@@ -295,13 +329,48 @@ label { display: block; font-size: 11.5px; font-weight: 600; color: var(--chu-nh
 .loi-o { color: var(--do); font-size: 11.5px; }
 
 @media (max-width: 860px) {
-    .khung { flex-direction: column; }
-    .canh-trai { width: 100%; height: auto; position: static; }
-    .canh-trai nav { display: flex; flex-wrap: wrap; padding: 4px; }
-    .canh-trai nav a { border-left: none; border-bottom: 3px solid transparent; padding: 7px 11px; }
-    .canh-trai nav a.chon { border-left: none; border-bottom-color: var(--ho-phach); }
-    .canh-trai nav .nhom-nav { display: none; }
-    .chinh { padding: 16px 14px 50px; }
+    .canh-trai { display:none; position:fixed; inset:0 auto 0 0; width:min(86vw,320px); height:100vh; z-index:50; box-shadow:12px 0 28px rgba(0,0,0,.25); }
+    .canh-trai.mo { display:flex; }
+    .app-header { height:58px; padding:0 14px; gap:10px; }
+    .nut-menu-mobile { display:block; padding:6px 9px; }
+    .global-search { width:auto; flex:1; }
+    .global-search span:nth-child(2) { font-size:0; }
+    .global-search span:nth-child(2)::after { content:'Tìm thiết bị...'; font-size:13px; }
+    .global-search kbd, .header-actions button:not(.user-pill) { display:none; }
+    .chinh { padding: 16px 14px 88px; }
+    .mobile-bottom-nav { display:grid; grid-template-columns:repeat(5,1fr); position:fixed; left:0; right:0; bottom:0; z-index:40; min-height:64px; background:#fff; border-top:1px solid var(--vien); padding-bottom:env(safe-area-inset-bottom); }
+    .mobile-bottom-nav a, .mobile-bottom-nav button { min-width:0; border:0; border-radius:0; background:#fff; color:var(--chu-nhat); text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:10px; padding:6px 2px; }
+    .mobile-bottom-nav b { font-size:18px; color:var(--primary); }
+    .mobile-bottom-nav .scan b { width:38px; height:38px; margin-top:-18px; border-radius:50%; background:var(--primary); color:#fff; display:grid; place-items:center; box-shadow:0 4px 12px rgba(15,76,129,.3); }
+    .asset-kpi { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; }
+    .asset-kpi .o-so { min-width:138px; scroll-snap-align:start; }
+    .asset-table { display:none; }
+    .asset-card-list { display:grid; gap:10px; padding:10px; }
+    .asset-card { background:#fff; border:1px solid var(--vien); border-radius:10px; padding:12px; }
+    .asset-card > div:first-child { display:flex; justify-content:space-between; gap:10px; }
+    .asset-card .ma { display:block; margin-top:2px; }
+    .asset-card p { color:var(--chu-nhat); font-size:12px; margin-top:7px; }
+    .asset-card button { margin-top:10px; }
+    .advanced-filter { grid-template-columns:1fr; }
+}
+
+/* ---------- Work Inbox, Asset 360 actions và QR camera ---------- */
+.work-list { display:grid; gap:10px; }
+.work-card { display:flex; justify-content:space-between; gap:18px; padding:14px; border:1px solid var(--vien); border-radius:10px; background:#fff; }
+.work-card.urgent { border-left:4px solid var(--do); }
+.work-card p { margin:5px 0; }
+.work-actions,.profile-actions { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.profile-actions { justify-content:flex-end; }
+.qr-layout { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(280px,.6fr); gap:14px; }
+.qr-camera { position:relative; overflow:hidden; }
+.qr-camera video { width:100%; min-height:340px; max-height:60vh; background:#111; object-fit:cover; }
+.qr-target { position:absolute; top:50%; left:50%; width:210px; height:210px; transform:translate(-50%,-58%); border:3px solid #fff; border-radius:14px; box-shadow:0 0 0 9999px rgba(0,0,0,.28); pointer-events:none; }
+@media (max-width:760px) {
+    .qr-layout { grid-template-columns:1fr; }
+    .work-card { display:block; }
+    .work-actions { margin-top:12px; }
+    .profile-actions { justify-content:flex-start; }
+    .qr-camera video { min-height:280px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 

@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX } = require('../middleware/quyen');
+const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep } = require('../middleware/quyen');
 const { sinhMa } = require('../lib/ma-thiet-bi');
 
 const r = express.Router();
@@ -8,7 +8,7 @@ r.use(dangNhap);
 
 /* ---------- Danh sách thiết bị ---------- */
 r.get('/', (req, res) => {
-    const gh = gioiHanPX(req);
+    const scope = donViDuocPhep(req.session.nguoiDung);
     let sql = `SELECT tb.id, tb.ma_tb, tb.ten, tb.so_seri, tb.nam_sx, tb.ma_tscd, tb.loai_ts,
                       d.id AS device_id, a.id AS asset_id,
                       tb.so_luong, tb.dvt, tb.nguyen_gia, tb.gia_tri_con_lai, tb.ngay_su_dung,
@@ -24,8 +24,15 @@ r.get('/', (req, res) => {
                WHERE 1=1`;
     const p = [];
 
-    if (gh !== null) { sql += ' AND tb.phan_xuong_id = ?'; p.push(gh); }
-    else if (req.query.phan_xuong_id) { sql += ' AND tb.phan_xuong_id = ?'; p.push(req.query.phan_xuong_id); }
+    if (req.query.phan_xuong_id) {
+        const requestedUnit = Number(req.query.phan_xuong_id);
+        if (!Number.isInteger(requestedUnit) || requestedUnit <= 0) return res.status(400).json({ loi: 'Phân xưởng không hợp lệ' });
+        if (!duocThaoTacPX(req, requestedUnit)) return res.status(403).json({ loi: 'Không có quyền xem dữ liệu của phân xưởng này' });
+        sql += ' AND tb.phan_xuong_id = ?'; p.push(requestedUnit);
+    } else if (scope !== null) {
+        if (!scope.length) sql += ' AND 1=0';
+        else { sql += ` AND tb.phan_xuong_id IN (${scope.map(() => '?').join(',')})`; p.push(...scope); }
+    }
 
     if (req.query.nhom_id)    { sql += ' AND tb.nhom_id = ?'; p.push(req.query.nhom_id); }
     if (req.query.trang_thai) { sql += ' AND tb.trang_thai = ?'; p.push(req.query.trang_thai); }

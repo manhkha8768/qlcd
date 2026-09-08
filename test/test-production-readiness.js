@@ -41,7 +41,8 @@ function check(name, condition, detail = '') {
     const made = await backup.createBackup(process.env.QLCD_BACKUP_DIR, { retention: 3 });
     const verified = backup.verifyBackup(made.folder);
     check('Backup có manifest và checksum hợp lệ', verified.ok && verified.files >= 2);
-    check('Backup database đủ 37 migration', verified.migrations === 37, String(verified.migrations));
+    const expectedMigrations = fs.readdirSync(path.join(__dirname, '..', 'db')).filter(x => /^\d+.*\.sql$/.test(x)).length;
+    check(`Backup database đủ ${expectedMigrations} migration`, verified.migrations === expectedMigrations, String(verified.migrations));
     check('Restore drill trên vùng tạm đạt', backup.restoreDrill(made.folder).ok);
     fs.appendFileSync(path.join(made.folder, 'uploads', 'fixture.txt'), 'tampered');
     let detected = false;

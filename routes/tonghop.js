@@ -15,7 +15,7 @@ r.get('/dashboard', (req, res) => {
         FROM thiet_bi tb WHERE 1=1 ${dk} GROUP BY trang_thai`).all();
 
     const theoPX = db.prepare(`
-        SELECT px.ten_ngan AS px, px.ten AS ten_px, COUNT(tb.id) n,
+        SELECT px.id AS phan_xuong_id, px.ten_ngan AS px, px.ten AS ten_px, COUNT(tb.id) n,
                COALESCE(SUM(tb.nguyen_gia),0) gt
         FROM phan_xuong px
         LEFT JOIN thiet_bi tb ON tb.phan_xuong_id = px.id AND tb.trang_thai <> 'da_thanh_ly'

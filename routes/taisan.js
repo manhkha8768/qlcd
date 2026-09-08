@@ -5,6 +5,7 @@ const ExcelJS = require('exceljs');
 const db = require('../db');
 const { dangNhap, coMaQuyenNay, donViDuocPhep, duocThaoTacDonVi } = require('../middleware/quyen');
 const US = require('../lib/upload-security');
+const { interactionAudit } = require('../lib/interaction-audit');
 
 const r = express.Router();
 r.use(dangNhap);
@@ -21,23 +22,59 @@ function whereTaiSan(req) {
             where.push(`a.don_vi_id IN (${scope.map(() => '?').join(',')})`);
             params.push(...scope);
         }
-    } else if (req.query.don_vi_id) {
-        where.push('a.don_vi_id=?'); params.push(req.query.don_vi_id);
     }
+    if (req.query.don_vi_id) { where.push('a.don_vi_id=?'); params.push(req.query.don_vi_id); }
     if (req.query.loai) { where.push('a.loai_tai_san=?'); params.push(req.query.loai); }
+    if (req.query.nhom?.trim()) { where.push('a.nhom_tai_san LIKE ?'); params.push(`%${req.query.nhom.trim()}%`); }
     if (req.query.trang_thai) { where.push('a.trang_thai=?'); params.push(req.query.trang_thai); }
+    if (req.query.tinh_trang_ky_thuat) {
+        where.push(`EXISTS (SELECT 1 FROM asset_device_links l JOIN devices d ON d.id=l.device_id
+            WHERE l.asset_id=a.id AND l.den_ngay IS NULL AND d.hoat_dong=1 AND d.tinh_trang_ky_thuat=?)`);
+        params.push(req.query.tinh_trang_ky_thuat);
+    }
+    if (req.query.serial?.trim()) {
+        where.push(`EXISTS (SELECT 1 FROM asset_device_links l JOIN devices d ON d.id=l.device_id
+            WHERE l.asset_id=a.id AND l.den_ngay IS NULL AND d.hoat_dong=1 AND d.so_seri LIKE ?)`);
+        params.push(`%${req.query.serial.trim()}%`);
+    }
+    if (req.query.nam_san_xuat) {
+        const year = Number(req.query.nam_san_xuat);
+        if (Number.isInteger(year) && year >= 1900 && year <= 2200) {
+            where.push(`EXISTS (SELECT 1 FROM asset_device_links l JOIN devices d ON d.id=l.device_id
+                WHERE l.asset_id=a.id AND l.den_ngay IS NULL AND d.hoat_dong=1 AND d.nam_san_xuat=?)`);
+            params.push(year);
+        }
+    }
     if (req.query.q?.trim()) {
         const q = `%${req.query.q.trim()}%`;
-        where.push('(a.ma_tai_san LIKE ? OR a.ten LIKE ? OR a.nhom_tai_san LIKE ?)');
-        params.push(q, q, q);
+        where.push(`(a.ma_tai_san LIKE ? OR a.ten LIKE ? OR a.nhom_tai_san LIKE ? OR EXISTS
+            (SELECT 1 FROM asset_device_links l JOIN devices d ON d.id=l.device_id
+             LEFT JOIN model_thiet_bi m ON m.id=d.model_id WHERE l.asset_id=a.id AND l.den_ngay IS NULL
+             AND (d.ma_thiet_bi LIKE ? OR d.so_seri LIKE ? OR m.ma_model LIKE ? OR m.ten LIKE ?)))`);
+        params.push(q, q, q, q, q, q, q);
     }
     return { sql: where.join(' AND '), params };
 }
 
 function docTaiSan(id) {
-    return db.prepare(`SELECT a.*, px.ma AS ma_don_vi, px.ten AS ten_don_vi, vt.ten AS ten_vi_tri
+    return db.prepare(`SELECT a.*, px.ma AS ma_don_vi, px.ten AS ten_don_vi, vt.ten AS ten_vi_tri,
+        (SELECT l.device_id FROM asset_device_links l JOIN devices d ON d.id=l.device_id AND d.hoat_dong=1
+         WHERE l.asset_id=a.id AND l.den_ngay IS NULL
+         ORDER BY l.la_lien_ket_chinh DESC,l.id DESC LIMIT 1) AS device_id
         FROM assets a JOIN phan_xuong px ON px.id=a.don_vi_id
         LEFT JOIN vi_tri vt ON vt.id=a.vi_tri_id WHERE a.id=?`).get(id);
+}
+
+function unitFilterAllowed(req, res) {
+    if (!req.query.don_vi_id) return true;
+    const unitId = Number(req.query.don_vi_id);
+    if (!Number.isInteger(unitId) || unitId <= 0) {
+        res.status(400).json({ loi: 'Phân xưởng không hợp lệ' }); return false;
+    }
+    if (!duocThaoTacDonVi(req.session.nguoiDung, unitId)) {
+        res.status(403).json({ loi: 'Không có quyền xem dữ liệu của phân xưởng này' }); return false;
+    }
+    return true;
 }
 
 function validate(body) {
@@ -55,19 +92,56 @@ function validate(body) {
 }
 
 r.get('/', coMaQuyenNay('asset.view'), (req, res) => {
+    if (!unitFilterAllowed(req, res)) return;
     const f = whereTaiSan(req);
     const page = Math.max(1, Number(req.query.trang) || 1);
     const size = Math.min(200, Math.max(1, Number(req.query.moi_trang) || 50));
     const total = db.prepare(`SELECT COUNT(*) n FROM assets a WHERE ${f.sql}`).get(...f.params).n;
-    const rows = db.prepare(`SELECT a.*, px.ma AS ma_don_vi, px.ten_ngan AS don_vi
+    const rows = db.prepare(`SELECT a.*, px.ma AS ma_don_vi, px.ten_ngan AS don_vi,
+        (SELECT l.device_id FROM asset_device_links l JOIN devices d ON d.id=l.device_id AND d.hoat_dong=1
+         WHERE l.asset_id=a.id AND l.den_ngay IS NULL
+         ORDER BY l.la_lien_ket_chinh DESC,l.id DESC LIMIT 1) AS device_id,
+        (SELECT d.ma_thiet_bi FROM asset_device_links l JOIN devices d ON d.id=l.device_id AND d.hoat_dong=1
+         WHERE l.asset_id=a.id AND l.den_ngay IS NULL ORDER BY l.la_lien_ket_chinh DESC,l.id DESC LIMIT 1) AS ma_thiet_bi,
+        (SELECT d.so_seri FROM asset_device_links l JOIN devices d ON d.id=l.device_id AND d.hoat_dong=1
+         WHERE l.asset_id=a.id AND l.den_ngay IS NULL ORDER BY l.la_lien_ket_chinh DESC,l.id DESC LIMIT 1) AS so_seri,
+        (SELECT d.tinh_trang_ky_thuat FROM asset_device_links l JOIN devices d ON d.id=l.device_id AND d.hoat_dong=1
+         WHERE l.asset_id=a.id AND l.den_ngay IS NULL ORDER BY l.la_lien_ket_chinh DESC,l.id DESC LIMIT 1) AS tinh_trang_ky_thuat,
+        (SELECT d.gio_chay_luy_ke FROM asset_device_links l JOIN devices d ON d.id=l.device_id AND d.hoat_dong=1
+         WHERE l.asset_id=a.id AND l.den_ngay IS NULL ORDER BY l.la_lien_ket_chinh DESC,l.id DESC LIMIT 1) AS gio_chay_luy_ke
         FROM assets a JOIN phan_xuong px ON px.id=a.don_vi_id
         WHERE ${f.sql} ORDER BY a.ma_tai_san LIMIT ? OFFSET ?`)
         .all(...f.params, size, (page - 1) * size);
     res.json({ tong: total, trang: page, moi_trang: size, danh_sach: rows });
 });
 
+r.get('/summary', coMaQuyenNay('asset.view'), (req, res) => {
+    if (!unitFilterAllowed(req, res)) return;
+    const f = whereTaiSan(req);
+    const row = db.prepare(`SELECT COUNT(*) tong,
+        SUM(CASE WHEN a.trang_thai IN ('dang_su_dung','hoat_dong') THEN 1 ELSE 0 END) hoat_dong,
+        SUM(CASE WHEN a.trang_thai IN ('dang_sua','sua_chua') THEN 1 ELSE 0 END) sua_chua,
+        SUM(CASE WHEN a.trang_thai='hong' THEN 1 ELSE 0 END) hong,
+        SUM(CASE WHEN a.loai_tai_san='TSCD' THEN 1 ELSE 0 END) tscd,
+        SUM(CASE WHEN a.loai_tai_san='CCDC' THEN 1 ELSE 0 END) ccdc
+        FROM assets a WHERE ${f.sql}`).get(...f.params);
+    res.json(Object.fromEntries(Object.entries(row).map(([k, v]) => [k, Number(v || 0)])));
+});
+
+r.get('/by-code/:code', coMaQuyenNay('asset.view'), (req, res) => {
+    const asset = db.prepare('SELECT id,don_vi_id FROM assets WHERE ma_tai_san=? AND hoat_dong=1')
+        .get(req.params.code);
+    if (!asset) return res.status(404).json({ loi: 'Không tìm thấy Asset' });
+    if (!duocThaoTacDonVi(req.session.nguoiDung, asset.don_vi_id)) {
+        return res.status(403).json({ loi: 'Không có quyền xem Asset này' });
+    }
+    interactionAudit(req, 'ASSET_QR_RESOLVE', 'assets', asset.id, { code: req.params.code });
+    res.json({ id: asset.id });
+});
+
 r.get('/export.xlsx', coMaQuyenNay('asset.export'), async (req, res, next) => {
     try {
+        if (!unitFilterAllowed(req, res)) return;
         const f = whereTaiSan(req);
         const rows = db.prepare(`SELECT a.*, px.ma AS ma_don_vi, px.ten AS ten_don_vi
             FROM assets a JOIN phan_xuong px ON px.id=a.don_vi_id
@@ -161,7 +235,9 @@ r.get('/:id', coMaQuyenNay('asset.view'), (req, res) => {
     const asset = docTaiSan(req.params.id);
     if (!asset || !asset.hoat_dong) return res.status(404).json({ loi: 'Không tìm thấy tài sản' });
     if (!duocThaoTacDonVi(req.session.nguoiDung, asset.don_vi_id)) return res.status(403).json({ loi: 'Không có quyền' });
-    res.json({ tai_san: asset, legacy: asset.legacy_thiet_bi_id ? { bang: 'thiet_bi', id: asset.legacy_thiet_bi_id } : null });
+    interactionAudit(req, 'ASSET_PROFILE_VIEW', 'assets', asset.id, { device_id: asset.device_id || null });
+    res.json({ tai_san: asset, device_id: asset.device_id || null,
+        legacy: asset.legacy_thiet_bi_id ? { bang: 'thiet_bi', id: asset.legacy_thiet_bi_id } : null });
 });
 
 r.post('/', coMaQuyenNay('asset.create'), (req, res) => {

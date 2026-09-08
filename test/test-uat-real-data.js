@@ -68,7 +68,8 @@ function check(name, condition, detail = '') {
     try { await createUatStaging({ sourceDb, targetDb: sourceDb, password }); } catch (error) { refusedSource = /khác database nguồn/.test(error.message); }
     check('Không cho dùng database nguồn làm đích UAT', refusedSource);
     const staged = new Database(targetDb);
-    check('Đủ 37 migration trên staging', staged.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n === 37);
+    const expectedMigrations = fs.readdirSync(path.join(__dirname, '..', 'db')).filter(x => /^\d+.*\.sql$/.test(x)).length;
+    check(`Đủ ${expectedMigrations} migration trên staging`, staged.prepare('SELECT COUNT(*) n FROM schema_migrations').get().n === expectedMigrations);
     check('Tài khoản nguồn bị ẩn danh và vô hiệu hóa', !staged.prepare("SELECT 1 FROM nguoi_dung WHERE ten_dang_nhap='real.user' OR ho_ten='Tên Người Thật'").get() &&
         staged.prepare("SELECT COUNT(*) n FROM nguoi_dung WHERE ten_dang_nhap LIKE 'uat_legacy_%' AND hoat_dong=0").get().n === 1);
     check('Thông tin người/IP/ghi chú đã được xóa hoặc thay thế', !staged.prepare("SELECT 1 FROM assets WHERE nguoi_quan_ly='Tên Người Thật' OR ghi_chu LIKE '%0900000000%'").get() &&

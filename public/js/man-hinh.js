@@ -62,7 +62,10 @@ async function mhTongQuan(el) {
     if (d.theo_phan_xuong.length > 1) {
         h += `<div class="the"><h3>Thiết bị theo phân xưởng</h3><div class="bao-bang"><table>
             <thead><tr><th>Phân xưởng</th><th class="phai">Số thiết bị</th><th class="phai">Nguyên giá (đ)</th></tr></thead>
-            <tbody>${d.theo_phan_xuong.map(x => `<tr>
+            <tbody>${d.theo_phan_xuong.map(x => `<tr class="bam" tabindex="0" role="link"
+                aria-label="Xem TSCĐ và CCDC của ${esc(x.ten_px)}"
+                onclick="moTaiSanTheoPhanXuong(${Number(x.phan_xuong_id)},event)"
+                onkeydown="moTaiSanTheoPhanXuong(${Number(x.phan_xuong_id)},event)">
                 <td><strong>${esc(x.px || '')}</strong> <span style="color:var(--chu-nhat)">${esc(x.ten_px)}</span></td>
                 <td class="phai so">${x.n}</td><td class="phai so">${tien(x.gt)}</td></tr>`).join('')}
             </tbody></table></div></div>`;
@@ -87,6 +90,12 @@ async function mhTongQuan(el) {
         </div></div>`;
     }
     document.getElementById('noi-dung').innerHTML = h;
+}
+
+function moTaiSanTheoPhanXuong(phanXuongId, event) {
+    if (event?.type === 'keydown' && !['Enter', ' '].includes(event.key)) return;
+    if (event?.type === 'keydown') event.preventDefault();
+    dieuHuong('tai-san', { don_vi_id: String(phanXuongId), trang: 1 });
 }
 
 /* =========================== THIẾT BỊ =========================== */
