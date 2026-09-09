@@ -385,9 +385,10 @@ async function mhQuanTri(el) {
         <div class="eyebrow">Quản trị hệ thống</div><h2>Phân xưởng & tài khoản</h2></div></div>
         <div id="vung-bao"></div><div id="noi-dung">Đang tải…</div>`;
 
-    const [pxs, tks] = await Promise.all([
-        api('/danh-muc/phan-xuong?tat_ca=1'), api('/auth/tai-khoan')]);
+    const [pxs, tks, hienThi] = await Promise.all([
+        api('/danh-muc/phan-xuong?tat_ca=1'), api('/auth/tai-khoan'), api('/function-visibility')]);
     window.DS_PX = pxs;
+    const hienThiPx = hienThi.filter(x => x.role_code === 'px');
 
     document.getElementById('noi-dung').innerHTML = `
     <div class="the">
@@ -433,6 +434,17 @@ async function mhQuanTri(el) {
             </tbody></table></div>
     </div>
 
+    <div class="the"><h3>Giao diện tài khoản Phân xưởng</h3><div class="than-the">
+        <p class="ghi-nho">Chỉ hiển thị những chức năng Phân xưởng thực sự sử dụng. Quyền truy cập và phạm vi dữ liệu trên máy chủ vẫn được kiểm tra độc lập.</p>
+        <div class="hang" style="align-items:stretch">
+            ${hienThiPx.map(x => `<label class="o-nhap" style="min-width:210px;display:flex;flex-direction:row;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--vien,#e4e7ec);border-radius:8px">
+                <input type="checkbox" ${x.enabled ? 'checked' : ''}
+                    onchange="luuHienThiChucNang('${esc(x.screen_code)}',this.checked,this)" style="width:auto">
+                <span>${esc(CAC_MAN_HINH[x.screen_code]?.ten || x.screen_code)}</span>
+            </label>`).join('')}
+        </div>
+    </div></div>
+
     <div class="the"><h3>Tên hiển thị</h3><div class="than-the">
         <div class="hang">
             <div class="o-nhap"><label>Tiêu đề hệ thống</label>
@@ -442,6 +454,19 @@ async function mhQuanTri(el) {
             <div class="hep"><button onclick="luuCauHinh()">Lưu</button></div>
         </div>
     </div></div>`;
+}
+
+async function luuHienThiChucNang(screen, enabled, checkbox) {
+    checkbox.disabled = true;
+    try {
+        await api('/function-visibility/px/' + encodeURIComponent(screen), {
+            method: 'PUT', body: { enabled }
+        });
+        bao(`Đã ${enabled ? 'hiện' : 'ẩn'} chức năng ${CAC_MAN_HINH[screen]?.ten || screen} cho tài khoản Phân xưởng`);
+    } catch (e) {
+        checkbox.checked = !enabled;
+        bao(e.message, 'loi');
+    } finally { checkbox.disabled = false; }
 }
 
 function formPhanXuong(p = null) {
