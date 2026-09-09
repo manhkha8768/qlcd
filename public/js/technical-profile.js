@@ -24,6 +24,7 @@ async function moHskt(id,tab='thong-so',troVe=undefined){
   ['tai-san','TSCĐ / CCDC'],['tai-lieu','Hồ sơ'],['timeline','Timeline']];
  el.innerHTML=`<div class="dau-trang"><div><div class="eyebrow">${esc(o.ma_thiet_bi)} · ${esc(o.ten_nhom)}</div><h2>${esc(o.ten)}</h2><div class="mo">Hồ sơ v${o.profile_version} · Hoàn thiện ${o.completeness_percent}% · ${esc(o.ten_don_vi)}</div></div><div class="profile-actions">
  ${coQuyenUI('technical_operation.create')?'<button onclick="taoWorkOrderTuAsset360()">+ Work Order</button>':''}
+ ${coQuyenUI('repair_minutes.create')?'<button onclick="taoRepairMinuteTuAsset360()">Lập biên bản bước 1</button>':''}
  ${coQuyenUI('device.edit')?'<button onclick="suaDeviceAsset360()">Sửa Device</button>':''}
  ${d.assets?.length&&coQuyenUI('asset.edit')?`<button onclick="suaAssetTu360(${d.assets[0].id})">Sửa tài sản</button>`:''}
  ${coQuyenUI('quantri.nhatky')?'<button onclick="xemAuditAsset360()">Nhật ký truy cập</button>':''}

@@ -20,6 +20,7 @@ const CAC_MAN_HINH = {
     'dieu-chuyen': { ten: 'Điều chuyển',  ve: taoManHinhGD('dieu_chuyen'), nhom: 'Quản lý' },
     'phe-duyet': { ten: 'Giao dịch chờ duyệt', ve: mhPheDuyet,             nhom: 'Quản lý' },
     'work-inbox': { ten: 'Work Inbox', ve: mhWorkInbox, nhom: 'Quản lý' },
+    'repair-minutes': { ten: 'Biên bản sửa chữa', ve: mhRepairMinutes, nhom: 'Nghiệp vụ' },
     'qr-scan': { ten: 'Quét QR', ve: mhQrScan, nhom: 'Dữ liệu' },
     'sua-chua':  { ten: 'Bảo dưỡng — sửa chữa', ve: mhSuaChua, nhom: 'Nghiệp vụ' },
     'kiem-dinh': { ten: 'Kiểm định',      ve: mhKiemDinh,  nhom: 'Nghiệp vụ' },
@@ -41,7 +42,7 @@ const taoHash = (manHinh, thamSo = {}) => QLCDNavigation.buildHash(manHinh, tham
 const NHOM_DIEU_HUONG = [
     { ma: 'tong-quan', ten: 'Tổng quan', icon: '⌂', manHinh: ['tong-quan', 'canh-bao', 'notifications'] },
     { ma: 'thiet-bi', ten: 'Thiết bị', icon: '▣', manHinh: ['thiet-bi', 'qr-scan', 'kiem-ke-ledger', 'nhap-lieu'] },
-    { ma: 'co-dien', ten: 'Cơ điện', icon: '⚙', manHinh: ['sua-chua', 'kiem-dinh', 'su-co', 'ho-so-ky-thuat', 'phu-tung'] },
+    { ma: 'co-dien', ten: 'Cơ điện', icon: '⚙', manHinh: ['sua-chua', 'repair-minutes', 'kiem-dinh', 'su-co', 'ho-so-ky-thuat', 'phu-tung'] },
     { ma: 'vat-tu', ten: 'Vật tư', icon: '▤', manHinh: ['ncvt', 'ncvt-canonical', 'material-master', 'stock-ledger'] },
     { ma: 'tscd', ten: 'TSCĐ – CCDC', icon: '▦', manHinh: ['tai-san', 'tang-ts', 'giam-ts', 'dieu-chuyen', 'work-inbox', 'phe-duyet'] },
     { ma: 'ho-so', ten: 'Hồ sơ', icon: '□', manHinh: ['ho-so-ky-thuat'] },

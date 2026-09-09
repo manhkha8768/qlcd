@@ -3,7 +3,7 @@ FROM node:22-slim
 
 # better-sqlite3 cần trình biên dịch để dựng phần gốc
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ ca-certificates curl gosu \
+    python3 make g++ ca-certificates curl gosu fonts-dejavu-core \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

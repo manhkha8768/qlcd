@@ -30,6 +30,10 @@ r.get('/', (req, res) => {
         AND NOT EXISTS(SELECT 1 FROM thiet_bi_deletions d WHERE d.thiet_bi_id=tb.id) ORDER BY tb.ngay_tao`)
         .all(...args,user.id,coMaQuyen(req,'approval.self')?1:0));
     }
+    if(coMaQuyen(req,'repair_minutes.approve')||coMaQuyen(req,'repair_minutes.return')||coMaQuyen(req,'repair_minutes.reject')){
+      const units=donViQuanLy(user),args=[];let s='1=1';if(units!==null){if(!units.length)s='1=0';else{s=`m.unit_id IN (${units.map(()=>'?').join(',')})`;args.push(...units);}}
+      approvals.push(...db.prepare(`SELECT 'REPAIR_MINUTE' item_type,m.id,m.minute_code code,tb.ten title,m.status,'NORMAL' priority,m.submitted_at created_at,tb.ma_tb reference,px.ten unit_name,m.version,'repair_minute' action_kind FROM repair_minutes m JOIN thiet_bi tb ON tb.id=m.device_id JOIN phan_xuong px ON px.id=m.unit_id WHERE m.status='SUBMITTED' AND ${s} AND (m.created_by<>? OR ?=1) ORDER BY m.submitted_at`).all(...args,user.id,coMaQuyen(req,'approval.self')?1:0));
+    }
     if (coMaQuyen(req, 'technical_operation.review')) {
         const args = [];
         approvals.push(...db.prepare(`SELECT 'TECHNICAL_WORK_ORDER' item_type,w.id,w.work_order_code code,
@@ -54,6 +58,7 @@ r.get('/', (req, res) => {
         JOIN devices d ON d.id=w.device_id JOIN phan_xuong px ON px.id=d.don_vi_id
         WHERE w.created_by=? AND w.status NOT IN('COMPLETED','REJECTED','CANCELLED')
           AND ${scope('d.don_vi_id', user, mineArgs)} ORDER BY w.updated_at DESC LIMIT 100`).all(...mineArgs);
+    const repairMineArgs=[user.id];mine.push(...db.prepare(`SELECT 'REPAIR_MINUTE' item_type,m.id,m.minute_code code,tb.ten title,m.status,'NORMAL' priority,m.updated_at created_at,tb.ma_tb reference,px.ten unit_name,m.version,'repair_minute' action_kind FROM repair_minutes m JOIN thiet_bi tb ON tb.id=m.device_id JOIN phan_xuong px ON px.id=m.unit_id WHERE m.created_by=? AND m.status NOT IN('APPROVED','REJECTED','CANCELLED') AND ${scope('m.unit_id',user,repairMineArgs)} ORDER BY m.updated_at DESC LIMIT 100`).all(...repairMineArgs));
     const q = String(req.query.q || '').trim().toLocaleLowerCase('vi');
     const type = String(req.query.type || '').toUpperCase();
     const matches = x => (!q || [x.code,x.title,x.reference,x.unit_name].some(v => String(v||'').toLocaleLowerCase('vi').includes(q)))
@@ -72,6 +77,7 @@ r.get('/', (req, res) => {
         review_technical: coMaQuyen(req, 'technical_operation.review'),
         approve_transaction: coMaQuyen(req, 'GD_DUYET')
         ,approve_device: coMaQuyen(req,'thietbi.duyet'),reject_device:coMaQuyen(req,'thietbi.tu_choi')
+        ,approve_repair_minute:coMaQuyen(req,'repair_minutes.approve'),return_repair_minute:coMaQuyen(req,'repair_minutes.return'),reject_repair_minute:coMaQuyen(req,'repair_minutes.reject')
     }, summary: { approvals: totalApprovals, mine: totalMine,
         urgent } });
 });

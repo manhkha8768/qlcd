@@ -92,6 +92,7 @@ const routeRegistry = [
     ['/api/ncvt-dashboard', './routes/ncvt-dashboard'], ['/api/technical-operations', './routes/technical-operations'],
     ['/api/notifications', './routes/notifications'], ['/api/reports', './routes/reports'],
     ['/api/search', './routes/search'], ['/api/work-inbox', './routes/work-inbox'],
+    ['/api/repair-minutes', './routes/repair-minutes'],
     ['/api/interaction-audit', './routes/interaction-audit'],
     ['/api/function-visibility', './routes/function-visibility'],
     ['/api/sheet-sync', './routes/sheet-sync'],
