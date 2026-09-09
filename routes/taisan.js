@@ -58,11 +58,48 @@ function whereTaiSan(req) {
 
 function docTaiSan(id) {
     return db.prepare(`SELECT a.*, px.ma AS ma_don_vi, px.ten AS ten_don_vi, vt.ten AS ten_vi_tri,
+        del.deleted_at,del.deleted_by,del.delete_reason,
         (SELECT l.device_id FROM asset_device_links l JOIN devices d ON d.id=l.device_id AND d.hoat_dong=1
          WHERE l.asset_id=a.id AND l.den_ngay IS NULL
          ORDER BY l.la_lien_ket_chinh DESC,l.id DESC LIMIT 1) AS device_id
         FROM assets a JOIN phan_xuong px ON px.id=a.don_vi_id
-        LEFT JOIN vi_tri vt ON vt.id=a.vi_tri_id WHERE a.id=?`).get(id);
+        LEFT JOIN vi_tri vt ON vt.id=a.vi_tri_id
+        LEFT JOIN asset_deletions del ON del.asset_id=a.id WHERE a.id=?`).get(id);
+}
+
+function blockers(asset) {
+    const out = [];
+    const draft = db.prepare(`SELECT COUNT(*) n FROM asset_transaction_lines l
+        JOIN asset_transactions t ON t.id=l.transaction_id
+        WHERE l.asset_id=? AND t.trang_thai='DRAFT'`).get(asset.id).n;
+    if (draft) out.push(`${draft} giao dịch tài sản đang ở trạng thái nháp`);
+    const inventory = db.prepare(`SELECT COUNT(DISTINCT s.id) n FROM inventory_snapshot_lines l
+        JOIN inventory_sessions s ON s.id=l.session_id
+        WHERE l.asset_id=? AND s.trang_thai IN ('OPEN','SUBMITTED','APPROVED')`).get(asset.id).n;
+    if (inventory) out.push(`${inventory} kỳ kiểm kê chưa hoàn tất`);
+    const workOrders = db.prepare(`SELECT COUNT(DISTINCT w.id) n FROM asset_device_links l
+        JOIN technical_work_orders w ON w.device_id=l.device_id
+        WHERE l.asset_id=? AND l.den_ngay IS NULL
+          AND w.status IN ('DRAFT','SUBMITTED','RETURNED','APPROVED','IN_PROGRESS')`).get(asset.id).n;
+    if (workOrders) out.push(`${workOrders} Work Order chưa hoàn tất`);
+    return out;
+}
+
+function softDelete(req, assets, reason) {
+    const snapshots = assets.map(asset => ({ ...asset, blockers: blockers(asset) }));
+    const blocked = snapshots.filter(x => x.blockers.length);
+    if (blocked.length) return { blocked };
+    const archive = db.prepare(`UPDATE assets SET hoat_dong=0,nguoi_sua_id=?,version=version+1,
+        ngay_sua=datetime('now','localtime') WHERE id=? AND hoat_dong=1`);
+    const remember = db.prepare(`INSERT INTO asset_deletions(asset_id,deleted_by,delete_reason,before_json)
+        VALUES (?,?,?,?)`);
+    db.transaction(() => snapshots.forEach(asset => {
+        remember.run(asset.id, req.session.nguoiDung.id, reason, JSON.stringify(asset));
+        archive.run(req.session.nguoiDung.id, asset.id);
+    }))();
+    interactionAudit(req, 'ASSET_SOFT_DELETE', 'assets', assets.length === 1 ? assets[0].id : null,
+        { reason, asset_ids: assets.map(x => x.id), before: snapshots });
+    return { deleted: assets.length };
 }
 
 function unitFilterAllowed(req, res) {
@@ -126,6 +163,45 @@ r.get('/summary', coMaQuyenNay('asset.view'), (req, res) => {
         SUM(CASE WHEN a.loai_tai_san='CCDC' THEN 1 ELSE 0 END) ccdc
         FROM assets a WHERE ${f.sql}`).get(...f.params);
     res.json(Object.fromEntries(Object.entries(row).map(([k, v]) => [k, Number(v || 0)])));
+});
+
+r.get('/deleted', coMaQuyenNay('asset.restore'), (req, res) => {
+    const rows = db.prepare(`SELECT a.id,a.ma_tai_san,a.ten,a.don_vi_id,del.deleted_at,del.delete_reason,
+        px.ten_ngan don_vi,u.ho_ten deleted_by_name
+        FROM assets a JOIN asset_deletions del ON del.asset_id=a.id
+        JOIN phan_xuong px ON px.id=a.don_vi_id LEFT JOIN nguoi_dung u ON u.id=del.deleted_by
+        ORDER BY del.deleted_at DESC LIMIT 500`).all();
+    res.json(rows);
+});
+
+r.post('/bulk-delete', coMaQuyenNay('asset.delete'), (req, res) => {
+    const ids = [...new Set((req.body?.ids || []).map(Number))].filter(Number.isInteger);
+    const reason = String(req.body?.reason || '').trim();
+    const confirmation = String(req.body?.confirmation || '').trim();
+    if (!ids.length || ids.length > 200) return res.status(400).json({ loi: 'Chọn từ 1 đến 200 tài sản' });
+    if (reason.length < 5) return res.status(400).json({ loi: 'Lý do xóa phải có ít nhất 5 ký tự' });
+    if (ids.length > 1 && confirmation !== `XOA ${ids.length}`) {
+        return res.status(400).json({ loi: `Hãy nhập chính xác XOA ${ids.length} để xác nhận` });
+    }
+    const assets = ids.map(id => docTaiSan(id));
+    if (assets.some(x => !x || !x.hoat_dong || x.deleted_at)) return res.status(404).json({ loi: 'Có tài sản không tồn tại hoặc đã bị xóa' });
+    if (assets.some(x => !duocThaoTacDonVi(req.session.nguoiDung, x.don_vi_id))) return res.status(403).json({ loi: 'Có tài sản ngoài phạm vi dữ liệu' });
+    const result = softDelete(req, assets, reason);
+    if (result.blocked) return res.status(409).json({ loi: 'Không thể xóa tài sản đang có nghiệp vụ chưa hoàn tất', chi_tiet: result.blocked.map(x => ({ id:x.id, ma_tai_san:x.ma_tai_san, blockers:x.blockers })) });
+    res.json({ ok: true, da_xoa: result.deleted });
+});
+
+r.post('/:id/restore', coMaQuyenNay('asset.restore'), (req, res) => {
+    const asset = docTaiSan(req.params.id);
+    if (!asset || !asset.deleted_at) return res.status(404).json({ loi: 'Không tìm thấy tài sản đã xóa' });
+    if (!duocThaoTacDonVi(req.session.nguoiDung, asset.don_vi_id)) return res.status(403).json({ loi: 'Không có quyền' });
+    db.transaction(() => {
+        db.prepare(`UPDATE assets SET hoat_dong=1,nguoi_sua_id=?,version=version+1,
+            ngay_sua=datetime('now','localtime') WHERE id=?`).run(req.session.nguoiDung.id, asset.id);
+        db.prepare('DELETE FROM asset_deletions WHERE asset_id=?').run(asset.id);
+    })();
+    interactionAudit(req, 'ASSET_RESTORE', 'assets', asset.id, { before: asset });
+    res.json({ ok: true });
 });
 
 r.get('/by-code/:code', coMaQuyenNay('asset.view'), (req, res) => {
@@ -286,14 +362,15 @@ r.put('/:id', coMaQuyenNay('asset.edit'), (req, res) => {
     res.json({ ok: true, version: expected + 1 });
 });
 
-r.delete('/:id', coMaQuyenNay('asset.archive'), (req, res) => {
+r.delete('/:id', coMaQuyenNay('asset.delete'), (req, res) => {
     const asset = docTaiSan(req.params.id);
-    if (!asset || !asset.hoat_dong) return res.status(404).json({ loi: 'Không tìm thấy tài sản' });
+    if (!asset || !asset.hoat_dong || asset.deleted_at) return res.status(404).json({ loi: 'Không tìm thấy tài sản' });
     if (!duocThaoTacDonVi(req.session.nguoiDung, asset.don_vi_id)) return res.status(403).json({ loi: 'Không có quyền' });
-    db.prepare(`UPDATE assets SET hoat_dong=0,trang_thai='da_thanh_ly',nguoi_sua_id=?,
-        version=version+1,ngay_sua=datetime('now','localtime') WHERE id=?`)
-        .run(req.session.nguoiDung.id, asset.id);
-    res.json({ ok: true });
+    const reason = String(req.body?.reason || '').trim();
+    if (reason.length < 5) return res.status(400).json({ loi: 'Lý do xóa phải có ít nhất 5 ký tự' });
+    const result = softDelete(req, [asset], reason);
+    if (result.blocked) return res.status(409).json({ loi: 'Không thể xóa tài sản đang có nghiệp vụ chưa hoàn tất', chi_tiet: result.blocked[0].blockers });
+    res.json({ ok: true, da_xoa: 1 });
 });
 
 module.exports = r;

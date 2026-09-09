@@ -1,5 +1,6 @@
 /* TASK 2 - Màn hình Asset Master, tách khỏi hồ sơ kỹ thuật thiết bị. */
 let locTaiSan = { q: '', loai: '', nhom: '', trang_thai: '', don_vi_id: '', tinh_trang_ky_thuat: '', serial: '', nam_san_xuat: '', trang: 1 };
+let taiSanDaChon = new Set();
 
 function thamSoDanhSachTaiSan() {
     return { q: locTaiSan.q, loai: locTaiSan.loai, nhom: locTaiSan.nhom,
@@ -94,23 +95,53 @@ async function taiBangTaiSan() {
         return;
     }
     const pages = Math.ceil(data.tong / data.moi_trang);
-    el.innerHTML = `<table class="asset-table"><thead><tr><th>Mã</th><th>Tên thiết bị</th><th>Serial</th>
+    const duocXoa = coQuyenUI('asset.delete');
+    const idsTrang = data.danh_sach.map(x => Number(x.id));
+    taiSanDaChon = new Set([...taiSanDaChon].filter(id => idsTrang.includes(id)));
+    el.innerHTML = `${duocXoa ? `<div class="asset-bulk-bar"><strong id="asset-selected-count">Đã chọn ${taiSanDaChon.size} thiết bị</strong>
+        <button id="asset-delete-selected" class="nguy-hiem" ${taiSanDaChon.size?'':'disabled'} onclick="xacNhanXoaTaiSan([...taiSanDaChon])">Xóa thiết bị đã chọn</button>
+        <button onclick="moThungRacTaiSan()">Thiết bị đã xóa</button></div>` : ''}
+        <table class="asset-table"><thead><tr>${duocXoa?`<th><input type="checkbox" aria-label="Chọn tất cả thiết bị trang này" onchange="chonTatCaTaiSan(this.checked)" ${idsTrang.length&&idsTrang.every(id=>taiSanDaChon.has(id))?'checked':''}></th>`:''}<th>Mã</th><th>Tên thiết bị</th><th>Số lượng</th><th>Serial</th>
         <th>Đơn vị</th><th>Trạng thái</th><th class="phai">Tổng giờ</th><th>Actions</th></tr></thead>
         <tbody>${data.danh_sach.map(x => { const href = taoHash('tai-san', { ...thamSoDanhSachTaiSan(), asset_id: x.id }); return `<tr class="bam" tabindex="0" role="link"
         onclick="moXemNhanhTaiSan(${x.id},event)" onkeydown="moXemNhanhTaiSan(${x.id},event)">
+        ${duocXoa?`<td><input class="asset-check" type="checkbox" aria-label="Chọn ${esc(x.ma_tai_san)}" data-id="${x.id}" ${taiSanDaChon.has(Number(x.id))?'checked':''} onclick="event.stopPropagation()" onchange="chonTaiSan(${x.id},this.checked)"></td>`:''}
         <td class="ma"><a href="${href}" onclick="moHoSoTaiSanTuLienKet(${x.id},event)">${esc(x.ma_tai_san)}</a></td>
         <td><a href="${href}" onclick="moHoSoTaiSanTuLienKet(${x.id},event)">${esc(x.ten)}</a><div class="mo">${esc(x.ma_thiet_bi || x.nhom_tai_san || '')}</div></td>
-        <td class="ma">${esc(x.so_seri || '—')}</td><td>${esc(x.don_vi || '')}</td>
+        <td class="so">${esc(x.so_luong ?? '—')} ${esc(x.dvt || '')}</td><td class="ma">${esc(x.so_seri || '—')}</td><td>${esc(x.don_vi || '')}</td>
         <td>${nhanTT(x.tinh_trang_ky_thuat || x.trang_thai)}</td><td class="phai so">${Number(x.gio_chay_luy_ke || 0).toLocaleString('vi-VN')}h</td>
-        <td><button class="nho" onclick="moHoSoTaiSanTuLienKet(${x.id},event)">Mở hồ sơ</button></td></tr>`; }).join('')}</tbody></table>
+        <td><button class="nho" onclick="moHoSoTaiSanTuLienKet(${x.id},event)">Mở hồ sơ</button>${duocXoa?` <button class="nho nguy-hiem" onclick="event.stopPropagation();xacNhanXoaTaiSan([${x.id}])">Xóa</button>`:''}</td></tr>`; }).join('')}</tbody></table>
         <div class="asset-card-list">${data.danh_sach.map(x => `<article class="asset-card" onclick="moXemNhanhTaiSan(${x.id},event)">
-            <div><strong>${esc(x.ten)}</strong><span class="ma">${esc(x.ma_tai_san)}</span></div>${nhanTT(x.tinh_trang_ky_thuat || x.trang_thai)}
-            <p>${esc(x.don_vi || '')} · ${esc(x.so_seri || 'Chưa có serial')}</p><p>${Number(x.gio_chay_luy_ke || 0).toLocaleString('vi-VN')} giờ</p>
-            <button onclick="moHoSoTaiSanTuLienKet(${x.id},event)">Mở hồ sơ</button></article>`).join('')}</div>
+            <div><strong>${duocXoa?`<input type="checkbox" aria-label="Chọn ${esc(x.ma_tai_san)}" ${taiSanDaChon.has(Number(x.id))?'checked':''} onclick="event.stopPropagation()" onchange="chonTaiSan(${x.id},this.checked)"> `:''}${esc(x.ten)}</strong><span class="ma">${esc(x.ma_tai_san)}</span></div>${nhanTT(x.tinh_trang_ky_thuat || x.trang_thai)}
+            <p>${esc(x.don_vi || '')} · SL: ${esc(x.so_luong ?? '—')} ${esc(x.dvt || '')} · ${esc(x.so_seri || 'Chưa có serial')}</p><p>${Number(x.gio_chay_luy_ke || 0).toLocaleString('vi-VN')} giờ</p>
+            <button onclick="moHoSoTaiSanTuLienKet(${x.id},event)">Mở hồ sơ</button>${duocXoa?` <button class="nguy-hiem" onclick="event.stopPropagation();xacNhanXoaTaiSan([${x.id}])">Xóa</button>`:''}</article>`).join('')}</div>
         <div style="padding:10px;display:flex;justify-content:space-between"><span>${data.tong} tài sản · trang ${data.trang}/${pages}</span>
         <span><button ${data.trang<=1?'disabled':''} onclick="trangTaiSan(${data.trang-1})">Trước</button>
         <button ${data.trang>=pages?'disabled':''} onclick="trangTaiSan(${data.trang+1})">Sau</button></span></div>`;
 }
+
+function capNhatChonTaiSan() {
+    const label=document.getElementById('asset-selected-count'),button=document.getElementById('asset-delete-selected');
+    if(label) label.textContent=`Đã chọn ${taiSanDaChon.size} thiết bị`;
+    if(button) button.disabled=!taiSanDaChon.size;
+}
+function chonTaiSan(id, checked) { checked?taiSanDaChon.add(Number(id)):taiSanDaChon.delete(Number(id)); capNhatChonTaiSan(); }
+function chonTatCaTaiSan(checked) { document.querySelectorAll('.asset-check').forEach(x=>{x.checked=checked;chonTaiSan(Number(x.dataset.id),checked);}); }
+async function xacNhanXoaTaiSan(ids) {
+    if(!ids.length)return;
+    const label=ids.length===1?'thiết bị này':`${ids.length} thiết bị đã chọn`,confirmText=`XOA ${ids.length}`;
+    moHopThoai('Xóa thiết bị nhập sai',`<div class="bao loi">${label} sẽ bị ẩn khỏi danh sách, tìm kiếm và QR nhưng toàn bộ lịch sử vẫn được giữ để truy vết.</div>
+        <div class="o-nhap"><label>Lý do xóa *</label><textarea id="asset-delete-reason" placeholder="Ví dụ: Nhập nhầm dữ liệu từ file"></textarea></div>
+        ${ids.length>1?`<div class="o-nhap"><label>Nhập chính xác <b>${confirmText}</b></label><input id="asset-delete-confirm"></div>`:''}`,
+        [{ten:'Hủy',chay:dongHopThoai},{ten:'Xóa',lop:'nguy-hiem',chay:async()=>{try{const reason=gt('asset-delete-reason');
+            if(reason.length<5)return baoTrongHopThoai('Lý do xóa phải có ít nhất 5 ký tự');
+            if(ids.length===1)await api('/tai-san/'+ids[0],{method:'DELETE',body:{reason}});
+            else await api('/tai-san/bulk-delete',{method:'POST',body:{ids,reason,confirmation:gt('asset-delete-confirm')}});
+            ids.forEach(id=>taiSanDaChon.delete(Number(id)));dongHopThoai();await taiBangTaiSan();bao(`Đã xóa mềm ${ids.length} thiết bị`);
+        }catch(e){baoTrongHopThoai(e.message);}}}],true);
+}
+async function moThungRacTaiSan(){try{const rows=await api('/tai-san/deleted');moHopThoai('Thiết bị đã xóa',`<div class="bao-bang"><table><thead><tr><th>Mã</th><th>Tên</th><th>Đơn vị</th><th>Lý do</th><th>Thời gian</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td class="ma">${esc(x.ma_tai_san)}</td><td>${esc(x.ten)}</td><td>${esc(x.don_vi||'')}</td><td>${esc(x.delete_reason||'')}</td><td>${esc(x.deleted_at||'')}</td><td><button onclick="khoiPhucTaiSan(${x.id})">Khôi phục</button></td></tr>`).join('')||'<tr><td colspan="6" class="trong">Không có thiết bị đã xóa.</td></tr>'}</tbody></table></div>`,[{ten:'Đóng',chay:dongHopThoai}],true);}catch(e){bao(e.message,'loi');}}
+async function khoiPhucTaiSan(id){try{await api('/tai-san/'+id+'/restore',{method:'POST',body:{}});dongHopThoai();await taiBangTaiSan();bao('Đã khôi phục thiết bị');}catch(e){baoTrongHopThoai(e.message);}}
 function locNhanhTaiSan(status) {
     locTaiSan.trang_thai = status; locTaiSan.trang = 1;
     const select = document.getElementById('ts-trang-thai'); if (select) select.value = status;

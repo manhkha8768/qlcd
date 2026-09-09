@@ -65,7 +65,7 @@ r.get('/:id', coMaQuyenNay('device.view'), (req,res) => {
     if (!device || !device.hoat_dong) return res.status(404).json({ loi: 'Không tìm thấy thiết bị' });
     if (!duocThaoTacDonVi(req.session.nguoiDung,device.don_vi_id)) return res.status(403).json({ loi: 'Không có quyền' });
     const assets = db.prepare(`SELECT l.*,a.ma_tai_san,a.ten,a.loai_tai_san,a.don_vi_id
-        FROM asset_device_links l JOIN assets a ON a.id=l.asset_id
+        FROM asset_device_links l JOIN assets a ON a.id=l.asset_id AND a.hoat_dong=1
         WHERE l.device_id=? ORDER BY (l.den_ngay IS NULL) DESC,l.tu_ngay DESC`).all(device.id);
     res.json({ thiet_bi: device,tai_san_lien_ket: assets,
         legacy: device.legacy_thiet_bi_id ? { bang: 'thiet_bi',id: device.legacy_thiet_bi_id } : null });

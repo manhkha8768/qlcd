@@ -163,7 +163,7 @@ async function taiBangThietBi() {
             <td>${esc(x.ten)}${x.ma_tscd ? `<div style="font-size:11.5px;color:var(--chu-mo)">TS: ${esc(x.ma_tscd)}</div>` : ''}</td>
             <td><span class="ma">${esc(x.ma_nhom || '')}</span> ${esc(x.ten_nhom || '')}</td>
             <td>${esc(x.px || '')}</td>
-            <td class="giua so">${x.so_luong > 1 ? x.so_luong + ' ' + esc(x.dvt || '') : ''}</td>
+            <td class="giua so">${x.so_luong ?? '—'} ${esc(x.dvt || '')}</td>
             <td class="phai so">${tien(x.nguyen_gia)}</td>
             <td>${nhanTT(x.trang_thai)}</td>
             <td>${nhanTT(x.trang_thai_duyet)}</td></tr>`).join('')}
@@ -199,7 +199,7 @@ async function xemThietBi(id) {
         ${hang('Số seri', b.so_seri)}
         ${hang('Năm sản xuất', b.nam_sx)}
         ${hang('Nước sản xuất', b.nuoc_sx)}
-        ${hang('Số lượng', b.so_luong > 1 ? b.so_luong + ' ' + (b.dvt || '') : '')}
+        ${hang('Số lượng', `${b.so_luong ?? '—'} ${b.dvt || ''}`)}
         ${hang('Ngày sử dụng', ngay(b.ngay_su_dung))}
         ${hang('Giá trị còn lại', tien(b.gia_tri_con_lai) ? tien(b.gia_tri_con_lai) + ' đ' : '')}
         ${hang('Vị trí', b.ten_vi_tri)}

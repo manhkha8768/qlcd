@@ -134,6 +134,7 @@ body {
 .asset-kpi .o-so { text-align:left; cursor:pointer; display:flex; flex-direction:column; }
 .asset-kpi .o-so:hover { border-color:var(--primary); background:#F8FBFE; }
 .asset-card-list { display:none; }
+.asset-bulk-bar { display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px;border-bottom:1px solid var(--vien,#e4e7ec);background:#f8fafc; }
 .quick-asset-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; padding-bottom:14px; border-bottom:1px solid var(--vien); }
 .quick-asset-head strong { font-size:20px; }
 .quick-asset-stats { padding:16px 0; }

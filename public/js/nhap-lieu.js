@@ -290,7 +290,7 @@ async function manHinhKiemTra(loc = 'tat_ca') {
                 <td>${d.ma_nhom_tb ? `<span class="ma">${esc(d.ma_nhom_tb)}</span> ${esc(d.ten_nhom)}` :
                      '<span class="nhan-tt tt-qua_han">chưa có</span>'}</td>
                 <td class="ma">${esc(d.ma_tscd || '')}</td>
-                <td class="giua so">${d.so_luong > 1 ? d.so_luong : ''}</td>
+                <td class="giua so">${d.so_luong ?? '—'}</td>
                 <td class="phai so">${tien(d.nguyen_gia)}</td>
                 <td>${ngay(d.ngay_su_dung)}</td>
                 <td>${d.loi ? `<div class="loi-o">${esc(d.loi)}</div>` : ''}

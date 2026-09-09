@@ -251,7 +251,7 @@ function veCay(ns, muc) {
                 <span class="ma">${esc(n.ma_cum || '')}</span>
                 <strong style="cursor:pointer" onclick="xemCum(${n.id})">${esc(n.ten)}</strong>
                 <span style="color:var(--chu-nhat);font-size:12px">${LOAI_CUM[n.loai_cum] || ''}</span>
-                ${n.so_luong > 1 ? `<span class="so" style="font-size:12px">×${n.so_luong}</span>` : ''}
+                ${n.so_luong != null ? `<span class="so" style="font-size:12px">×${n.so_luong}</span>` : ''}
                 ${n.ma_phu_tung ? `<span class="ma" style="color:var(--chu-mo)">PN ${esc(n.ma_phu_tung)}</span>` : ''}
                 ${nhanTT(n.tinh_trang_kt)}
                 ${n.so_tai_lieu ? `<span style="font-size:11.5px;color:var(--chu-mo)">${n.so_tai_lieu} tệp</span>` : ''}
@@ -340,7 +340,7 @@ async function xemCum(id) {
         ${hang('Model', c.model)}
         ${hang('Số seri', c.so_seri)}
         ${hang('Mã phụ tùng', c.ma_phu_tung)}
-        ${hang('Số lượng', c.so_luong > 1 ? c.so_luong + ' ' + (c.dvt || '') : '')}
+        ${hang('Số lượng', `${c.so_luong ?? '—'} ${c.dvt || ''}`)}
         ${hang('Ngày lắp', ngay(c.ngay_lap))}
         <tr><td style="color:var(--chu-nhat)">Trạng thái</td>
             <td>${nhanCum(c.trang_thai)} ${nhanTT(c.tinh_trang_kt)}</td></tr>

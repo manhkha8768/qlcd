@@ -64,7 +64,7 @@ r.get('/',coMaQuyenNay('asset_ledger.view'),(req,res)=>{
 });
 
 r.get('/projection',coMaQuyenNay('asset_ledger.view'),(req,res)=>{
-    const scope=donViDuocPhep(req.session.nguoiDung); const where=['p.so_luong<>0']; const p=[];
+    const scope=donViDuocPhep(req.session.nguoiDung); const where=['p.so_luong<>0','a.hoat_dong=1']; const p=[];
     if(scope!==null){if(!scope.length)where.push('1=0');else{where.push(`p.don_vi_id IN (${scope.map(()=>'?').join(',')})`);p.push(...scope);}}
     res.json(db.prepare(`SELECT p.*,NULLIF(p.vi_tri_key,0) vi_tri_id,a.ma_tai_san,a.ten,px.ma ma_don_vi
         FROM asset_balance_projection p JOIN assets a ON a.id=p.asset_id JOIN phan_xuong px ON px.id=p.don_vi_id

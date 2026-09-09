@@ -20,7 +20,7 @@ r.get('/', (req, res) => {
                LEFT JOIN phan_xuong px   ON px.id = tb.phan_xuong_id
                LEFT JOIN vi_tri vt       ON vt.id = tb.vi_tri_id
                LEFT JOIN devices d       ON d.legacy_thiet_bi_id = tb.id
-               LEFT JOIN assets a        ON a.legacy_thiet_bi_id = tb.id
+               LEFT JOIN assets a        ON a.legacy_thiet_bi_id = tb.id AND a.hoat_dong=1
                WHERE 1=1`;
     const p = [];
 
@@ -67,7 +67,7 @@ r.get('/:id', (req, res) => {
         LEFT JOIN phan_xuong px    ON px.id = tb.phan_xuong_id
         LEFT JOIN vi_tri vt        ON vt.id = tb.vi_tri_id
         LEFT JOIN devices d        ON d.legacy_thiet_bi_id = tb.id
-        LEFT JOIN assets a         ON a.legacy_thiet_bi_id = tb.id
+        LEFT JOIN assets a         ON a.legacy_thiet_bi_id = tb.id AND a.hoat_dong=1
         WHERE tb.id = ?`).get(req.params.id);
 
     if (!tb) return res.status(404).json({ loi: 'Không tìm thấy thiết bị' });
