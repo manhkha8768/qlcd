@@ -173,7 +173,7 @@ async function taiBangThietBi() {
             <th>STT</th><th>Số kiểm kê</th><th>Số quản lý</th><th>Tên thiết bị</th><th>ĐVT</th><th class="giua">Số lượng</th><th>Số chế tạo</th><th>PX</th><th>Trạng thái</th><th>% kỹ thuật</th><th>Ghi chú</th><th>Thao tác</th></tr></thead>
         <tbody>${d.danh_sach.map(x => `<tr class="bam" onclick="xemThietBi(${x.id})">
             ${duocXoa ? `<td><input class="device-check" type="checkbox" data-id="${x.id}" aria-label="Chọn ${esc(x.ma_tb)}" ${thietBiDaChon.has(Number(x.id)) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="chonThietBi(${x.id},this.checked)"></td>` : ''}
-            <td>${(d.trang-1)*d.moi_trang+d.danh_sach.indexOf(x)+1}</td><td>${esc(x.so_kiem_ke??'—')}</td><td class="ma">${esc(x.so_quan_ly??x.ma_tb)}</td><td>${esc(x.ten)}</td><td>${esc(x.dvt||'')}</td><td class="giua so">${x.so_luong??'—'}</td><td>${esc(x.so_seri||'—')}</td><td>${esc(x.px||'')}</td><td>${nhanTT(x.trang_thai)}</td><td>${x.danh_gia_ky_thuat??'—'}</td><td>${esc(x.ghi_chu_kiem_ke??x.ghi_chu??'')}</td><td>${x.hidden_from_web&&coQuyenUI('thietbi.unhide')?`<button class="nho" onclick="event.stopPropagation();hienLaiThietBi(${x.id})">Hiện lại</button>`:''}${duocXoa?` <button class="nho nguy-hiem" onclick="event.stopPropagation();xacNhanXoaThietBi([${x.id}])">Xóa</button>`:''}</td></tr>`).join('')}
+            <td>${(d.trang-1)*d.moi_trang+d.danh_sach.indexOf(x)+1}</td><td>${esc(x.so_kiem_ke??'—')}</td><td class="ma">${esc(x.so_quan_ly??'')}</td><td>${esc(x.ten)}</td><td>${esc(x.dvt||'')}</td><td class="giua so">${x.so_luong??'—'}</td><td>${esc(x.so_seri||'—')}</td><td>${esc(x.px||'')}</td><td>${nhanTT(x.trang_thai)}</td><td>${x.danh_gia_ky_thuat??'—'}</td><td>${esc(x.ghi_chu_kiem_ke??x.ghi_chu??'')}</td><td>${x.hidden_from_web&&coQuyenUI('thietbi.unhide')?`<button class="nho" onclick="event.stopPropagation();hienLaiThietBi(${x.id})">Hiện lại</button>`:''}${duocXoa?` <button class="nho nguy-hiem" onclick="event.stopPropagation();xacNhanXoaThietBi([${x.id}])">Xóa</button>`:''}</td></tr>`).join('')}
         </tbody></table>
         <div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--chu-nhat)">
             <span>${d.tong} thiết bị · trang ${d.trang}/${soTrang}</span>
@@ -340,6 +340,7 @@ function formThietBi(b = null) {
         </div>
         <div class="hang">
             <div class="o-nhap"><label>Mã tài sản</label><input id="f-tscd" value="${esc(b?.ma_tscd || '')}"></div>
+            <div class="o-nhap"><label>Số quản lý</label><input id="f-soql" value="${esc(b?.so_quan_ly || '')}" placeholder="Để trống nếu chưa được cấp"></div>
             <div class="o-nhap"><label>Loại</label><select id="f-loai">
                 <option value="TSCD" ${b?.loai_ts === 'TSCD' ? 'selected' : ''}>TSCĐ</option>
                 <option value="CCDC" ${b?.loai_ts === 'CCDC' ? 'selected' : ''}>CCDC</option></select></div>
@@ -362,7 +363,7 @@ function formThietBi(b = null) {
             const body = {
                 ten: gt('f-ten'), nhom_id: gt('f-nhom') || null,
                 phan_xuong_id: laPX ? null : (gt('f-px') || null),
-                ma_tscd: gt('f-tscd') || null, loai_ts: gt('f-loai'), so_seri: gt('f-seri') || null,
+                ma_tscd: gt('f-tscd') || null, so_quan_ly: gt('f-soql') || null, loai_ts: gt('f-loai'), so_seri: gt('f-seri') || null,
                 so_luong: so('f-sl') ?? 1, dvt: gt('f-dvt'), nam_sx: so('f-nam'),
                 nguyen_gia: so('f-ng') ?? 0, gia_tri_con_lai: so('f-gtcl') ?? 0,
                 ngay_su_dung: gt('f-ngay') || null, ghi_chu: gt('f-gc') || null

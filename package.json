@@ -11,6 +11,7 @@
     "test:company-template": "node test/test-company-inventory-template.js",
     "test:account-hierarchy": "node test/test-account-hierarchy.js",
     "test:repair-minutes": "node test/test-repair-minutes.js",
+    "test:management-number": "node test/test-management-number-integrity.js",
     "init": "node db/init.js",
     "lint": "node scripts/kiem-tra-js.js",
     "typecheck": "node scripts/kiem-tra-js.js",

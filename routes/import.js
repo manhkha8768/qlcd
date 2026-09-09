@@ -17,6 +17,7 @@ const db = require('../db');
 const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX } = require('../middleware/quyen');
 const xl = require('../lib/doc-excel');
 const { sinhMa, doanNhom } = require('../lib/ma-thiet-bi');
+const { chuanHoaSoQuanLy, timTrungSoQuanLy } = require('../lib/so-quan-ly');
 const US = require('../lib/upload-security');
 const { uploadsRoot } = require('../lib/document-storage');
 
@@ -270,6 +271,15 @@ r.post('/lo/:id/xac-nhan', duocGhi, (req, res) => {
 
     const chay = db.transaction(() => {
         for (const d of ds) {
+            d.so_quan_ly = chuanHoaSoQuanLy(d.so_quan_ly);
+            const trungSoQuanLy = timTrungSoQuanLy(d.so_quan_ly);
+            if (trungSoQuanLy) {
+                boQua++;
+                const message = `Số quản lý đã thuộc thiết bị ${trungSoQuanLy.ma_tb} tại ${trungSoQuanLy.px || 'đơn vị khác'}`;
+                loiChiTiet.push({ dong:d.dong_goc, ten:d.ten, loi:message });
+                db.prepare('UPDATE import_tam SET loi=? WHERE id=?').run(message,d.id);
+                continue;
+            }
             if (boQuaTrung && d.ma_tscd &&
                 db.prepare('SELECT 1 FROM thiet_bi WHERE ma_tscd=?').get(d.ma_tscd)) {
                 boQua++; continue;

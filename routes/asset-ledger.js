@@ -6,7 +6,7 @@ const multer = require('multer');
 const db = require('../db');
 const US = require('../lib/upload-security');
 const { uploadsRoot } = require('../lib/document-storage');
-const { dangNhap,coMaQuyenNay,donViDuocPhep,duocThaoTacDonVi } = require('../middleware/quyen');
+const { dangNhap,coMaQuyenNay,coMaQuyen,donViDuocPhep,duocThaoTacDonVi,duocQuanLyDonVi } = require('../middleware/quyen');
 
 const r=express.Router(); r.use(dangNhap);
 const transferDir=path.join(uploadsRoot,'asset-transfer');
@@ -40,6 +40,24 @@ function rebuildProjection(){
     db.prepare(`INSERT INTO asset_balance_projection(asset_id,don_vi_id,vi_tri_key,so_luong,dvt,last_entry_id,updated_at)
         SELECT asset_id,don_vi_id,COALESCE(vi_tri_id,0),SUM(so_luong_thay_doi),dvt,MAX(id),datetime('now','localtime')
         FROM asset_ledger_entries GROUP BY asset_id,don_vi_id,COALESCE(vi_tri_id,0),dvt`).run();
+}
+function syncTransferredDevice(line) {
+    if (!line.device_id) return;
+    const device=db.prepare('SELECT legacy_thiet_bi_id FROM devices WHERE id=?').get(line.device_id);
+    if (!device) return;
+    db.prepare(`UPDATE devices SET don_vi_id=?,vi_tri_id=?,trang_thai='hoat_dong',version=version+1,
+        ngay_sua=datetime('now','localtime') WHERE id=?`).run(line.don_vi_dich_id,line.vi_tri_dich_id||null,line.device_id);
+    if (device.legacy_thiet_bi_id) {
+        db.prepare(`UPDATE lich_su_vi_tri SET den_ngay=date('now','localtime')
+            WHERE thiet_bi_id=? AND den_ngay IS NULL`).run(device.legacy_thiet_bi_id);
+        db.prepare(`INSERT INTO lich_su_vi_tri(thiet_bi_id,phan_xuong_id,vi_tri_id,tu_ngay,ghi_chu)
+            VALUES (?,?,?,date('now','localtime'),'Điều chuyển đã đủ xác nhận')`)
+            .run(device.legacy_thiet_bi_id,line.don_vi_dich_id,line.vi_tri_dich_id||null);
+        db.prepare(`UPDATE thiet_bi SET phan_xuong_id=?,vi_tri_id=?,ngay_sua=datetime('now','localtime') WHERE id=?`)
+            .run(line.don_vi_dich_id,line.vi_tri_dich_id||null,device.legacy_thiet_bi_id);
+        db.prepare(`UPDATE assets SET don_vi_id=?,vi_tri_id=?,version=version+1,ngay_sua=datetime('now','localtime')
+            WHERE legacy_thiet_bi_id=? AND hoat_dong=1`).run(line.don_vi_dich_id,line.vi_tri_dich_id||null,device.legacy_thiet_bi_id);
+    }
 }
 function validateLine(type,line){
     const errors=[]; const qty=Number(line.so_luong);
@@ -121,6 +139,13 @@ r.post('/',coMaQuyenNay('asset_ledger.create'),(req,res)=>{
         if(!canCreate(req,b.loai,line))return res.status(403).json({loi:'Đơn vị ngoài phạm vi dữ liệu'});
         if(line.device_id && !db.prepare('SELECT 1 FROM asset_device_links WHERE asset_id=? AND device_id=? AND den_ngay IS NULL').get(asset.id,line.device_id))
             return res.status(400).json({loi:'Device không có liên kết hiệu lực với Asset'});
+        if(['TRANSFER','RETURN'].includes(b.loai) && line.device_id) {
+            if(Number(line.so_luong)!==1)return res.status(400).json({loi:'Thiết bị quản lý riêng chỉ được điều chuyển số lượng 1'});
+            const open=db.prepare(`SELECT t.ma_giao_dich FROM asset_transaction_lines l
+                JOIN asset_transactions t ON t.id=l.transaction_id JOIN asset_transfer_workflows w ON w.transaction_id=t.id
+                WHERE l.device_id=? AND w.trang_thai NOT IN ('POSTED','REJECTED','CANCELLED') LIMIT 1`).get(line.device_id);
+            if(open)return res.status(409).json({loi:`Thiết bị đang có phiếu điều chuyển chưa hoàn tất: ${open.ma_giao_dich}`});
+        }
     }
     const txId=id(),code=txCode(b.loai);
     db.transaction(()=>{
@@ -160,6 +185,7 @@ function postRaw(req,txId,fromApproval=false){
         else if(['TRANSFER','RETURN'].includes(tx.loai)){
             addEntry(tx,line,line.don_vi_nguon_id,line.vi_tri_nguon_id,-qty,'OUT',req.session.nguoiDung.id);
             addEntry(tx,line,line.don_vi_dich_id,line.vi_tri_dich_id,qty,'IN',req.session.nguoiDung.id);
+            syncTransferredDevice(line);
         } else { const positive=!!line.don_vi_dich_id; addEntry(tx,line,positive?line.don_vi_dich_id:line.don_vi_nguon_id,positive?line.vi_tri_dich_id:line.vi_tri_nguon_id,positive?qty:-qty,'ADJUSTMENT',req.session.nguoiDung.id); }
     }
     db.prepare("UPDATE asset_transactions SET trang_thai='POSTED',nguoi_post_id=?,ngay_post=datetime('now','localtime') WHERE id=? AND trang_thai='DRAFT'").run(req.session.nguoiDung.id,tx.id);
@@ -185,7 +211,7 @@ r.post('/:id/sender-confirm',coMaQuyenNay('asset_transfer.sender_confirm'),(req,
     try{db.transaction(()=>{const w=workflow(req.params.id),line=firstLine(req.params.id);
         if(!w||!line)throw Object.assign(new Error('Không tìm thấy giao dịch điều chuyển'),{status:404});
         if(w.trang_thai!=='SUBMITTED')throw Object.assign(new Error('Phiếu chưa ở bước bên giao xác nhận'),{status:409});
-        if(!duocThaoTacDonVi(req.session.nguoiDung,line.don_vi_nguon_id))throw Object.assign(new Error('Không thuộc đơn vị giao'),{status:403});
+        if(!duocQuanLyDonVi(req.session.nguoiDung,line.don_vi_nguon_id))throw Object.assign(new Error('Không được giao quản lý đơn vị bàn giao'),{status:403});
         db.prepare("UPDATE asset_transfer_workflows SET trang_thai='SENDER_CONFIRMED',sender_user_id=?,sender_confirmed_at=datetime('now','localtime'),version=version+1,updated_at=datetime('now','localtime') WHERE transaction_id=? AND trang_thai='SUBMITTED'")
             .run(req.session.nguoiDung.id,req.params.id);timeline(req,req.params.id,'SENDER_CONFIRM','SUBMITTED','SENDER_CONFIRMED');
     })();res.json({ok:true,trang_thai:'SENDER_CONFIRMED'});}catch(e){res.status(e.status||500).json({loi:e.message});}
@@ -212,7 +238,9 @@ r.post('/:id/receiver-confirm',coMaQuyenNay('asset_transfer.receiver_confirm'),(
     try{db.transaction(()=>{const w=workflow(req.params.id),line=firstLine(req.params.id);
         if(!w||!line)throw Object.assign(new Error('Không tìm thấy giao dịch điều chuyển'),{status:404});
         if(w.trang_thai!=='SENDER_CONFIRMED')throw Object.assign(new Error('Bên giao chưa xác nhận'),{status:409});
-        if(!duocThaoTacDonVi(req.session.nguoiDung,line.don_vi_dich_id))throw Object.assign(new Error('Không thuộc đơn vị nhận'),{status:403});
+        if(!duocQuanLyDonVi(req.session.nguoiDung,line.don_vi_dich_id))throw Object.assign(new Error('Không được giao quản lý đơn vị tiếp nhận'),{status:403});
+        if(Number(w.sender_user_id)===Number(req.session.nguoiDung.id) && !coMaQuyen(req,'asset_transfer.dual_confirm'))
+            throw Object.assign(new Error('Bên giao và bên nhận phải do hai tài khoản độc lập xác nhận'),{status:409});
         if(!db.prepare('SELECT 1 FROM asset_transfer_documents WHERE transaction_id=?').get(req.params.id))throw Object.assign(new Error('Phải có chứng từ giao nhận'),{status:409});
         db.prepare("UPDATE asset_transfer_workflows SET trang_thai='RECEIVER_CONFIRMED',receiver_user_id=?,receiver_confirmed_at=datetime('now','localtime'),version=version+1,updated_at=datetime('now','localtime') WHERE transaction_id=? AND trang_thai='SENDER_CONFIRMED'")
             .run(req.session.nguoiDung.id,req.params.id);timeline(req,req.params.id,'RECEIVER_CONFIRM','SENDER_CONFIRMED','RECEIVER_CONFIRMED');

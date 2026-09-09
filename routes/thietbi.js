@@ -3,6 +3,7 @@ const db = require('../db');
 const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep, duocQuanLyDonVi, coMaQuyen, coMaQuyenNay } = require('../middleware/quyen');
 const { sinhMa } = require('../lib/ma-thiet-bi');
 const { interactionAudit } = require('../lib/interaction-audit');
+const { chuanHoaSoQuanLy, timTrungSoQuanLy } = require('../lib/so-quan-ly');
 const ExcelJS = require('exceljs');
 
 const r = express.Router();
@@ -50,7 +51,7 @@ r.get('/', (req, res) => {
                       d.id AS device_id, a.id AS asset_id,
                       tb.so_luong, tb.dvt, tb.nguyen_gia, tb.gia_tri_con_lai, tb.ngay_su_dung,
                       tb.trang_thai, tb.tinh_trang_kt, tb.trang_thai_duyet, tb.gio_chay_luy_ke,
-                      kk.so_kiem_ke,COALESCE(kk.so_quan_ly,tb.ma_tscd) AS so_quan_ly,
+                      kk.so_kiem_ke,kk.so_quan_ly,
                       kk.so_luong_quan_ly,kk.so_luong_kiem_ke,kk.so_luong_doi_chieu,
                       kk.danh_gia_ky_thuat,kk.ghi_chu_kiem_ke,kk.quan_ly_theo_quyet_dinh,
                       COALESCE(kk.hidden_from_web,0) AS hidden_from_web,kk.hidden_reason,
@@ -87,8 +88,8 @@ r.get('/', (req, res) => {
     else if (hidden !== 'all') return res.status(400).json({ loi:'Bộ lọc trạng thái ẩn không hợp lệ' });
     if (req.query.co_so_kiem_ke === '1') sql += " AND COALESCE(kk.so_kiem_ke,'')<>''";
     if (req.query.co_so_kiem_ke === '0') sql += " AND COALESCE(kk.so_kiem_ke,'')=''";
-    if (req.query.co_so_quan_ly === '1') sql += " AND COALESCE(kk.so_quan_ly,tb.ma_tscd,'')<>''";
-    if (req.query.co_so_quan_ly === '0') sql += " AND COALESCE(kk.so_quan_ly,tb.ma_tscd,'')=''";
+    if (req.query.co_so_quan_ly === '1') sql += " AND COALESCE(kk.so_quan_ly,'')<>''";
+    if (req.query.co_so_quan_ly === '0') sql += " AND COALESCE(kk.so_quan_ly,'')=''";
     if (req.query.ky_thuat_tu !== undefined && req.query.ky_thuat_tu !== '') { sql += ' AND kk.danh_gia_ky_thuat>=?'; p.push(Number(req.query.ky_thuat_tu)); }
     if (req.query.ky_thuat_den !== undefined && req.query.ky_thuat_den !== '') { sql += ' AND kk.danh_gia_ky_thuat<=?'; p.push(Number(req.query.ky_thuat_den)); }
     if (req.query.q) {
@@ -140,7 +141,7 @@ async function xuatKiemKe(req,res,dayDu) {
     ws.mergeCells('A1:P1'); ws.getCell('A1').value='BIÊN BẢN KIỂM KÊ THIẾT BỊ, TSCĐ, CCDC'; ws.getCell('A1').font={bold:true,size:15}; ws.getCell('A1').alignment={horizontal:'center'};
     const headers=['STT','Tên thiết bị TSCĐ, CCDC','ĐVT','Số kiểm kê','SL quản lý','SL kiểm kê','Đối chiếu','Số chế tạo','Số quản lý','Phân xưởng','Trạng thái','Đánh giá % kỹ thuật','Ghi chú','QL theo lệnh/QĐ','Mã thiết bị','Ẩn trên web'];
     ws.addRow([]); ws.addRow(headers); ws.getRow(3).font={bold:true}; ws.getRow(3).alignment={horizontal:'center',vertical:'middle',wrapText:true};
-    rows.forEach((x,i)=>{ const row=ws.addRow([i+1,x.ten,x.dvt,x.so_kiem_ke,x.so_luong_quan_ly??x.so_luong,x.so_luong_kiem_ke,x.so_luong_doi_chieu,x.so_seri,x.so_quan_ly??x.ma_tscd,x.px,x.trang_thai,x.danh_gia_ky_thuat,x.ghi_chu_kiem_ke??x.ghi_chu,x.quan_ly_theo_quyet_dinh,x.ma_tb,x.hidden_from_web?'Có':'Không']); if(x.hidden_from_web) row.eachCell(c=>c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}}); });
+    rows.forEach((x,i)=>{ const row=ws.addRow([i+1,x.ten,x.dvt,x.so_kiem_ke,x.so_luong_quan_ly??x.so_luong,x.so_luong_kiem_ke,x.so_luong_doi_chieu,x.so_seri,x.so_quan_ly??'',x.px,x.trang_thai,x.danh_gia_ky_thuat,x.ghi_chu_kiem_ke??x.ghi_chu,x.quan_ly_theo_quyet_dinh,x.ma_tb,x.hidden_from_web?'Có':'Không']); if(x.hidden_from_web) row.eachCell(c=>c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}}); });
     ws.addRow([]); ws.addRow(['','NGƯỜI LẬP BIỂU','','','','ĐẠI DIỆN PHÂN XƯỞNG','','','','','','PHÒNG CƠ ĐIỆN','','','','']);
     ws.columns=[8,36,10,15,12,12,12,18,18,14,15,18,30,24,18,12].map(width=>({width})); ws.views=[{state:'frozen',ySplit:3}]; ws.autoFilter='A3:P3';
     interactionAudit(req,dayDu?'DEVICE_EXPORT_OFFICIAL':'DEVICE_EXPORT_FILTERED','thiet_bi',null,{count:rows.length});
@@ -191,9 +192,16 @@ r.post('/:id/restore', coMaQuyenNay('thietbi.khoi_phuc'), (req, res) => {
 });
 
 /* ---------- Hồ sơ chi tiết ---------- */
+r.get('/management-number-conflicts', coMaQuyenNay('thietbi.management_number_conflicts'), (req,res) => {
+    res.json(db.prepare(`SELECT c.normalized_number,c.detected_at,tb.id,tb.ma_tb,tb.ten,px.ten_ngan AS px
+        FROM management_number_conflicts c JOIN thiet_bi tb ON tb.id=c.thiet_bi_id
+        LEFT JOIN phan_xuong px ON px.id=tb.phan_xuong_id WHERE c.resolved_at IS NULL
+        ORDER BY c.normalized_number,px.ten_ngan,tb.ma_tb`).all());
+});
+
 r.get('/:id', (req, res) => {
     const tb = db.prepare(`
-        SELECT tb.*, d.id AS device_id, a.id AS asset_id,
+        SELECT tb.*, kk.so_quan_ly, d.id AS device_id, a.id AS asset_id,
                n.ma AS ma_nhom, n.ten AS ten_nhom, nc.ten AS ten_nhom_cha,
                m.ma_model, m.hang_sx AS model_hang, m.cong_suat_kw,
                px.ten AS ten_px, px.ten_ngan AS px, vt.ten AS ten_vi_tri
@@ -205,6 +213,7 @@ r.get('/:id', (req, res) => {
         LEFT JOIN vi_tri vt        ON vt.id = tb.vi_tri_id
         LEFT JOIN devices d        ON d.legacy_thiet_bi_id = tb.id
         LEFT JOIN assets a         ON a.legacy_thiet_bi_id = tb.id AND a.hoat_dong=1
+        LEFT JOIN thiet_bi_kiem_ke kk ON kk.thiet_bi_id=tb.id
         WHERE tb.id = ? AND NOT EXISTS
           (SELECT 1 FROM thiet_bi_deletions del WHERE del.thiet_bi_id=tb.id)`).get(req.params.id);
 
@@ -246,8 +255,13 @@ r.post('/', duocGhi, (req, res) => {
     if (!duocThaoTacPX(req, pxId)) return res.status(403).json({ loi: 'Không có quyền' });
 
     const ma = (b.ma_tb || '').trim() || sinhMa(pxId, b.nhom_id);
+    const soQuanLy = chuanHoaSoQuanLy(b.so_quan_ly);
+    const trung = timTrungSoQuanLy(soQuanLy);
+    if (trung) return res.status(409).json({ loi:'Số quản lý đã thuộc một thiết bị khác trong Công ty', ma_thiet_bi:trung.ma_tb, phan_xuong:trung.px });
     try {
-        const info = db.prepare(`
+      let info;
+      db.transaction(() => {
+        info = db.prepare(`
             INSERT INTO thiet_bi (ma_tb, ten, model_id, nhom_id, so_seri, nam_sx, nuoc_sx,
                 ma_tscd, loai_ts, nguyen_gia, gia_tri_con_lai, ngay_su_dung, phan_xuong_id,
                 vi_tri_id, so_luong, dvt, trang_thai, tinh_trang_kt, nguoi_tao_id,
@@ -260,12 +274,17 @@ r.post('/', duocGhi, (req, res) => {
                b.trang_thai || 'hoat_dong', b.tinh_trang_kt || 'tot',
                req.session.nguoiDung.id, b.ghi_chu || null);
 
+        if (soQuanLy) db.prepare('INSERT INTO thiet_bi_kiem_ke(thiet_bi_id,so_quan_ly) VALUES (?,?)')
+            .run(info.lastInsertRowid, soQuanLy);
+
         db.prepare(`INSERT INTO lich_su_vi_tri (thiet_bi_id, phan_xuong_id, vi_tri_id, tu_ngay)
                     VALUES (?,?,?,COALESCE(?, date('now','localtime')))`)
           .run(info.lastInsertRowid, pxId, b.vi_tri_id || null, b.ngay_su_dung || null);
+      })();
 
         res.json({ id: info.lastInsertRowid, ma_tb: ma });
     } catch (e) {
+        if (/SO_QUAN_LY_DUPLICATE/.test(e.message)) return res.status(409).json({ loi:'Số quản lý đã thuộc một thiết bị khác trong Công ty' });
         if (/UNIQUE/.test(e.message)) return res.status(400).json({ loi: `Mã thiết bị "${ma}" đã tồn tại` });
         throw e;
     }
@@ -278,12 +297,22 @@ r.put('/:id', duocGhi, (req, res) => {
     if (!duocThaoTacPX(req, tb.phan_xuong_id)) return res.status(403).json({ loi: 'Không có quyền' });
 
     const b = req.body || {};
+    const soQuanLy = b.so_quan_ly === undefined ? undefined : chuanHoaSoQuanLy(b.so_quan_ly);
+    const trung = soQuanLy === undefined ? null : timTrungSoQuanLy(soQuanLy, tb.id);
+    if (trung) return res.status(409).json({ loi:'Số quản lý đã thuộc một thiết bị khác trong Công ty', ma_thiet_bi:trung.ma_tb, phan_xuong:trung.px });
     const truong = ['ten', 'model_id', 'nhom_id', 'so_seri', 'nam_sx', 'nuoc_sx', 'ma_tscd',
                     'loai_ts', 'nguyen_gia', 'gia_tri_con_lai', 'ngay_su_dung', 'vi_tri_id',
                     'so_luong', 'dvt', 'trang_thai', 'tinh_trang_kt', 'ghi_chu'];
     const gt = truong.map(t => b[t] !== undefined ? b[t] : tb[t]);
-    db.prepare(`UPDATE thiet_bi SET ${truong.map(t => t + '=?').join(', ')},
+    try { db.transaction(()=>{
+      db.prepare(`UPDATE thiet_bi SET ${truong.map(t => t + '=?').join(', ')},
                        ngay_sua = datetime('now','localtime') WHERE id=?`).run(...gt, tb.id);
+      if (soQuanLy !== undefined) db.prepare(`INSERT INTO thiet_bi_kiem_ke(thiet_bi_id,so_quan_ly) VALUES (?,?)
+        ON CONFLICT(thiet_bi_id) DO UPDATE SET so_quan_ly=excluded.so_quan_ly`).run(tb.id,soQuanLy);
+    })(); } catch(e) {
+      if (/SO_QUAN_LY_DUPLICATE/.test(e.message)) return res.status(409).json({loi:'Số quản lý đã thuộc một thiết bị khác trong Công ty'});
+      throw e;
+    }
     res.json({ ok: true });
 });
 
