@@ -5,6 +5,7 @@ const { dangNhap, chiAdmin, quyenCuaToi } = require('../middleware/quyen');
 const BM = require('../middleware/bao-mat');
 const { catPhienCuaNguoi, danhSachPhien } = require('../lib/phien-sqlite');
 const { passwordLengthError } = require('../lib/password-policy');
+const { effectiveScreens } = require('../lib/function-visibility');
 
 const r = express.Router();
 
@@ -83,8 +84,9 @@ r.post('/dang-xuat', dangNhap, (req, res, next) => {
 r.get('/toi', dangNhap, (req, res) => {
     const ch = db.prepare('SELECT khoa, gia_tri FROM cau_hinh').all();
     const cauHinh = Object.fromEntries(ch.map(x => [x.khoa, x.gia_tri]));
-    res.json({ nguoi_dung: req.session.nguoiDung, cau_hinh: cauHinh,
-        quyen: quyenCuaToi(req.session.nguoiDung) });
+    const quyen = quyenCuaToi(req.session.nguoiDung);
+    res.json({ nguoi_dung: req.session.nguoiDung, cau_hinh: cauHinh, quyen,
+        hien_thi: effectiveScreens(req.session.nguoiDung, quyen) });
 });
 
 r.post('/doi-mat-khau', dangNhap, (req, res) => {

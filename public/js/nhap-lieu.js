@@ -33,8 +33,8 @@ function thanhBuoc(hienTai) {
 /* ---------------------- Màn hình chính ---------------------- */
 async function mhNhapLieu(el) {
     el.innerHTML = `<div class="dau-trang"><div>
-        <div class="eyebrow">Đưa dữ liệu vào hệ thống</div><h2>Tải dữ liệu TSCĐ / CCDC</h2>
-        <div class="phu">Mỗi phân xưởng tải lên file Excel danh sách tài sản của mình</div></div></div>
+        <div class="eyebrow">Đưa dữ liệu vào hệ thống</div><h2>Nhập dữ liệu TSCĐ / CCDC</h2>
+        <div class="phu">Chọn file bảng tính hoặc quét mã thiết bị bằng máy ảnh</div></div></div>
         <div id="vung-bao"></div><div id="noi-dung">Đang tải…</div>`;
 
     LO = null;
@@ -52,7 +52,8 @@ async function mhNhapLieu(el) {
 
     document.getElementById('noi-dung').innerHTML = `
         ${thanhBuoc(1)}
-        <div class="the"><h3>Chọn file danh sách tài sản</h3><div class="than-the">
+        <div class="import-methods">
+        <div class="the"><h3>① Chọn file tải lên</h3><div class="than-the">
             ${laPX ? `<div class="bao tin">Dữ liệu sẽ được ghi cho phân xưởng
                       <strong>${esc(window.PHIEN.ten_px || window.PHIEN.px_ngan || '')}</strong>.</div>`
                    : `<div class="o-nhap" style="max-width:340px"><label>Phân xưởng nhận dữ liệu</label>
@@ -62,9 +63,15 @@ async function mhNhapLieu(el) {
                 <div class="nho2">Nhận .xlsx, .xls, .xlsm, .csv — tối đa 30 MB</div>
             </div>
             <input type="file" id="ip-file" accept=".xlsx,.xls,.xlsm,.csv" style="display:none">
+            <div id="ip-file-status" class="ghi-nho" role="status">Chưa chọn file</div>
             <div class="ghi-nho">Không cần sửa file theo mẫu. Hệ thống tự dò dòng tiêu đề và
                 đoán cột, bạn chỉ cần đối chiếu lại ở bước sau.</div>
         </div></div>
+        <div class="the"><h3>② Quét bằng máy ảnh</h3><div class="than-the">
+            <p>Dùng camera điện thoại để quét QR/mã vạch, xác định đúng thiết bị rồi mở Asset 360.</p>
+            <button class="chinh-nut" onclick="dieuHuong('qr-scan')">Mở camera quét mã</button>
+            <div class="ghi-nho">Camera chỉ bật sau khi bạn bấm nút và cấp quyền. Mã được xác thực lại trên máy chủ theo phạm vi Phân xưởng.</div>
+        </div></div></div>
         ${los.length ? bangLichSu(los) : ''}`;
 
     ganSuKienTaiFile();
@@ -107,6 +114,10 @@ function ganSuKienTaiFile() {
 
 async function taiFileLen(file) {
     const oTha = document.getElementById('o-tha');
+    const status = document.getElementById('ip-file-status');
+    const mb = (file.size / 1024 / 1024).toFixed(2);
+    if (status) status.textContent = `${file.name} · ${mb} MB · ${file.type || 'không xác định MIME'}`;
+    if (file.size > 30 * 1024 * 1024) return bao('File quá lớn (tối đa 30 MB)', 'loi');
     oTha.innerHTML = `<div class="to">Đang đọc ${esc(file.name)}…</div>`;
 
     const fd = new FormData();

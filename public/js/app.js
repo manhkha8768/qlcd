@@ -3,6 +3,7 @@
 window.PHIEN = null;
 window.CAU_HINH = {};
 window.QUYEN = [];
+window.HIEN_THI = {};
 let MAN_HINH = 'tong-quan';
 
 const CAC_MAN_HINH = {
@@ -71,6 +72,7 @@ function capNhatUrlHienTai(thamSo, replace = true) {
         window.PHIEN = d.nguoi_dung;
         window.CAU_HINH = d.cau_hinh || {};
         window.QUYEN = d.quyen || [];
+        window.HIEN_THI = d.hien_thi || {};
         apDungRouteTuUrl();
         veKhung();
     } catch (e) {
@@ -109,6 +111,7 @@ async function dangNhap() {
         const t = await api('/auth/toi');
         window.CAU_HINH = t.cau_hinh || {};
         window.QUYEN = t.quyen || [];
+        window.HIEN_THI = t.hien_thi || {};
         MAN_HINH = 'tong-quan'; THAM_SO_MAN_HINH = {};
         window.history.replaceState({ scrollY: 0 }, '', taoHash(MAN_HINH));
         veKhung();
@@ -128,8 +131,12 @@ async function dangXuat() {
 function veKhung() {
     if (!window.PHIEN) return veDangNhap();
     const u = window.PHIEN;
+    if (window.HIEN_THI[MAN_HINH] === false) {
+        MAN_HINH = 'tong-quan'; THAM_SO_MAN_HINH = {};
+        window.history.replaceState({ scrollY: 0 }, '', taoHash(MAN_HINH));
+    }
 
-    const duocHien = ([, m]) => !m.an && (!m.chiAdmin || u.vai_tro === 'admin');
+    const duocHien = ([k, m]) => !m.an && (!m.chiAdmin || u.vai_tro === 'admin') && window.HIEN_THI[k] !== false;
     const nhomNav = NHOM_DIEU_HUONG.map(nhom => ({
         ...nhom,
         ds: nhom.manHinh.map(k => [k, CAC_MAN_HINH[k]]).filter(x => x[1] && duocHien(x))
@@ -171,10 +178,10 @@ function veKhung() {
             <main class="chinh" id="chinh"></main>
         </section>
         <nav class="mobile-bottom-nav" aria-label="Điều hướng mobile">
-            <a href="#tong-quan" onclick="dieuHuong('tong-quan');return false"><b>⌂</b><span>Home</span></a>
-            <a class="scan" href="#qr-scan" onclick="dieuHuong('qr-scan');return false"><b>⌗</b><span>Scan</span></a>
-            <a href="#work-inbox" onclick="dieuHuong('work-inbox');return false"><b>✓</b><span>Tasks</span></a>
-            <a href="#thiet-bi" onclick="dieuHuong('thiet-bi');return false"><b>▣</b><span>Assets</span></a>
+            ${mobileNavItem('tong-quan','⌂','Home')}
+            ${mobileNavItem('qr-scan','⌗','Scan','scan')}
+            ${mobileNavItem('work-inbox','✓','Tasks')}
+            ${mobileNavItem('thiet-bi','▣','Assets')}
             <button onclick="document.querySelector('.canh-trai').classList.toggle('mo')"><b>•••</b><span>More</span></button>
         </nav>
     </div>`;
@@ -186,6 +193,11 @@ function veKhung() {
 async function dieuHuong(k, thamSo = {}, tuyChon = {}) {
     if (MAN_HINH === 'qr-scan' && typeof dungQrCamera === 'function') dungQrCamera();
     if (!CAC_MAN_HINH[k]) k = 'tong-quan';
+    if (window.HIEN_THI[k] === false) {
+        const el = document.getElementById('chinh');
+        if (el) el.innerHTML = '<div class="bao loi">Bạn không có quyền sử dụng chức năng này.</div>';
+        k = 'tong-quan';
+    }
     if (!tuyChon.tuLichSu) {
         window.history.replaceState({ ...(window.history.state || {}), scrollY: window.scrollY }, '', window.location.href);
     }
@@ -205,7 +217,7 @@ async function dieuHuong(k, thamSo = {}, tuyChon = {}) {
 function moTimKiemToanCuc() {
     const u = window.PHIEN || {};
     const muc = Object.entries(CAC_MAN_HINH)
-        .filter(([, m]) => !m.an && (!m.chiAdmin || u.vai_tro === 'admin'))
+        .filter(([k, m]) => !m.an && (!m.chiAdmin || u.vai_tro === 'admin') && window.HIEN_THI[k] !== false)
         .map(([k, m]) => `<button class="ket-qua-lenh" data-search="${esc((m.ten + ' ' + m.nhom).toLowerCase())}" onclick="dongHopThoai();dieuHuong('${k}')"><span>${esc(m.ten)}</span><small>${esc(m.nhom)}</small></button>`).join('');
     moHopThoai('Tìm kiếm toàn hệ thống', `
         <div class="o-nhap"><input id="global-search-input" autocomplete="off" placeholder="Thiết bị, WO, vật tư, hồ sơ hoặc chức năng..."></div>
@@ -230,6 +242,11 @@ function moTimKiemToanCuc() {
         }, 250);
     });
     input.focus();
+}
+
+function mobileNavItem(k, icon, label, cls = '') {
+    if (window.HIEN_THI[k] === false) return '';
+    return `<a class="${cls}" href="#${k}" onclick="dieuHuong('${k}');return false"><b>${icon}</b><span>${label}</span></a>`;
 }
 
 function coQuyenUI(ma) {
