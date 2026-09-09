@@ -29,7 +29,9 @@ r.get('/', (req, res) => {
         const items = db.prepare(`SELECT a.id,a.ma_tai_san code,a.ten title,px.ten_ngan subtitle,
             'tai-san' screen,'asset_id' param_name
             FROM assets a JOIN phan_xuong px ON px.id=a.don_vi_id
-            WHERE a.hoat_dong=1 AND ${scope} AND (a.ma_tai_san LIKE ? ESCAPE '\\' OR a.ten LIKE ? ESCAPE '\\'
+            WHERE a.hoat_dong=1 AND NOT EXISTS (SELECT 1 FROM thiet_bi_deletions td
+              WHERE td.thiet_bi_id=a.legacy_thiet_bi_id)
+              AND ${scope} AND (a.ma_tai_san LIKE ? ESCAPE '\\' OR a.ten LIKE ? ESCAPE '\\'
               OR EXISTS (SELECT 1 FROM asset_device_links l JOIN devices d ON d.id=l.device_id
                 WHERE l.asset_id=a.id AND l.den_ngay IS NULL AND (d.ma_thiet_bi LIKE ? ESCAPE '\\' OR d.so_seri LIKE ? ESCAPE '\\')))
             ORDER BY a.ma_tai_san LIMIT 8`).all(...params);

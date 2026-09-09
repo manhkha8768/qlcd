@@ -13,7 +13,8 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 
     fileFilter: US.fileFilter(['.xlsx'], 'Chỉ nhận file Excel .xlsx') });
 
 function whereTaiSan(req) {
-    const where = ['a.hoat_dong=1'];
+    const where = [`a.hoat_dong=1`, `NOT EXISTS (SELECT 1 FROM thiet_bi_deletions td
+        WHERE td.thiet_bi_id=a.legacy_thiet_bi_id)`];
     const params = [];
     const scope = donViDuocPhep(req.session.nguoiDung);
     if (scope !== null) {
@@ -205,7 +206,8 @@ r.post('/:id/restore', coMaQuyenNay('asset.restore'), (req, res) => {
 });
 
 r.get('/by-code/:code', coMaQuyenNay('asset.view'), (req, res) => {
-    const asset = db.prepare('SELECT id,don_vi_id FROM assets WHERE ma_tai_san=? AND hoat_dong=1')
+    const asset = db.prepare(`SELECT id,don_vi_id FROM assets a WHERE ma_tai_san=? AND hoat_dong=1
+        AND NOT EXISTS (SELECT 1 FROM thiet_bi_deletions td WHERE td.thiet_bi_id=a.legacy_thiet_bi_id)`)
         .get(req.params.code);
     if (!asset) return res.status(404).json({ loi: 'Không tìm thấy Asset' });
     if (!duocThaoTacDonVi(req.session.nguoiDung, asset.don_vi_id)) {

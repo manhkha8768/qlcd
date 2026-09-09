@@ -1,10 +1,46 @@
 const express = require('express');
 const db = require('../db');
-const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep } = require('../middleware/quyen');
+const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep, coMaQuyenNay } = require('../middleware/quyen');
 const { sinhMa } = require('../lib/ma-thiet-bi');
+const { interactionAudit } = require('../lib/interaction-audit');
 
 const r = express.Router();
 r.use(dangNhap);
+
+function docThietBi(id) {
+    return db.prepare(`SELECT tb.*,px.ten_ngan AS px,del.deleted_at,del.deleted_by,del.delete_reason
+        FROM thiet_bi tb LEFT JOIN phan_xuong px ON px.id=tb.phan_xuong_id
+        LEFT JOIN thiet_bi_deletions del ON del.thiet_bi_id=tb.id WHERE tb.id=?`).get(id);
+}
+
+function nghiepVuDangMo(thietBiId) {
+    const lyDo = [];
+    const suaChua = db.prepare(`SELECT COUNT(*) n FROM phieu_sua_chua WHERE thiet_bi_id=?
+        AND trang_thai NOT IN ('hoan_thanh','huy')`).get(thietBiId).n;
+    if (suaChua) lyDo.push(`${suaChua} phiếu sửa chữa/bảo dưỡng chưa hoàn tất`);
+    const giaoDich = db.prepare(`SELECT COUNT(DISTINCT gd.id) n FROM chi_tiet_giao_dich ct
+        JOIN giao_dich gd ON gd.id=ct.giao_dich_id
+        WHERE (ct.thiet_bi_id=? OR ct.thiet_bi_dich_id=?) AND gd.trang_thai IN ('nhap','cho_duyet')`)
+        .get(thietBiId, thietBiId).n;
+    if (giaoDich) lyDo.push(`${giaoDich} giao dịch chưa hoàn tất`);
+    const dieuChuyen = db.prepare(`SELECT COUNT(*) n FROM dieu_chuyen WHERE thiet_bi_id=?
+        AND trang_thai NOT IN ('hoan_thanh','huy')`).get(thietBiId).n;
+    if (dieuChuyen) lyDo.push(`${dieuChuyen} phiếu điều chuyển chưa hoàn tất`);
+    return lyDo;
+}
+
+function xoaMem(req, danhSach, lyDo) {
+    const snapshots = danhSach.map(tb => ({ ...tb, blockers: nghiepVuDangMo(tb.id) }));
+    const blocked = snapshots.filter(tb => tb.blockers.length);
+    if (blocked.length) return { blocked };
+    const insert = db.prepare(`INSERT INTO thiet_bi_deletions(thiet_bi_id,deleted_by,delete_reason,before_json)
+        VALUES (?,?,?,?)`);
+    db.transaction(() => snapshots.forEach(tb =>
+        insert.run(tb.id, req.session.nguoiDung.id, lyDo, JSON.stringify(tb))))();
+    interactionAudit(req, 'DEVICE_SOFT_DELETE', 'thiet_bi', danhSach.length === 1 ? danhSach[0].id : null,
+        { reason: lyDo, device_ids: danhSach.map(tb => tb.id), device_codes: danhSach.map(tb => tb.ma_tb), before: snapshots });
+    return { deleted: danhSach.length };
+}
 
 /* ---------- Danh sách thiết bị ---------- */
 r.get('/', (req, res) => {
@@ -21,7 +57,7 @@ r.get('/', (req, res) => {
                LEFT JOIN vi_tri vt       ON vt.id = tb.vi_tri_id
                LEFT JOIN devices d       ON d.legacy_thiet_bi_id = tb.id
                LEFT JOIN assets a        ON a.legacy_thiet_bi_id = tb.id AND a.hoat_dong=1
-               WHERE 1=1`;
+               WHERE NOT EXISTS (SELECT 1 FROM thiet_bi_deletions del WHERE del.thiet_bi_id=tb.id)`;
     const p = [];
 
     if (req.query.phan_xuong_id) {
@@ -53,6 +89,47 @@ r.get('/', (req, res) => {
     res.json({ tong: dem, trang, moi_trang: moiTrang, danh_sach: db.prepare(sql).all(...p) });
 });
 
+r.get('/deleted', coMaQuyenNay('thietbi.khoi_phuc'), (req, res) => {
+    const scope = donViDuocPhep(req.session.nguoiDung);
+    let where = '';
+    const params = [];
+    if (scope !== null) {
+        if (!scope.length) where = ' AND 1=0';
+        else { where = ` AND tb.phan_xuong_id IN (${scope.map(() => '?').join(',')})`; params.push(...scope); }
+    }
+    res.json(db.prepare(`SELECT tb.id,tb.ma_tb,tb.ten,tb.phan_xuong_id,px.ten_ngan AS px,
+        del.deleted_at,del.delete_reason,u.ho_ten AS deleted_by_name
+        FROM thiet_bi tb JOIN thiet_bi_deletions del ON del.thiet_bi_id=tb.id
+        LEFT JOIN phan_xuong px ON px.id=tb.phan_xuong_id LEFT JOIN nguoi_dung u ON u.id=del.deleted_by
+        WHERE 1=1${where} ORDER BY del.deleted_at DESC LIMIT 500`).all(...params));
+});
+
+r.post('/bulk-delete', coMaQuyenNay('thietbi.xoa'), (req, res) => {
+    const ids = [...new Set((req.body?.ids || []).map(Number))].filter(Number.isInteger);
+    const reason = String(req.body?.reason || '').trim();
+    if (!ids.length || ids.length > 200) return res.status(400).json({ loi: 'Chọn từ 1 đến 200 thiết bị' });
+    if (reason.length < 5) return res.status(400).json({ loi: 'Lý do xóa phải có ít nhất 5 ký tự' });
+    if (ids.length > 1 && String(req.body?.confirmation || '').trim() !== `XOA ${ids.length}`)
+        return res.status(400).json({ loi: `Hãy nhập chính xác XOA ${ids.length} để xác nhận` });
+    const devices = ids.map(docThietBi);
+    if (devices.some(x => !x || x.deleted_at)) return res.status(404).json({ loi: 'Có thiết bị không tồn tại hoặc đã bị xóa' });
+    if (devices.some(x => !duocThaoTacPX(req, x.phan_xuong_id))) return res.status(403).json({ loi: 'Có thiết bị ngoài phạm vi dữ liệu' });
+    const result = xoaMem(req, devices, reason);
+    if (result.blocked) return res.status(409).json({ loi: 'Không thể xóa thiết bị đang có nghiệp vụ chưa hoàn tất',
+        chi_tiet: result.blocked.map(x => ({ id:x.id, ma_tb:x.ma_tb, blockers:x.blockers })) });
+    res.json({ ok:true, da_xoa:result.deleted });
+});
+
+r.post('/:id/restore', coMaQuyenNay('thietbi.khoi_phuc'), (req, res) => {
+    const tb = docThietBi(req.params.id);
+    if (!tb || !tb.deleted_at) return res.status(404).json({ loi: 'Không tìm thấy thiết bị đã xóa' });
+    if (!duocThaoTacPX(req, tb.phan_xuong_id)) return res.status(403).json({ loi: 'Không có quyền' });
+    db.prepare('DELETE FROM thiet_bi_deletions WHERE thiet_bi_id=?').run(tb.id);
+    interactionAudit(req, 'DEVICE_RESTORE', 'thiet_bi', tb.id,
+        { reason: String(req.body?.reason || '').trim() || null, device_code:tb.ma_tb, before:tb });
+    res.json({ ok:true });
+});
+
 /* ---------- Hồ sơ chi tiết ---------- */
 r.get('/:id', (req, res) => {
     const tb = db.prepare(`
@@ -68,7 +145,8 @@ r.get('/:id', (req, res) => {
         LEFT JOIN vi_tri vt        ON vt.id = tb.vi_tri_id
         LEFT JOIN devices d        ON d.legacy_thiet_bi_id = tb.id
         LEFT JOIN assets a         ON a.legacy_thiet_bi_id = tb.id AND a.hoat_dong=1
-        WHERE tb.id = ?`).get(req.params.id);
+        WHERE tb.id = ? AND NOT EXISTS
+          (SELECT 1 FROM thiet_bi_deletions del WHERE del.thiet_bi_id=tb.id)`).get(req.params.id);
 
     if (!tb) return res.status(404).json({ loi: 'Không tìm thấy thiết bị' });
     if (!duocThaoTacPX(req, tb.phan_xuong_id) && gioiHanPX(req) !== null) {
@@ -149,15 +227,16 @@ r.put('/:id', duocGhi, (req, res) => {
     res.json({ ok: true });
 });
 
-r.delete('/:id', duocGhi, (req, res) => {
-    const tb = db.prepare('SELECT * FROM thiet_bi WHERE id=?').get(req.params.id);
+r.delete('/:id', coMaQuyenNay('thietbi.xoa'), (req, res) => {
+    const tb = docThietBi(req.params.id);
     if (!tb) return res.status(404).json({ loi: 'Không tìm thấy thiết bị' });
     if (!duocThaoTacPX(req, tb.phan_xuong_id)) return res.status(403).json({ loi: 'Không có quyền' });
-    if (tb.trang_thai_duyet === 'da_duyet' && req.session.nguoiDung.vai_tro !== 'admin') {
-        return res.status(400).json({ loi: 'Thiết bị đã duyệt - chỉ admin mới xoá được' });
-    }
-    db.prepare('DELETE FROM thiet_bi WHERE id=?').run(tb.id);
-    res.json({ ok: true });
+    if (tb.deleted_at) return res.status(404).json({ loi: 'Thiết bị đã bị xóa' });
+    const reason = String(req.body?.reason || '').trim();
+    if (reason.length < 5) return res.status(400).json({ loi: 'Lý do xóa phải có ít nhất 5 ký tự' });
+    const result = xoaMem(req, [tb], reason);
+    if (result.blocked) return res.status(409).json({ loi: 'Không thể xóa thiết bị đang có nghiệp vụ chưa hoàn tất', chi_tiet:result.blocked[0].blockers });
+    res.json({ ok:true, da_xoa:1 });
 });
 
 /* ---------- Phê duyệt: Đồng ý / Chuyển lại ---------- */

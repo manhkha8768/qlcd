@@ -4,6 +4,7 @@ const { dangNhap, gioiHanPX } = require('../middleware/quyen');
 
 const r = express.Router();
 r.use(dangNhap);
+const conHieuLuc = alias => `NOT EXISTS (SELECT 1 FROM thiet_bi_deletions del WHERE del.thiet_bi_id=${alias}.id)`;
 
 /* ---------- Số liệu dashboard ---------- */
 r.get('/dashboard', (req, res) => {
@@ -12,13 +13,13 @@ r.get('/dashboard', (req, res) => {
 
     const theoTrangThai = db.prepare(`
         SELECT trang_thai, COUNT(*) n, COALESCE(SUM(nguyen_gia),0) gt
-        FROM thiet_bi tb WHERE 1=1 ${dk} GROUP BY trang_thai`).all();
+        FROM thiet_bi tb WHERE ${conHieuLuc('tb')} ${dk} GROUP BY trang_thai`).all();
 
     const theoPX = db.prepare(`
         SELECT px.id AS phan_xuong_id, px.ten_ngan AS px, px.ten AS ten_px, COUNT(tb.id) n,
                COALESCE(SUM(tb.nguyen_gia),0) gt
         FROM phan_xuong px
-        LEFT JOIN thiet_bi tb ON tb.phan_xuong_id = px.id AND tb.trang_thai <> 'da_thanh_ly'
+        LEFT JOIN thiet_bi tb ON tb.phan_xuong_id = px.id AND tb.trang_thai <> 'da_thanh_ly' AND ${conHieuLuc('tb')}
         WHERE px.hoat_dong = 1 ${gh !== null ? 'AND px.id = ' + Number(gh) : ''}
         GROUP BY px.id ORDER BY px.thu_tu, px.ma`).all();
 
@@ -27,7 +28,7 @@ r.get('/dashboard', (req, res) => {
         FROM thiet_bi tb
         JOIN nhom_thiet_bi n ON n.id = tb.nhom_id
         LEFT JOIN nhom_thiet_bi nc ON nc.id = n.parent_id
-        WHERE tb.trang_thai <> 'da_thanh_ly' ${dk}
+        WHERE tb.trang_thai <> 'da_thanh_ly' AND ${conHieuLuc('tb')} ${dk}
         GROUP BY n.id ORDER BY n.ma`).all();
 
     const tong = db.prepare(`
@@ -37,7 +38,7 @@ r.get('/dashboard', (req, res) => {
                SUM(CASE WHEN trang_thai='cho_thanh_ly' THEN 1 ELSE 0 END) cho_thanh_ly,
                SUM(CASE WHEN trang_thai_duyet='cho_duyet' THEN 1 ELSE 0 END) cho_duyet,
                COALESCE(SUM(nguyen_gia),0) tong_nguyen_gia
-        FROM thiet_bi tb WHERE trang_thai <> 'da_thanh_ly' ${dk}`).get();
+        FROM thiet_bi tb WHERE trang_thai <> 'da_thanh_ly' AND ${conHieuLuc('tb')} ${dk}`).get();
 
     res.json({ tong, theo_trang_thai: theoTrangThai, theo_phan_xuong: theoPX, theo_nhom: theoNhom });
 });
@@ -50,19 +51,19 @@ r.get('/canh-bao', (req, res) => {
     const kiemDinh = db.prepare(`
         SELECT cb.* FROM v_canh_bao_kiem_dinh cb
         JOIN thiet_bi tb ON tb.id = cb.thiet_bi_id
-        WHERE cb.muc_canh_bao IN ('qua_han','sap_het_han') ${locPX('tb.phan_xuong_id')}
+        WHERE cb.muc_canh_bao IN ('qua_han','sap_het_han') AND ${conHieuLuc('tb')} ${locPX('tb.phan_xuong_id')}
         ORDER BY cb.con_lai_ngay`).all();
 
     const thieuKD = db.prepare(`
         SELECT tk.* FROM v_thieu_kiem_dinh tk
         JOIN thiet_bi tb ON tb.id = tk.thiet_bi_id
-        WHERE 1=1 ${locPX('tb.phan_xuong_id')}
+        WHERE ${conHieuLuc('tb')} ${locPX('tb.phan_xuong_id')}
         ORDER BY tk.ma_tb LIMIT 200`).all();
 
     const baoDuong = db.prepare(`
         SELECT cb.* FROM v_canh_bao_bao_duong cb
         JOIN thiet_bi tb ON tb.id = cb.thiet_bi_id
-        WHERE cb.muc_canh_bao IN ('qua_han','den_han') ${locPX('tb.phan_xuong_id')}
+        WHERE cb.muc_canh_bao IN ('qua_han','den_han') AND ${conHieuLuc('tb')} ${locPX('tb.phan_xuong_id')}
         ORDER BY cb.con_lai_ngay`).all();
 
     res.json({
@@ -85,8 +86,8 @@ r.get('/cho-duyet', (req, res) => {
     const dk = gh !== null ? 'AND phan_xuong_id = ' + Number(gh) : '';
     const dkDC = gh !== null ? `AND (tu_phan_xuong_id = ${Number(gh)} OR den_phan_xuong_id = ${Number(gh)})` : '';
     res.json({
-        thiet_bi: db.prepare(`SELECT COUNT(*) n FROM thiet_bi
-                              WHERE trang_thai_duyet='cho_duyet' ${dk}`).get().n,
+        thiet_bi: db.prepare(`SELECT COUNT(*) n FROM thiet_bi tb
+                              WHERE trang_thai_duyet='cho_duyet' AND ${conHieuLuc('tb')} ${dk}`).get().n,
         dieu_chuyen: db.prepare(`SELECT COUNT(*) n FROM dieu_chuyen
                                  WHERE trang_thai='cho_duyet' ${dkDC}`).get().n,
         sua_chua: db.prepare(`SELECT COUNT(*) n FROM phieu_sua_chua

@@ -100,6 +100,7 @@ function moTaiSanTheoPhanXuong(phanXuongId, event) {
 
 /* =========================== THIẾT BỊ =========================== */
 let boLoc = { q: '', phan_xuong_id: '', nhom_id: '', trang_thai: '', loai_ts: '', trang: 1 };
+let thietBiDaChon = new Set();
 
 async function mhThietBi(el) {
     el.innerHTML = `<div class="dau-trang"><div>
@@ -141,6 +142,7 @@ function apDungLoc() {
         phan_xuong_id: document.getElementById('l-px')?.value || '',
         nhom_id: gt('l-nhom'), trang_thai: gt('l-tt'), loai_ts: gt('l-loai'), trang: 1
     };
+    thietBiDaChon.clear();
     taiBangThietBi();
 }
 
@@ -148,17 +150,24 @@ async function taiBangThietBi() {
     const c = document.getElementById('bang-tb');
     const q = new URLSearchParams({ ...boLoc, moi_trang: 50 });
     const d = await api('/thiet-bi?' + q);
+    const duocXoa = coQuyenUI('thietbi.xoa');
 
     if (!d.tong) {
-        c.innerHTML = `<div class="trong">Không có thiết bị nào khớp điều kiện lọc.</div>`;
+        c.innerHTML = `${coQuyenUI('thietbi.khoi_phuc') ? '<div class="asset-bulk-bar"><button onclick="moThungRacThietBi()">Thiết bị đã xóa</button></div>' : ''}<div class="trong">Không có thiết bị nào khớp điều kiện lọc.</div>`;
         return;
     }
     const soTrang = Math.ceil(d.tong / d.moi_trang);
-    c.innerHTML = `<table><thead><tr>
+    const idsTrang = d.danh_sach.map(x => Number(x.id));
+    thietBiDaChon = new Set([...thietBiDaChon].filter(id => idsTrang.includes(id)));
+    c.innerHTML = `${duocXoa ? `<div class="asset-bulk-bar"><strong id="device-selected-count">Đã chọn ${thietBiDaChon.size} thiết bị</strong>
+            <button id="device-delete-selected" class="nguy-hiem" ${thietBiDaChon.size ? '' : 'disabled'} onclick="xacNhanXoaThietBi([...thietBiDaChon])">Xóa thiết bị đã chọn</button>
+            ${coQuyenUI('thietbi.khoi_phuc') ? '<button onclick="moThungRacThietBi()">Thiết bị đã xóa</button>' : ''}</div>` : ''}<table><thead><tr>
+            ${duocXoa ? `<th><input type="checkbox" aria-label="Chọn tất cả thiết bị trang này" onchange="chonTatCaThietBi(this.checked)" ${idsTrang.length && idsTrang.every(id => thietBiDaChon.has(id)) ? 'checked' : ''}></th>` : ''}
             <th>Mã thiết bị</th><th>Tên thiết bị</th><th>Nhóm</th>
             <th>PX</th><th class="giua">SL</th><th class="phai">Nguyên giá</th>
-            <th>Trạng thái</th><th>Duyệt</th></tr></thead>
+            <th>Trạng thái</th><th>Duyệt</th>${duocXoa ? '<th>Thao tác</th>' : ''}</tr></thead>
         <tbody>${d.danh_sach.map(x => `<tr class="bam" onclick="xemThietBi(${x.id})">
+            ${duocXoa ? `<td><input class="device-check" type="checkbox" data-id="${x.id}" aria-label="Chọn ${esc(x.ma_tb)}" ${thietBiDaChon.has(Number(x.id)) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="chonThietBi(${x.id},this.checked)"></td>` : ''}
             <td class="ma">${esc(x.ma_tb)}</td>
             <td>${esc(x.ten)}${x.ma_tscd ? `<div style="font-size:11.5px;color:var(--chu-mo)">TS: ${esc(x.ma_tscd)}</div>` : ''}</td>
             <td><span class="ma">${esc(x.ma_nhom || '')}</span> ${esc(x.ten_nhom || '')}</td>
@@ -166,7 +175,7 @@ async function taiBangThietBi() {
             <td class="giua so">${x.so_luong ?? '—'} ${esc(x.dvt || '')}</td>
             <td class="phai so">${tien(x.nguyen_gia)}</td>
             <td>${nhanTT(x.trang_thai)}</td>
-            <td>${nhanTT(x.trang_thai_duyet)}</td></tr>`).join('')}
+            <td>${nhanTT(x.trang_thai_duyet)}</td>${duocXoa ? `<td><button class="nho nguy-hiem" onclick="event.stopPropagation();xacNhanXoaThietBi([${x.id}])">Xóa</button></td>` : ''}</tr>`).join('')}
         </tbody></table>
         <div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--chu-nhat)">
             <span>${d.tong} thiết bị · trang ${d.trang}/${soTrang}</span>
@@ -175,7 +184,48 @@ async function taiBangThietBi() {
               <button class="nho" ${d.trang >= soTrang ? 'disabled' : ''} onclick="doiTrang(${d.trang + 1})">Sau</button>
             </span></div>`;
 }
-function doiTrang(n) { boLoc.trang = n; taiBangThietBi(); }
+function doiTrang(n) { boLoc.trang = n; thietBiDaChon.clear(); taiBangThietBi(); }
+
+function capNhatChonThietBi() {
+    const label = document.getElementById('device-selected-count');
+    const button = document.getElementById('device-delete-selected');
+    if (label) label.textContent = `Đã chọn ${thietBiDaChon.size} thiết bị`;
+    if (button) button.disabled = !thietBiDaChon.size;
+}
+function chonThietBi(id, checked) {
+    checked ? thietBiDaChon.add(Number(id)) : thietBiDaChon.delete(Number(id));
+    capNhatChonThietBi();
+}
+function chonTatCaThietBi(checked) {
+    document.querySelectorAll('.device-check').forEach(x => {
+        x.checked = checked;
+        checked ? thietBiDaChon.add(Number(x.dataset.id)) : thietBiDaChon.delete(Number(x.dataset.id));
+    });
+    capNhatChonThietBi();
+}
+async function xacNhanXoaThietBi(ids) {
+    if (!ids.length) return;
+    const confirmText = `XOA ${ids.length}`;
+    moHopThoai('Xóa thiết bị nhập sai', `<div class="bao loi"><b>${ids.length} thiết bị</b> sẽ bị ẩn khỏi danh sách và Tổng quan. Toàn bộ hồ sơ liên quan vẫn được giữ để truy vết và có thể khôi phục.</div>
+        <div class="o-nhap"><label>Lý do xóa *</label><textarea id="device-delete-reason" placeholder="Ví dụ: Nhập nhầm dữ liệu từ file"></textarea></div>
+        ${ids.length > 1 ? `<div class="o-nhap"><label>Nhập chính xác <b>${confirmText}</b></label><input id="device-delete-confirm"></div>` : ''}`,
+        [{ ten:'Hủy', chay:dongHopThoai }, { ten:'Xóa', lop:'nguy-hiem', chay:async () => { try {
+            const reason = gt('device-delete-reason');
+            if (reason.length < 5) return baoTrongHopThoai('Lý do xóa phải có ít nhất 5 ký tự');
+            if (ids.length === 1) await api(`/thiet-bi/${ids[0]}`, { method:'DELETE', body:{ reason } });
+            else await api('/thiet-bi/bulk-delete', { method:'POST', body:{ ids, reason, confirmation:gt('device-delete-confirm') } });
+            ids.forEach(id => thietBiDaChon.delete(Number(id)));
+            dongHopThoai(); await taiBangThietBi(); bao(`Đã xóa mềm ${ids.length} thiết bị`);
+        } catch (e) { baoTrongHopThoai(e.message); } } }], true);
+}
+async function moThungRacThietBi() { try {
+    const rows = await api('/thiet-bi/deleted');
+    moHopThoai('Thiết bị đã xóa', `<div class="bao-bang"><table><thead><tr><th>Mã</th><th>Tên</th><th>PX</th><th>Lý do</th><th>Người xóa</th><th>Thời gian</th><th></th></tr></thead><tbody>${rows.map(x => `<tr><td class="ma">${esc(x.ma_tb)}</td><td>${esc(x.ten)}</td><td>${esc(x.px || '')}</td><td>${esc(x.delete_reason)}</td><td>${esc(x.deleted_by_name || '')}</td><td>${esc(x.deleted_at)}</td><td><button onclick="khoiPhucThietBi(${x.id})">Khôi phục</button></td></tr>`).join('') || '<tr><td colspan="7" class="trong">Không có thiết bị đã xóa.</td></tr>'}</tbody></table></div>`, [{ ten:'Đóng', chay:dongHopThoai }], true);
+} catch (e) { bao(e.message, 'loi'); } }
+async function khoiPhucThietBi(id) { try {
+    await api(`/thiet-bi/${id}/restore`, { method:'POST', body:{} });
+    dongHopThoai(); await taiBangThietBi(); bao('Đã khôi phục thiết bị');
+} catch (e) { baoTrongHopThoai(e.message); } }
 
 /* ---------- Hồ sơ thiết bị ---------- */
 async function xemThietBi(id) {
@@ -236,6 +286,7 @@ async function xemThietBi(id) {
         nut.push({ ten: 'Chuyển lại', lop: 'nguy-hiem', chay: () => chuyenLaiTB(b.id) });
         nut.push({ ten: 'Đồng ý', lop: 'nhan-manh', chay: () => duyetTB(b.id) });
     }
+    if (coQuyenUI('thietbi.xoa')) nut.push({ ten:'Xóa', lop:'nguy-hiem', chay:() => { dongHopThoai(); xacNhanXoaThietBi([b.id]); } });
     nut.push({ ten: 'Hồ sơ kỹ thuật', lop: 'nhan-manh',
                chay: () => { dongHopThoai(); moHoSo(b.id); } });
     nut.push({ ten: 'Sửa', chay: () => formThietBi(b) });
