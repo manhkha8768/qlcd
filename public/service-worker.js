@@ -1,4 +1,4 @@
-const CACHE = 'qlcd-shell-v4';
+const CACHE = 'qlcd-shell-v5';
 const SHELL = ['/', '/index.html', '/css/style.css', '/icons/qlcd.svg', '/js/tien-ich.js',
     '/js/kiem-ke-ledger.js', '/js/notifications.js', '/js/reports.js', '/js/app.js'];
 
