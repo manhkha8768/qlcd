@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { dangNhap, coMaQuyen, donViDuocPhep } = require('../middleware/quyen');
+const { dangNhap, coMaQuyen, donViDuocPhep, donViQuanLy } = require('../middleware/quyen');
 const r = express.Router();
 r.use(dangNhap);
 
@@ -22,6 +22,14 @@ function transactionScope(user, args) {
 
 r.get('/', (req, res) => {
     const user = req.session.nguoiDung; let approvals = [];
+    if(coMaQuyen(req,'thietbi.duyet')||coMaQuyen(req,'thietbi.tu_choi')){
+      const units=donViQuanLy(user),args=[];let s='1=1';if(units!==null){if(!units.length)s='1=0';else{s=`tb.phan_xuong_id IN (${units.map(()=>'?').join(',')})`;args.push(...units);}}
+      approvals.push(...db.prepare(`SELECT 'DEVICE' item_type,tb.id,tb.ma_tb code,tb.ten title,tb.trang_thai_duyet status,'NORMAL' priority,tb.ngay_tao created_at,
+        tb.loai_ts reference,px.ten_ngan unit_name,NULL version,'device' action_kind FROM thiet_bi tb JOIN phan_xuong px ON px.id=tb.phan_xuong_id
+        WHERE tb.trang_thai_duyet='cho_duyet' AND ${s} AND (tb.nguoi_tao_id<>? OR ?=1)
+        AND NOT EXISTS(SELECT 1 FROM thiet_bi_deletions d WHERE d.thiet_bi_id=tb.id) ORDER BY tb.ngay_tao`)
+        .all(...args,user.id,coMaQuyen(req,'approval.self')?1:0));
+    }
     if (coMaQuyen(req, 'technical_operation.review')) {
         const args = [];
         approvals.push(...db.prepare(`SELECT 'TECHNICAL_WORK_ORDER' item_type,w.id,w.work_order_code code,
@@ -63,6 +71,7 @@ r.get('/', (req, res) => {
     res.json({ approvals, mine, page, size, totals: { approvals: totalApprovals, mine: totalMine }, capabilities: {
         review_technical: coMaQuyen(req, 'technical_operation.review'),
         approve_transaction: coMaQuyen(req, 'GD_DUYET')
+        ,approve_device: coMaQuyen(req,'thietbi.duyet'),reject_device:coMaQuyen(req,'thietbi.tu_choi')
     }, summary: { approvals: totalApprovals, mine: totalMine,
         urgent } });
 });

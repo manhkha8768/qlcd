@@ -10,7 +10,7 @@
 
 const express = require('express');
 const db = require('../db');
-const { dangNhap, coMaQuyen } = require('../middleware/quyen');
+const { dangNhap, coMaQuyen, duocQuanLyDonVi } = require('../middleware/quyen');
 
 const router = express.Router();
 router.use(dangNhap);
@@ -79,13 +79,18 @@ router.get('/giao-dich/:id', (req, res) => {
  * POST /api/khovat/giao-dich/:id/duyet — Duyệt giao dịch kho
  */
 router.post('/giao-dich/:id/duyet', (req, res) => {
-    if (!coMaQuyen(req, 'kho.duyet')) return res.status(403).json({ loi: 'Không có quyền' });
+    if (!coMaQuyen(req, 'vattu.duyet') && !coMaQuyen(req, 'kho.duyet')) return res.status(403).json({ loi: 'Không có quyền' });
 
     const { phe_duyet } = req.body;
 
     try {
-        const gd = db.prepare('SELECT * FROM giao_dich_kho WHERE id = ?').get(req.params.id);
+        const gd = db.prepare(`SELECT gk.*,nd.phan_xuong_id AS unit_id FROM giao_dich_kho gk
+            LEFT JOIN nguoi_dung nd ON nd.id=gk.nguoi_lap_id WHERE gk.id=?`).get(req.params.id);
         if (!gd) return res.status(404).json({ loi: 'Không tìm thấy giao dịch' });
+        if (gd.unit_id && !duocQuanLyDonVi(req.session.nguoiDung, gd.unit_id)) return res.status(403).json({ loi: 'Phân xưởng này chỉ thuộc phạm vi xem, không thuộc phạm vi quản lý' });
+        if (gd.nguoi_lap_id === req.session.nguoiDung.id && !coMaQuyen(req,'approval.self') && !coMaQuyen(req,'GD_TU_DUYET')) return res.status(403).json({ loi: 'Không được tự duyệt dữ liệu do chính mình tạo' });
+        if (!['nhap','cho_duyet'].includes(gd.trang_thai)) return res.status(409).json({ loi: 'Giao dịch vật tư đã được xử lý' });
+        if (!phe_duyet && !coMaQuyen(req,'vattu.tu_choi') && !coMaQuyen(req,'kho.duyet')) return res.status(403).json({ loi: 'Không có quyền từ chối vật tư' });
 
         if (phe_duyet) {
             // Duyệt: cập nhật tồn kho
@@ -105,27 +110,27 @@ router.post('/giao-dich/:id/duyet', (req, res) => {
 
                 db.prepare(`UPDATE giao_dich_kho
                            SET trang_thai = 'da_duyet', nguoi_duyet_id = ?, ngay_duyet = CURRENT_TIMESTAMP
-                           WHERE id = ?`)
-                    .run(req.session.nguoi_dung_id, req.params.id);
+                           WHERE id = ? AND trang_thai IN ('nhap','cho_duyet')`)
+                    .run(req.session.nguoiDung.id, req.params.id);
             });
 
             update_ton();
 
             db.prepare(`INSERT INTO lich_su_kho (giao_dich_kho_id, hanh_dong, nguoi_dung_id, dia_chi_ip, ngay_gio)
                        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`)
-                .run(req.params.id, 'duyet_giao_dich', req.session.nguoi_dung_id, req.ip);
+                .run(req.params.id, 'duyet_giao_dich', req.session.nguoiDung.id, req.ip);
 
             res.json({ ok: true, message: 'Đã duyệt' });
         } else {
             // Từ chối
             db.prepare(`UPDATE giao_dich_kho
                        SET trang_thai = 'tu_choi', nguoi_duyet_id = ?, ngay_duyet = CURRENT_TIMESTAMP
-                       WHERE id = ?`)
-                .run(req.session.nguoi_dung_id, req.params.id);
+                       WHERE id = ? AND trang_thai IN ('nhap','cho_duyet')`)
+                .run(req.session.nguoiDung.id, req.params.id);
 
             db.prepare(`INSERT INTO lich_su_kho (giao_dich_kho_id, hanh_dong, nguoi_dung_id, dia_chi_ip, ngay_gio)
                        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`)
-                .run(req.params.id, 'tu_choi_giao_dich', req.session.nguoi_dung_id, req.ip);
+                .run(req.params.id, 'tu_choi_giao_dich', req.session.nguoiDung.id, req.ip);
 
             res.json({ ok: true, message: 'Đã từ chối' });
         }

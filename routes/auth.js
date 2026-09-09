@@ -117,6 +117,43 @@ r.get('/tai-khoan', dangNhap, chiAdmin, (req, res) => {
         ORDER BY nd.vai_tro, nd.ten_dang_nhap`).all());
 });
 
+const QUYEN_PHAN_CAP = ['thietbi.xem','thietbi.them','thietbi.sua','thietbi.duyet','thietbi.tu_choi',
+    'material.view','material.edit','vattu.duyet','vattu.tu_choi','import.duyet',
+    'thietbi.export','thietbi.export.official','quantri.nhatky','scope.company','approval.self'];
+
+r.get('/tai-khoan/:id/phan-cap', dangNhap, chiAdmin, (req,res) => {
+    const u=db.prepare('SELECT id,ten_dang_nhap,ho_ten,vai_tro,hoat_dong FROM nguoi_dung WHERE id=?').get(req.params.id);
+    if(!u) return res.status(404).json({loi:'Không tìm thấy tài khoản'});
+    const level=db.prepare('SELECT * FROM user_account_level WHERE user_id=?').get(u.id);
+    const units=db.prepare(`SELECT unit_id,access_type,valid_from,valid_to FROM user_unit_access WHERE user_id=? ORDER BY unit_id`).all(u.id);
+    const overrides=db.prepare(`SELECT ma_quyen,duoc_phep FROM quyen_nguoi_dung_dong WHERE nguoi_dung_id=? AND ma_quyen IN (${QUYEN_PHAN_CAP.map(()=>'?').join(',')})`).all(u.id,...QUYEN_PHAN_CAP);
+    const permissions=db.prepare(`SELECT ma,ten,hang_muc FROM ma_quyen WHERE ma IN (${QUYEN_PHAN_CAP.map(()=>'?').join(',')}) ORDER BY hang_muc,ten`).all(...QUYEN_PHAN_CAP);
+    res.json({user:u,level,units,overrides,effective_permissions:quyenCuaToi(u),permissions,levels:db.prepare('SELECT code,name,rank FROM account_levels WHERE active=1 ORDER BY rank').all()});
+});
+
+r.put('/tai-khoan/:id/phan-cap', dangNhap, chiAdmin, (req,res) => {
+    const id=Number(req.params.id), b=req.body||{};
+    const u=db.prepare('SELECT * FROM nguoi_dung WHERE id=?').get(id); if(!u)return res.status(404).json({loi:'Không tìm thấy tài khoản'});
+    if(!db.prepare('SELECT 1 FROM account_levels WHERE code=? AND active=1').get(b.level_code))return res.status(400).json({loi:'Cấp độ tài khoản không hợp lệ'});
+    const managed=[...new Set((b.managed_unit_ids||[]).map(Number))], viewed=[...new Set((b.view_unit_ids||[]).map(Number))];
+    if(managed.some(x=>viewed.includes(x)))return res.status(400).json({loi:'Một phân xưởng không thể đồng thời thuộc nhóm quản lý và chỉ xem'});
+    const all=[...managed,...viewed]; if(all.some(x=>!Number.isInteger(x)||!db.prepare('SELECT 1 FROM phan_xuong WHERE id=? AND hoat_dong=1').get(x)))return res.status(400).json({loi:'Có phân xưởng không hợp lệ'});
+    const selected=new Set((b.permissions||[]).filter(x=>QUYEN_PHAN_CAP.includes(x)));
+    if(b.allow_self_approval) selected.add('approval.self'); else selected.delete('approval.self');
+    const before={level:db.prepare('SELECT * FROM user_account_level WHERE user_id=?').get(id),units:db.prepare('SELECT unit_id,access_type FROM user_unit_access WHERE user_id=?').all(id),overrides:db.prepare('SELECT ma_quyen,duoc_phep FROM quyen_nguoi_dung_dong WHERE nguoi_dung_id=?').all(id)};
+    db.transaction(()=>{
+      db.prepare(`INSERT INTO user_account_level(user_id,level_code,allow_self_approval,updated_by,updated_at) VALUES (?,?,?,?,datetime('now','localtime'))
+        ON CONFLICT(user_id) DO UPDATE SET level_code=excluded.level_code,allow_self_approval=excluded.allow_self_approval,updated_by=excluded.updated_by,updated_at=excluded.updated_at`).run(id,b.level_code,b.allow_self_approval?1:0,req.session.nguoiDung.id);
+      db.prepare('DELETE FROM user_unit_access WHERE user_id=?').run(id);
+      const ins=db.prepare('INSERT INTO user_unit_access(user_id,unit_id,access_type,assigned_by) VALUES (?,?,?,?)'); managed.forEach(x=>ins.run(id,x,'MANAGE',req.session.nguoiDung.id));viewed.forEach(x=>ins.run(id,x,'VIEW',req.session.nguoiDung.id));
+      const up=db.prepare(`INSERT INTO quyen_nguoi_dung_dong(nguoi_dung_id,ma_quyen,duoc_phep) VALUES (?,?,?) ON CONFLICT(nguoi_dung_id,ma_quyen) DO UPDATE SET duoc_phep=excluded.duoc_phep`);
+      QUYEN_PHAN_CAP.forEach(q=>up.run(id,q,selected.has(q)?1:0));
+      db.prepare(`INSERT INTO audit_quyen(nguoi_dung_id,hanh_dong,chi_tiet_cu,chi_tiet_moi,dia_chi_ip,user_agent) VALUES (?,'cap_nhat_phan_cap',?,?,?,?)`)
+        .run(req.session.nguoiDung.id,JSON.stringify(before),JSON.stringify({target_user_id:id,level_code:b.level_code,managed,viewed,permissions:[...selected],allow_self_approval:!!b.allow_self_approval}),req.ip,req.get('user-agent'));
+    }).immediate();
+    catPhienCuaNguoi(id); res.json({ok:true});
+});
+
 r.post('/tai-khoan', dangNhap, chiAdmin, (req, res) => {
     const { ten_dang_nhap, mat_khau, ho_ten, chuc_vu, vai_tro, phan_xuong_id, tam_thoi } = req.body || {};
     if (!ten_dang_nhap) return res.status(400).json({ loi: 'Thiếu tên đăng nhập' });

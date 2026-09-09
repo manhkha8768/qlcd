@@ -482,7 +482,7 @@ async function mhQuanTri(el) {
                 <td>${u.tam_thoi ? '<span class="nhan-tt tt-cho_duyet">Tạm 24h</span> ' : ''}
                     ${u.hoat_dong ? '<span class="nhan-tt tt-hoat_dong">Hoạt động</span>'
                                   : '<span class="nhan-tt tt-qua_han">Khoá</span>'}</td>
-                <td class="phai">${u.ten_dang_nhap === 'admin' ? '' :
+                <td class="phai"><button class="nho" onclick="formPhanCapTaiKhoan(${u.id})">Phân quyền</button> ${u.ten_dang_nhap === 'admin' ? '' :
                     `<button class="nho nguy-hiem" onclick="xoaTaiKhoan(${u.id},'${esc(u.ten_dang_nhap)}')">Xoá</button>`}</td>
                 </tr>`).join('')}
             </tbody></table></div>
@@ -614,6 +614,34 @@ function formTaiKhoan() {
 
 function doiVaiTro() {
     document.getElementById('o-px').style.display = gt('tk-vt') === 'px' ? '' : 'none';
+}
+
+async function formPhanCapTaiKhoan(id) {
+    try {
+        const d=await api(`/auth/tai-khoan/${id}/phan-cap`), pxs=(window.DS_PX||[]).filter(x=>x.hoat_dong);
+        const managed=new Set(d.units.filter(x=>x.access_type==='MANAGE').map(x=>Number(x.unit_id)));
+        const viewed=new Set(d.units.filter(x=>x.access_type==='VIEW').map(x=>Number(x.unit_id)));
+        const explicit=new Map(d.overrides.map(x=>[x.ma_quyen,!!x.duoc_phep]));
+        const effective=new Set(d.effective_permissions||[]);
+        const unitRows=pxs.map(p=>`<tr><td>${esc(p.ten_ngan||p.ma)} — ${esc(p.ten)}</td>
+          <td class="giua"><input class="pc-manage" data-unit="${p.id}" type="checkbox" ${managed.has(Number(p.id))?'checked':''} onchange="dongBoPhamVi(this,'manage')"></td>
+          <td class="giua"><input class="pc-view" data-unit="${p.id}" type="checkbox" ${viewed.has(Number(p.id))?'checked':''} onchange="dongBoPhamVi(this,'view')"></td></tr>`).join('');
+        moHopThoai('Phân cấp: '+(d.user.ho_ten||d.user.ten_dang_nhap),`
+          <div class="o-nhap"><label>Cấp độ tài khoản</label><select id="pc-level">${d.levels.map(x=>`<option value="${x.code}" ${x.code===(d.level?.level_code||'VIEW_ONLY')?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div>
+          <label class="o-nhap"><input id="pc-self" type="checkbox" style="width:auto" ${d.level?.allow_self_approval?'checked':''}> Cho phép tự duyệt dữ liệu do chính tài khoản tạo</label>
+          <h4>Phạm vi đơn vị</h4><p class="ghi-nho">Quản lý: được thao tác/duyệt nếu có quyền. Chỉ xem: không thể duyệt.</p>
+          <div class="bao-bang" style="max-height:230px"><table><thead><tr><th>Phân xưởng</th><th>Quản lý</th><th>Chỉ xem</th></tr></thead><tbody>${unitRows}</tbody></table></div>
+          <h4>Quyền nghiệp vụ</h4><div class="hang" style="align-items:stretch">${d.permissions.map(q=>{const on=explicit.has(q.ma)?explicit.get(q.ma):effective.has(q.ma);return `<label class="o-nhap" style="min-width:220px;display:flex;flex-direction:row;gap:8px"><input class="pc-perm" type="checkbox" value="${esc(q.ma)}" ${on?'checked':''} style="width:auto"><span>${esc(q.ten)}</span></label>`}).join('')}</div>`,
+          [{ten:'Hủy',chay:dongHopThoai},{ten:'Lưu phân quyền',lop:'chinh-nut',chay:()=>luuPhanCapTaiKhoan(id)}],true);
+    } catch(e){bao(e.message,'loi');}
+}
+function dongBoPhamVi(el,type){const id=el.dataset.unit;if(el.checked)document.querySelector(`.${type==='manage'?'pc-view':'pc-manage'}[data-unit="${id}"]`).checked=false;}
+async function luuPhanCapTaiKhoan(id){
+    const ids=sel=>[...document.querySelectorAll(sel+':checked')].map(x=>Number(x.dataset.unit));
+    const body={level_code:gt('pc-level'),allow_self_approval:document.getElementById('pc-self').checked,
+      managed_unit_ids:ids('.pc-manage'),view_unit_ids:ids('.pc-view'),permissions:[...document.querySelectorAll('.pc-perm:checked')].map(x=>x.value)};
+    try{await api(`/auth/tai-khoan/${id}/phan-cap`,{method:'PUT',body});dongHopThoai();bao('Đã lưu phân cấp và phạm vi tài khoản');}
+    catch(e){baoTrongHopThoai(e.message);}
 }
 
 async function xoaTaiKhoan(id, ten) {

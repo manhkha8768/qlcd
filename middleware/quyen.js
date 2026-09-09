@@ -92,15 +92,37 @@ function quyenCuaToi(u) {
 
 /** null = toàn công ty; mảng = đúng các đơn vị được gán. */
 function donViDuocPhep(u) {
-    if (u.vai_tro === 'admin' || coQuyen(u.id, u.vai_tro, 'XEM_MOI_DON_VI')) return null;
+    if (u.vai_tro === 'admin' || coQuyen(u.id,u.vai_tro,'scope.company')) return null;
+    // Giữ tương thích quyền xem toàn Công ty cũ cho tới khi Admin cấu hình
+    // phạm vi mới. Khi đã có user_unit_access, phạm vi tường minh luôn thắng.
+    try {
+        const configured=db.prepare('SELECT 1 FROM user_unit_access WHERE user_id=? LIMIT 1').get(u.id);
+        if(!configured && coQuyen(u.id,u.vai_tro,'XEM_MOI_DON_VI')) return null;
+    } catch (_) { if(coQuyen(u.id,u.vai_tro,'XEM_MOI_DON_VI')) return null; }
     const ids = db.prepare(`SELECT don_vi_id FROM nguoi_dung_don_vi
         WHERE nguoi_dung_id=? AND hoat_dong=1
           AND (tu_ngay IS NULL OR tu_ngay <= date('now','localtime'))
           AND (den_ngay IS NULL OR den_ngay >= date('now','localtime'))`)
         .all(u.id).map(x => Number(x.don_vi_id));
     if (u.phan_xuong_id) ids.push(Number(u.phan_xuong_id));
+    try { db.prepare(`SELECT unit_id FROM user_unit_access WHERE user_id=?
+        AND (valid_from IS NULL OR valid_from<=date('now','localtime'))
+        AND (valid_to IS NULL OR valid_to>=date('now','localtime'))`).all(u.id).forEach(x=>ids.push(Number(x.unit_id))); } catch (_) { /* trước migration */ }
     return [...new Set(ids)];
 }
+
+/** null = quản trị toàn hệ thống; mảng = các đơn vị được phép ghi/duyệt. */
+function donViQuanLy(u) {
+    if (u.vai_tro === 'admin') return null;
+    try {
+        const ids=db.prepare(`SELECT unit_id FROM user_unit_access WHERE user_id=? AND access_type='MANAGE'
+          AND (valid_from IS NULL OR valid_from<=date('now','localtime'))
+          AND (valid_to IS NULL OR valid_to>=date('now','localtime'))`).all(u.id).map(x=>Number(x.unit_id));
+        if(u.vai_tro==='px' && u.phan_xuong_id) ids.push(Number(u.phan_xuong_id));
+        return [...new Set(ids)];
+    } catch (_) { return u.phan_xuong_id ? [Number(u.phan_xuong_id)] : []; }
+}
+function duocQuanLyDonVi(u,id){const ds=donViQuanLy(u);return ds===null||ds.includes(Number(id));}
 
 function duocThaoTacDonVi(u, donViId) {
     const ds = donViDuocPhep(u);
@@ -122,4 +144,4 @@ function locPX(req, cot = 'phan_xuong_id') {
 
 module.exports = { dangNhap, coVaiTro, chiAdmin, duocGhi, duocDuyet,
     coQuyen, coMaQuyen, coMaQuyenNay, canQuyen, quyenCuaToi,
-    donViDuocPhep, duocThaoTacDonVi, gioiHanPX, duocThaoTacPX, locPX };
+    donViDuocPhep, donViQuanLy, duocQuanLyDonVi, duocThaoTacDonVi, gioiHanPX, duocThaoTacPX, locPX };

@@ -1,6 +1,6 @@
 const express = require('express');
 const db = require('../db');
-const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep, coMaQuyen, coMaQuyenNay } = require('../middleware/quyen');
+const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep, duocQuanLyDonVi, coMaQuyen, coMaQuyenNay } = require('../middleware/quyen');
 const { sinhMa } = require('../lib/ma-thiet-bi');
 const { interactionAudit } = require('../lib/interaction-audit');
 const ExcelJS = require('exceljs');
@@ -300,28 +300,38 @@ r.delete('/:id', coMaQuyenNay('thietbi.xoa'), (req, res) => {
 });
 
 /* ---------- Phê duyệt: Đồng ý / Chuyển lại ---------- */
-r.post('/:id/dong-y', duocDuyet, (req, res) => {
+r.post('/:id/dong-y', coMaQuyenNay('thietbi.duyet'), (req, res) => {
     const tb = db.prepare('SELECT * FROM thiet_bi WHERE id=?').get(req.params.id);
     if (!tb) return res.status(404).json({ loi: 'Không tìm thấy thiết bị' });
-    db.prepare("UPDATE thiet_bi SET trang_thai_duyet='da_duyet' WHERE id=?").run(tb.id);
+    if(!duocQuanLyDonVi(req.session.nguoiDung,tb.phan_xuong_id))return res.status(403).json({loi:'Phân xưởng này chỉ thuộc phạm vi xem, không thuộc phạm vi quản lý'});
+    if(tb.nguoi_tao_id===req.session.nguoiDung.id&&!coMaQuyen(req,'approval.self'))return res.status(403).json({loi:'Không được tự duyệt dữ liệu do chính mình tạo'});
+    if(!['cho_duyet','chuyen_lai'].includes(tb.trang_thai_duyet))return res.status(409).json({loi:'Thiết bị đã được xử lý hoặc chưa trình duyệt'});
+    const changed=db.prepare("UPDATE thiet_bi SET trang_thai_duyet='da_duyet' WHERE id=? AND trang_thai_duyet IN ('cho_duyet','chuyen_lai')").run(tb.id);
+    if(!changed.changes)return res.status(409).json({loi:'Thiết bị đã được người khác xử lý'});
     db.prepare(`INSERT INTO phe_duyet (doi_tuong_loai, doi_tuong_id, hanh_dong, nguoi_id)
                 VALUES ('thiet_bi',?,'dong_y',?)`).run(tb.id, req.session.nguoiDung.id);
     res.json({ ok: true });
 });
 
-r.post('/:id/chuyen-lai', duocDuyet, (req, res) => {
+r.post('/:id/chuyen-lai', coMaQuyenNay('thietbi.tu_choi'), (req, res) => {
     const lyDo = (req.body?.ly_do || '').trim();
     if (!lyDo) return res.status(400).json({ loi: 'Phải nhập lý do khi chuyển lại' });
     const tb = db.prepare('SELECT * FROM thiet_bi WHERE id=?').get(req.params.id);
     if (!tb) return res.status(404).json({ loi: 'Không tìm thấy thiết bị' });
-    db.prepare("UPDATE thiet_bi SET trang_thai_duyet='chuyen_lai' WHERE id=?").run(tb.id);
+    if(!duocQuanLyDonVi(req.session.nguoiDung,tb.phan_xuong_id))return res.status(403).json({loi:'Phân xưởng này chỉ thuộc phạm vi xem, không thuộc phạm vi quản lý'});
+    if(tb.nguoi_tao_id===req.session.nguoiDung.id&&!coMaQuyen(req,'approval.self'))return res.status(403).json({loi:'Không được tự xử lý dữ liệu do chính mình tạo'});
+    const changed=db.prepare("UPDATE thiet_bi SET trang_thai_duyet='chuyen_lai' WHERE id=? AND trang_thai_duyet='cho_duyet'").run(tb.id);
+    if(!changed.changes)return res.status(409).json({loi:'Thiết bị đã được xử lý hoặc chưa trình duyệt'});
     db.prepare(`INSERT INTO phe_duyet (doi_tuong_loai, doi_tuong_id, hanh_dong, ly_do, nguoi_id)
                 VALUES ('thiet_bi',?,'chuyen_lai',?,?)`).run(tb.id, lyDo, req.session.nguoiDung.id);
     res.json({ ok: true });
 });
 
 /** Duyệt hàng loạt theo lô import */
-r.post('/duyet-lo/:loId', duocDuyet, (req, res) => {
+r.post('/duyet-lo/:loId', coMaQuyenNay('import.duyet'), (req, res) => {
+    const lo=db.prepare('SELECT * FROM lo_import WHERE id=?').get(req.params.loId);
+    if(!lo)return res.status(404).json({loi:'Không tìm thấy lô nhập'});
+    if(!duocQuanLyDonVi(req.session.nguoiDung,lo.phan_xuong_id))return res.status(403).json({loi:'Không được duyệt lô nhập của phân xưởng chỉ xem'});
     const n = db.prepare(`UPDATE thiet_bi SET trang_thai_duyet='da_duyet'
                           WHERE lo_import_id=? AND trang_thai_duyet='cho_duyet'`).run(req.params.loId);
     res.json({ da_duyet: n.changes });
