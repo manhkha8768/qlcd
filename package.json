@@ -8,6 +8,7 @@
     "test:sheet": "node test/test-sheet-sync.js",
     "test:asset-delete": "node test/test-asset-soft-delete.js",
     "test:device-delete": "node test/test-device-soft-delete.js",
+    "test:company-template": "node test/test-company-inventory-template.js",
     "init": "node db/init.js",
     "lint": "node scripts/kiem-tra-js.js",
     "typecheck": "node scripts/kiem-tra-js.js",

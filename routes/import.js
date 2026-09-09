@@ -143,7 +143,14 @@ r.post('/lo/:id/anh-xa', duocGhi, (req, res) => {
                 if (daCo) b.canh_bao = ghepCanhBao(b.canh_bao, `Mã TS đã có trong hệ thống (${daCo.ma_tb})`);
             }
             b.lo_id = lo.id;
-            them.run(b);
+            const tamInfo = them.run(b);
+            db.prepare(`INSERT INTO import_kiem_ke_tam(import_tam_id,so_kiem_ke,so_quan_ly,
+                so_luong_quan_ly,so_luong_kiem_ke,so_luong_doi_chieu,danh_gia_ky_thuat,
+                ghi_chu_kiem_ke,quan_ly_theo_quyet_dinh,hidden_from_web,highlight_color,source_row)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(tamInfo.lastInsertRowid,
+                txt(d.so_kiem_ke),txt(d.so_quan_ly),xl.veSo(d.so_luong_quan_ly),xl.veSo(d.so_luong_kiem_ke),
+                xl.veSo(d.so_luong_doi_chieu),xl.veSo(d.danh_gia_ky_thuat),txt(d.ghi_chu_kiem_ke),
+                txt(d.quan_ly_theo_quyet_dinh),d.hidden_from_web ? 1 : 0,d.highlight_color,d.dong_goc);
             if (b.hop_le) hopLe++; else coLoi++;
         }
 
@@ -244,7 +251,10 @@ r.post('/lo/:id/xac-nhan', duocGhi, (req, res) => {
     if (lo.trang_thai === 'da_nhap') return res.status(400).json({ loi: 'Lô này đã được nhập rồi' });
 
     const boQuaTrung = !!req.body?.bo_qua_trung;
-    const ds = db.prepare(`SELECT * FROM import_tam WHERE lo_id=? AND hop_le=1 AND da_nhap=0`).all(lo.id);
+    const ds = db.prepare(`SELECT t.*,k.so_kiem_ke,k.so_quan_ly,k.so_luong_quan_ly,k.so_luong_kiem_ke,
+        k.so_luong_doi_chieu,k.danh_gia_ky_thuat,k.ghi_chu_kiem_ke,k.quan_ly_theo_quyet_dinh,
+        k.hidden_from_web,k.highlight_color,k.source_row FROM import_tam t
+        LEFT JOIN import_kiem_ke_tam k ON k.import_tam_id=t.id WHERE t.lo_id=? AND t.hop_le=1 AND t.da_nhap=0`).all(lo.id);
     if (!ds.length) return res.status(400).json({ loi: 'Không có dòng hợp lệ nào để nhập' });
 
     const themTB = db.prepare(`
@@ -271,7 +281,7 @@ r.post('/lo/:id/xac-nhan', duocGhi, (req, res) => {
                     nam_sx: d.nam_sx, nuoc_sx: d.nuoc_sx, ma_tscd: d.ma_tscd,
                     loai_ts: d.loai_ts || 'TSCD', nguyen_gia: d.nguyen_gia || 0,
                     gia_tri_con_lai: d.gia_tri_con_lai || 0, ngay_su_dung: d.ngay_su_dung,
-                    phan_xuong_id: lo.phan_xuong_id, so_luong: d.so_luong || 1,
+                    phan_xuong_id: lo.phan_xuong_id, so_luong: d.so_luong ?? 1,
                     dvt: d.dvt || 'Cái', lo_import_id: lo.id,
                     nguoi_tao_id: req.session.nguoiDung.id,
                     ghi_chu: [d.vi_tri_text ? 'Vị trí theo file: ' + d.vi_tri_text : null, d.ghi_chu]
@@ -279,6 +289,15 @@ r.post('/lo/:id/xac-nhan', duocGhi, (req, res) => {
                 });
                 db.prepare('UPDATE import_tam SET da_nhap=1, thiet_bi_id=? WHERE id=?')
                   .run(info.lastInsertRowid, d.id);
+                db.prepare(`INSERT INTO thiet_bi_kiem_ke(thiet_bi_id,so_kiem_ke,so_quan_ly,
+                    so_luong_quan_ly,so_luong_kiem_ke,so_luong_doi_chieu,danh_gia_ky_thuat,
+                    ghi_chu_kiem_ke,quan_ly_theo_quyet_dinh,hidden_from_web,hidden_reason,hidden_source,hidden_at,hidden_by,source_row)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(info.lastInsertRowid,d.so_kiem_ke,d.so_quan_ly,
+                    d.so_luong_quan_ly,d.so_luong_kiem_ke,d.so_luong_doi_chieu,d.danh_gia_ky_thuat,
+                    d.ghi_chu_kiem_ke,d.quan_ly_theo_quyet_dinh,d.hidden_from_web || 0,
+                    d.hidden_from_web ? 'Dòng được bôi vàng trong file nhập' : null,
+                    d.hidden_from_web ? `import:${lo.id}:${d.highlight_color || 'yellow'}` : null,
+                    d.hidden_from_web ? new Date().toISOString() : null,d.hidden_from_web ? req.session.nguoiDung.id : null,d.source_row);
                 db.prepare(`INSERT INTO lich_su_vi_tri (thiet_bi_id, phan_xuong_id, tu_ngay)
                             VALUES (?,?,COALESCE(?, date('now','localtime')))`)
                   .run(info.lastInsertRowid, lo.phan_xuong_id, d.ngay_su_dung);
@@ -337,6 +356,7 @@ function layLo(req, res, boQuaGioiHan = false) {
 function ghepCanhBao(cu, moi) {
     return cu ? cu + '; ' + moi : moi;
 }
+function txt(v) { return v === null || v === undefined || String(v).trim() === '' ? null : String(v).trim(); }
 
 function kiemTra(b) {
     const loi = [];

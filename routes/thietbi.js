@@ -1,8 +1,9 @@
 const express = require('express');
 const db = require('../db');
-const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep, coMaQuyenNay } = require('../middleware/quyen');
+const { dangNhap, duocGhi, duocDuyet, gioiHanPX, duocThaoTacPX, donViDuocPhep, coMaQuyen, coMaQuyenNay } = require('../middleware/quyen');
 const { sinhMa } = require('../lib/ma-thiet-bi');
 const { interactionAudit } = require('../lib/interaction-audit');
+const ExcelJS = require('exceljs');
 
 const r = express.Router();
 r.use(dangNhap);
@@ -49,6 +50,10 @@ r.get('/', (req, res) => {
                       d.id AS device_id, a.id AS asset_id,
                       tb.so_luong, tb.dvt, tb.nguyen_gia, tb.gia_tri_con_lai, tb.ngay_su_dung,
                       tb.trang_thai, tb.tinh_trang_kt, tb.trang_thai_duyet, tb.gio_chay_luy_ke,
+                      kk.so_kiem_ke,COALESCE(kk.so_quan_ly,tb.ma_tscd) AS so_quan_ly,
+                      kk.so_luong_quan_ly,kk.so_luong_kiem_ke,kk.so_luong_doi_chieu,
+                      kk.danh_gia_ky_thuat,kk.ghi_chu_kiem_ke,kk.quan_ly_theo_quyet_dinh,
+                      COALESCE(kk.hidden_from_web,0) AS hidden_from_web,kk.hidden_reason,
                       n.ma AS ma_nhom, n.ten AS ten_nhom,
                       px.id AS px_id, px.ten_ngan AS px, vt.ten AS vi_tri
                FROM thiet_bi tb
@@ -57,6 +62,7 @@ r.get('/', (req, res) => {
                LEFT JOIN vi_tri vt       ON vt.id = tb.vi_tri_id
                LEFT JOIN devices d       ON d.legacy_thiet_bi_id = tb.id
                LEFT JOIN assets a        ON a.legacy_thiet_bi_id = tb.id AND a.hoat_dong=1
+               LEFT JOIN thiet_bi_kiem_ke kk ON kk.thiet_bi_id=tb.id
                WHERE NOT EXISTS (SELECT 1 FROM thiet_bi_deletions del WHERE del.thiet_bi_id=tb.id)`;
     const p = [];
 
@@ -74,10 +80,21 @@ r.get('/', (req, res) => {
     if (req.query.trang_thai) { sql += ' AND tb.trang_thai = ?'; p.push(req.query.trang_thai); }
     if (req.query.loai_ts)    { sql += ' AND tb.loai_ts = ?'; p.push(req.query.loai_ts); }
     if (req.query.duyet)      { sql += ' AND tb.trang_thai_duyet = ?'; p.push(req.query.duyet); }
+    const hidden = req.query.hidden_status || 'visible';
+    if (hidden !== 'visible' && !coMaQuyen(req,'thietbi.unhide')) return res.status(403).json({ loi:'Không có quyền xem thiết bị ẩn' });
+    if (hidden === 'visible') sql += ' AND COALESCE(kk.hidden_from_web,0)=0';
+    else if (hidden === 'hidden') sql += ' AND COALESCE(kk.hidden_from_web,0)=1';
+    else if (hidden !== 'all') return res.status(400).json({ loi:'Bộ lọc trạng thái ẩn không hợp lệ' });
+    if (req.query.co_so_kiem_ke === '1') sql += " AND COALESCE(kk.so_kiem_ke,'')<>''";
+    if (req.query.co_so_kiem_ke === '0') sql += " AND COALESCE(kk.so_kiem_ke,'')=''";
+    if (req.query.co_so_quan_ly === '1') sql += " AND COALESCE(kk.so_quan_ly,tb.ma_tscd,'')<>''";
+    if (req.query.co_so_quan_ly === '0') sql += " AND COALESCE(kk.so_quan_ly,tb.ma_tscd,'')=''";
+    if (req.query.ky_thuat_tu !== undefined && req.query.ky_thuat_tu !== '') { sql += ' AND kk.danh_gia_ky_thuat>=?'; p.push(Number(req.query.ky_thuat_tu)); }
+    if (req.query.ky_thuat_den !== undefined && req.query.ky_thuat_den !== '') { sql += ' AND kk.danh_gia_ky_thuat<=?'; p.push(Number(req.query.ky_thuat_den)); }
     if (req.query.q) {
-        sql += ' AND (tb.ma_tb LIKE ? OR tb.ten LIKE ? OR tb.ma_tscd LIKE ? OR tb.so_seri LIKE ?)';
+        sql += ' AND (tb.ma_tb LIKE ? OR tb.ten LIKE ? OR tb.ma_tscd LIKE ? OR tb.so_seri LIKE ? OR kk.so_kiem_ke LIKE ? OR kk.so_quan_ly LIKE ?)';
         const k = '%' + req.query.q.trim() + '%';
-        p.push(k, k, k, k);
+        p.push(k, k, k, k, k, k);
     }
 
     const dem = db.prepare(`SELECT COUNT(*) n FROM (${sql})`).get(...p).n;
@@ -88,6 +105,49 @@ r.get('/', (req, res) => {
 
     res.json({ tong: dem, trang, moi_trang: moiTrang, danh_sach: db.prepare(sql).all(...p) });
 });
+
+r.post('/bulk-hide', coMaQuyenNay('thietbi.hide'), (req,res) => {
+    const ids=[...new Set((req.body?.ids||[]).map(Number))].filter(Number.isInteger);
+    const reason=String(req.body?.reason||'').trim();
+    if (!ids.length || reason.length<5) return res.status(400).json({loi:'Phải chọn thiết bị và nhập lý do ít nhất 5 ký tự'});
+    const rows=ids.map(docThietBi);
+    if(rows.some(x=>!x)) return res.status(404).json({loi:'Có thiết bị không tồn tại'});
+    if(rows.some(x=>!duocThaoTacPX(req,x.phan_xuong_id))) return res.status(403).json({loi:'Có thiết bị ngoài phạm vi dữ liệu'});
+    const q=db.prepare(`INSERT INTO thiet_bi_kiem_ke(thiet_bi_id,hidden_from_web,hidden_reason,hidden_source,hidden_at,hidden_by)
+        VALUES (?,1,?,'manual',datetime('now','localtime'),?) ON CONFLICT(thiet_bi_id) DO UPDATE SET
+        hidden_from_web=1,hidden_reason=excluded.hidden_reason,hidden_source='manual',hidden_at=excluded.hidden_at,hidden_by=excluded.hidden_by`);
+    db.transaction(()=>ids.forEach(id=>q.run(id,reason,req.session.nguoiDung.id)))();
+    interactionAudit(req,'DEVICE_HIDE','thiet_bi',ids.length===1?ids[0]:null,{reason,device_ids:ids});
+    res.json({ok:true,da_an:ids.length});
+});
+
+r.post('/:id/unhide', coMaQuyenNay('thietbi.unhide'), (req,res) => {
+    const tb=docThietBi(req.params.id);
+    if(!tb) return res.status(404).json({loi:'Không tìm thấy thiết bị'});
+    if(!duocThaoTacPX(req,tb.phan_xuong_id)) return res.status(403).json({loi:'Không có quyền'});
+    db.prepare(`UPDATE thiet_bi_kiem_ke SET hidden_from_web=0,hidden_reason=NULL,hidden_source=NULL,hidden_at=NULL,hidden_by=NULL WHERE thiet_bi_id=?`).run(tb.id);
+    interactionAudit(req,'DEVICE_UNHIDE','thiet_bi',tb.id,{device_code:tb.ma_tb,reason:String(req.body?.reason||'').trim()||null});
+    res.json({ok:true});
+});
+
+async function xuatKiemKe(req,res,dayDu) {
+    const scope=donViDuocPhep(req.session.nguoiDung), p=[];
+    let where=`WHERE NOT EXISTS(SELECT 1 FROM thiet_bi_deletions d WHERE d.thiet_bi_id=tb.id)`;
+    if(scope!==null){ if(!scope.length) where+=' AND 1=0'; else {where+=` AND tb.phan_xuong_id IN (${scope.map(()=>'?').join(',')})`;p.push(...scope);} }
+    if(!dayDu) where+=' AND COALESCE(kk.hidden_from_web,0)=0';
+    const rows=db.prepare(`SELECT tb.*,px.ten_ngan px,kk.* FROM thiet_bi tb LEFT JOIN phan_xuong px ON px.id=tb.phan_xuong_id LEFT JOIN thiet_bi_kiem_ke kk ON kk.thiet_bi_id=tb.id ${where} ORDER BY px.ten_ngan,tb.ma_tb`).all(...p);
+    const wb=new ExcelJS.Workbook(), ws=wb.addWorksheet('Sheet1');
+    ws.mergeCells('A1:P1'); ws.getCell('A1').value='BIÊN BẢN KIỂM KÊ THIẾT BỊ, TSCĐ, CCDC'; ws.getCell('A1').font={bold:true,size:15}; ws.getCell('A1').alignment={horizontal:'center'};
+    const headers=['STT','Tên thiết bị TSCĐ, CCDC','ĐVT','Số kiểm kê','SL quản lý','SL kiểm kê','Đối chiếu','Số chế tạo','Số quản lý','Phân xưởng','Trạng thái','Đánh giá % kỹ thuật','Ghi chú','QL theo lệnh/QĐ','Mã thiết bị','Ẩn trên web'];
+    ws.addRow([]); ws.addRow(headers); ws.getRow(3).font={bold:true}; ws.getRow(3).alignment={horizontal:'center',vertical:'middle',wrapText:true};
+    rows.forEach((x,i)=>{ const row=ws.addRow([i+1,x.ten,x.dvt,x.so_kiem_ke,x.so_luong_quan_ly??x.so_luong,x.so_luong_kiem_ke,x.so_luong_doi_chieu,x.so_seri,x.so_quan_ly??x.ma_tscd,x.px,x.trang_thai,x.danh_gia_ky_thuat,x.ghi_chu_kiem_ke??x.ghi_chu,x.quan_ly_theo_quyet_dinh,x.ma_tb,x.hidden_from_web?'Có':'Không']); if(x.hidden_from_web) row.eachCell(c=>c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}}); });
+    ws.addRow([]); ws.addRow(['','NGƯỜI LẬP BIỂU','','','','ĐẠI DIỆN PHÂN XƯỞNG','','','','','','PHÒNG CƠ ĐIỆN','','','','']);
+    ws.columns=[8,36,10,15,12,12,12,18,18,14,15,18,30,24,18,12].map(width=>({width})); ws.views=[{state:'frozen',ySplit:3}]; ws.autoFilter='A3:P3';
+    interactionAudit(req,dayDu?'DEVICE_EXPORT_OFFICIAL':'DEVICE_EXPORT_FILTERED','thiet_bi',null,{count:rows.length});
+    const buf=await wb.xlsx.writeBuffer(); res.setHeader('Content-Type','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'); res.setHeader('Content-Disposition',`attachment; filename="${dayDu?'bien-ban-kiem-ke-day-du':'danh-sach-thiet-bi'}.xlsx"`); res.send(Buffer.from(buf));
+}
+r.get('/export/filtered',coMaQuyenNay('thietbi.export'),(req,res,next)=>xuatKiemKe(req,res,false).catch(next));
+r.get('/export/official',coMaQuyenNay('thietbi.export.official'),(req,res,next)=>xuatKiemKe(req,res,true).catch(next));
 
 r.get('/deleted', coMaQuyenNay('thietbi.khoi_phuc'), (req, res) => {
     const scope = donViDuocPhep(req.session.nguoiDung);

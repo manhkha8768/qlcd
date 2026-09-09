@@ -99,13 +99,13 @@ function moTaiSanTheoPhanXuong(phanXuongId, event) {
 }
 
 /* =========================== THIẾT BỊ =========================== */
-let boLoc = { q: '', phan_xuong_id: '', nhom_id: '', trang_thai: '', loai_ts: '', trang: 1 };
+let boLoc = { q: '', phan_xuong_id: '', nhom_id: '', trang_thai: '', loai_ts: '', hidden_status:'visible', co_so_kiem_ke:'', co_so_quan_ly:'', ky_thuat_tu:'', ky_thuat_den:'', trang: 1 };
 let thietBiDaChon = new Set();
 
 async function mhThietBi(el) {
     el.innerHTML = `<div class="dau-trang"><div>
             <div class="eyebrow">Danh mục</div><h2>Thiết bị</h2></div>
-            <div><button class="chinh-nut" onclick="formThietBi()">Thêm thiết bị</button></div></div>
+            <div>${coQuyenUI('thietbi.export')?'<button onclick="xuatThietBi(false)">Xuất danh sách</button> ':''}${coQuyenUI('thietbi.export.official')?'<button onclick="xuatThietBi(true)">Biên bản đầy đủ</button> ':''}<button class="chinh-nut" onclick="formThietBi()">Thêm thiết bị</button></div></div>
         <div id="vung-bao"></div>
         <div class="thanh-loc" id="thanh-loc"></div>
         <div class="the"><div id="bang-tb" class="bao-bang">Đang tải…</div></div>`;
@@ -125,6 +125,10 @@ async function mhThietBi(el) {
                 .map(k => `<option value="${k}">${tt(k)}</option>`).join('')}</select>
         <select id="l-loai"><option value="">TSCĐ + CCDC</option>
             <option value="TSCD">Chỉ TSCĐ</option><option value="CCDC">Chỉ CCDC</option></select>
+        <select id="l-sokk"><option value="">Số kiểm kê: tất cả</option><option value="1">Đã có</option><option value="0">Chưa có</option></select>
+        <select id="l-soql"><option value="">Số quản lý: tất cả</option><option value="1">Đã có</option><option value="0">Chưa có</option></select>
+        <input id="l-kttu" type="number" min="0" max="100" placeholder="% KT từ" style="width:90px"><input id="l-ktden" type="number" min="0" max="100" placeholder="đến" style="width:75px">
+        ${coQuyenUI('thietbi.unhide')?`<select id="l-an"><option value="visible">Đang hiển thị</option><option value="hidden">Đang ẩn</option><option value="all">Tất cả</option></select>`:''}
         <button onclick="apDungLoc()">Lọc</button>`;
 
     ['l-px', 'l-nhom', 'l-tt', 'l-loai'].forEach(id => {
@@ -132,6 +136,7 @@ async function mhThietBi(el) {
         if (e) { e.value = boLoc[{ 'l-px': 'phan_xuong_id', 'l-nhom': 'nhom_id', 'l-tt': 'trang_thai', 'l-loai': 'loai_ts' }[id]]; e.onchange = apDungLoc; }
     });
     document.getElementById('l-q').onkeydown = e => { if (e.key === 'Enter') apDungLoc(); };
+    [['l-sokk','co_so_kiem_ke'],['l-soql','co_so_quan_ly'],['l-an','hidden_status'],['l-kttu','ky_thuat_tu'],['l-ktden','ky_thuat_den']].forEach(([id,k])=>{const e=document.getElementById(id);if(e){e.value=boLoc[k]??'';}});
 
     taiBangThietBi();
 }
@@ -140,7 +145,8 @@ function apDungLoc() {
     boLoc = {
         q: gt('l-q'),
         phan_xuong_id: document.getElementById('l-px')?.value || '',
-        nhom_id: gt('l-nhom'), trang_thai: gt('l-tt'), loai_ts: gt('l-loai'), trang: 1
+        nhom_id: gt('l-nhom'), trang_thai: gt('l-tt'), loai_ts: gt('l-loai'),
+        hidden_status:document.getElementById('l-an')?.value||'visible',co_so_kiem_ke:gt('l-sokk'),co_so_quan_ly:gt('l-soql'),ky_thuat_tu:gt('l-kttu'),ky_thuat_den:gt('l-ktden'),trang: 1
     };
     thietBiDaChon.clear();
     taiBangThietBi();
@@ -150,7 +156,7 @@ async function taiBangThietBi() {
     const c = document.getElementById('bang-tb');
     const q = new URLSearchParams({ ...boLoc, moi_trang: 50 });
     const d = await api('/thiet-bi?' + q);
-    const duocXoa = coQuyenUI('thietbi.xoa');
+    const duocXoa = coQuyenUI('thietbi.xoa'), duocAn=coQuyenUI('thietbi.hide');
 
     if (!d.tong) {
         c.innerHTML = `${coQuyenUI('thietbi.khoi_phuc') ? '<div class="asset-bulk-bar"><button onclick="moThungRacThietBi()">Thiết bị đã xóa</button></div>' : ''}<div class="trong">Không có thiết bị nào khớp điều kiện lọc.</div>`;
@@ -161,21 +167,13 @@ async function taiBangThietBi() {
     thietBiDaChon = new Set([...thietBiDaChon].filter(id => idsTrang.includes(id)));
     c.innerHTML = `${duocXoa ? `<div class="asset-bulk-bar"><strong id="device-selected-count">Đã chọn ${thietBiDaChon.size} thiết bị</strong>
             <button id="device-delete-selected" class="nguy-hiem" ${thietBiDaChon.size ? '' : 'disabled'} onclick="xacNhanXoaThietBi([...thietBiDaChon])">Xóa thiết bị đã chọn</button>
+            ${duocAn?`<button id="device-hide-selected" ${thietBiDaChon.size?'':'disabled'} onclick="xacNhanAnThietBi([...thietBiDaChon])">Ẩn khỏi web</button>`:''}
             ${coQuyenUI('thietbi.khoi_phuc') ? '<button onclick="moThungRacThietBi()">Thiết bị đã xóa</button>' : ''}</div>` : ''}<table><thead><tr>
             ${duocXoa ? `<th><input type="checkbox" aria-label="Chọn tất cả thiết bị trang này" onchange="chonTatCaThietBi(this.checked)" ${idsTrang.length && idsTrang.every(id => thietBiDaChon.has(id)) ? 'checked' : ''}></th>` : ''}
-            <th>Mã thiết bị</th><th>Tên thiết bị</th><th>Nhóm</th>
-            <th>PX</th><th class="giua">SL</th><th class="phai">Nguyên giá</th>
-            <th>Trạng thái</th><th>Duyệt</th>${duocXoa ? '<th>Thao tác</th>' : ''}</tr></thead>
+            <th>STT</th><th>Số kiểm kê</th><th>Số quản lý</th><th>Tên thiết bị</th><th>ĐVT</th><th class="giua">Số lượng</th><th>Số chế tạo</th><th>PX</th><th>Trạng thái</th><th>% kỹ thuật</th><th>Ghi chú</th><th>Thao tác</th></tr></thead>
         <tbody>${d.danh_sach.map(x => `<tr class="bam" onclick="xemThietBi(${x.id})">
             ${duocXoa ? `<td><input class="device-check" type="checkbox" data-id="${x.id}" aria-label="Chọn ${esc(x.ma_tb)}" ${thietBiDaChon.has(Number(x.id)) ? 'checked' : ''} onclick="event.stopPropagation()" onchange="chonThietBi(${x.id},this.checked)"></td>` : ''}
-            <td class="ma">${esc(x.ma_tb)}</td>
-            <td>${esc(x.ten)}${x.ma_tscd ? `<div style="font-size:11.5px;color:var(--chu-mo)">TS: ${esc(x.ma_tscd)}</div>` : ''}</td>
-            <td><span class="ma">${esc(x.ma_nhom || '')}</span> ${esc(x.ten_nhom || '')}</td>
-            <td>${esc(x.px || '')}</td>
-            <td class="giua so">${x.so_luong ?? '—'} ${esc(x.dvt || '')}</td>
-            <td class="phai so">${tien(x.nguyen_gia)}</td>
-            <td>${nhanTT(x.trang_thai)}</td>
-            <td>${nhanTT(x.trang_thai_duyet)}</td>${duocXoa ? `<td><button class="nho nguy-hiem" onclick="event.stopPropagation();xacNhanXoaThietBi([${x.id}])">Xóa</button></td>` : ''}</tr>`).join('')}
+            <td>${(d.trang-1)*d.moi_trang+d.danh_sach.indexOf(x)+1}</td><td>${esc(x.so_kiem_ke??'—')}</td><td class="ma">${esc(x.so_quan_ly??x.ma_tb)}</td><td>${esc(x.ten)}</td><td>${esc(x.dvt||'')}</td><td class="giua so">${x.so_luong??'—'}</td><td>${esc(x.so_seri||'—')}</td><td>${esc(x.px||'')}</td><td>${nhanTT(x.trang_thai)}</td><td>${x.danh_gia_ky_thuat??'—'}</td><td>${esc(x.ghi_chu_kiem_ke??x.ghi_chu??'')}</td><td>${x.hidden_from_web&&coQuyenUI('thietbi.unhide')?`<button class="nho" onclick="event.stopPropagation();hienLaiThietBi(${x.id})">Hiện lại</button>`:''}${duocXoa?` <button class="nho nguy-hiem" onclick="event.stopPropagation();xacNhanXoaThietBi([${x.id}])">Xóa</button>`:''}</td></tr>`).join('')}
         </tbody></table>
         <div style="padding:10px 12px;display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--chu-nhat)">
             <span>${d.tong} thiết bị · trang ${d.trang}/${soTrang}</span>
@@ -189,9 +187,14 @@ function doiTrang(n) { boLoc.trang = n; thietBiDaChon.clear(); taiBangThietBi();
 function capNhatChonThietBi() {
     const label = document.getElementById('device-selected-count');
     const button = document.getElementById('device-delete-selected');
+    const hideButton = document.getElementById('device-hide-selected');
     if (label) label.textContent = `Đã chọn ${thietBiDaChon.size} thiết bị`;
     if (button) button.disabled = !thietBiDaChon.size;
+    if (hideButton) hideButton.disabled = !thietBiDaChon.size;
 }
+function xuatThietBi(dayDu){ location.href=`/api/thiet-bi/export/${dayDu?'official':'filtered'}`; }
+async function xacNhanAnThietBi(ids){const reason=prompt('Nhập lý do ẩn các thiết bị khỏi web:');if(!reason)return;try{await api('/thiet-bi/bulk-hide',{method:'POST',body:{ids,reason}});thietBiDaChon.clear();await taiBangThietBi();bao(`Đã ẩn ${ids.length} thiết bị`);}catch(e){bao(e.message,'loi');}}
+async function hienLaiThietBi(id){try{await api(`/thiet-bi/${id}/unhide`,{method:'POST',body:{}});await taiBangThietBi();bao('Đã hiện lại thiết bị');}catch(e){bao(e.message,'loi');}}
 function chonThietBi(id, checked) {
     checked ? thietBiDaChon.add(Number(id)) : thietBiDaChon.delete(Number(id));
     capNhatChonThietBi();
